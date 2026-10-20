@@ -142,7 +142,8 @@ JOBS ?= 8
 # Builds and runs go to LSF (LSF=0 runs them on this host). Requests are sized from
 # build/metrics.jsonl, which records every job's CPU, peak memory and run time.
 # Measured on T1 builds: Verilator up to 3.1 GB per process (8 in parallel), VCS
-# 0.6 GB; simulations under 0.4 GB. Memory is in GB.
+# 0.6 GB; simulations under 0.4 GB. BUILD_MEM and RUN_MEM are numbers of GB, and the
+# request carries the unit (mem=<N>GB): some sites read a bare number as GB, others as MB.
 LSF ?= $(if $(shell command -v bsub 2>/dev/null),1,0)
 LSF_QUEUE ?= normal
 BUILD_MEM ?= $(if $(filter vcs,$(SIM)),2,4)
@@ -381,11 +382,11 @@ endif
 
 # LSF resources per job type.
 ifeq ($(SIM),vcs)
-LSF_BUILD_RES := -n 2 -R "rusage[mem=$(BUILD_MEM)]" $(LSF_VCS_BUILD_OPTS)
+LSF_BUILD_RES := -n 2 -R "rusage[mem=$(BUILD_MEM)GB]" $(LSF_VCS_BUILD_OPTS)
 else
-LSF_BUILD_RES := -n $(JOBS) -R "span[hosts=1] rusage[mem=$(BUILD_MEM)]" $(LSF_VERILATOR_BUILD_OPTS)
+LSF_BUILD_RES := -n $(JOBS) -R "span[hosts=1] rusage[mem=$(BUILD_MEM)GB]" $(LSF_VERILATOR_BUILD_OPTS)
 endif
-LSF_RUN_RES := -n $(RUN_CPUS) -R "rusage[mem=$(RUN_MEM)]"
+LSF_RUN_RES := -n $(RUN_CPUS) -R "rusage[mem=$(RUN_MEM)GB]"
 
 # $(call submit,kind,name,lsf-resources,script,lsf-output): run a script through LSF
 # (or locally with LSF=0) and append its resource usage to $(METRICS).
@@ -528,7 +529,8 @@ job-hooks:
 LINT_CFG = python3 -I $(UVM_ROOT)/scripts/sim_cfg.py --tb $(1)
 LINT_FLIST = $(if $(filter t1 reg,$(1)),-f $(ROOT)/RTL/filelist.f) +incdir+$(UVM_CORE_ROOT)/src \
   $(UVM_CORE_ROOT)/src/uvm_pkg.sv $(shell $(call LINT_CFG,$(1)) filelist)
-LINT_DEFINES = $(shell $(call LINT_CFG,$(1)) defines) AOU_WAVES_TOP=$(shell $(call LINT_CFG,$(1)) top) UVM
+LINT_DEFINES = $(shell $(call LINT_CFG,$(1)) defines) AOU_WAVES_TOP=$(shell $(call LINT_CFG,$(1)) top) UVM \
+  $(if $(filter t1 reg,$(1)),$(filter AOU_DUT_%,$(DEFINES)))
 # The configuration checks need Python (and PeakRDL from make setup) but no
 # simulator or linter; CI's smoke workflow runs them before building.
 check-config:
@@ -551,6 +553,7 @@ lint: check-config
 	verilator --lint-only -Wall --timing \
 	  --top-module $(shell $(call LINT_CFG,t1) top) $(addprefix +define+,$(call LINT_DEFINES,t1) AOU_TX_NXT_PACKING=1) \
 	  $(UVM_ROOT)/lint/verilator_lint.vlt $(call LINT_FLIST,t1)
+	bash $(UVM_ROOT)/scripts/check_checker_elaboration.sh
 
 test: build
 	@$(MAKE) --no-print-directory run

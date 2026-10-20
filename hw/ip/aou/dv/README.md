@@ -48,7 +48,7 @@ python3 scripts/run_list.py --items smoke    # the bring-up gate (4 scenarios)
 python3 scripts/run_list.py --items functional -j 16 --rid nightly
 python3 scripts/run_list.py --target 4x512-sp64 -j 16   # every scenario on one target
 make check-config                            # sim configs, testlists, rules, RAL and docs freshness (what CI runs before building)
-make lint                                    # check-config, then Verible and Verilator lint
+make lint                                    # check-config, Verible and Verilator lint, FDI checker guards
 ```
 
 `--items` takes a scenario name or a testlist group (`smoke`, `ci`, the areas `g1a`,
@@ -144,6 +144,8 @@ output directories are named after it (`build/vcs-t1-1x512-sp64`,
 | `2x512-tp32_64` | 2 | 512 each | FDI_CFG_TP_32B_64B | 2 | Two-PHY FDI with a 32-byte PHY0, two RPs at one width |
 | `1x512-sp64-p512` | 1 | 512 | FDI_CFG_SP_64B | 1 | `AXI_PEER_DIE_MAX_DATA_WD` 512 (plan 14.17) |
 | `1x512-sp64-nxt` | 1 | 512 | FDI_CFG_SP_64B | 1 | `TX_NXT_PACKING_EN` 1: the registered TX packer output stage |
+| `4xmix4211-sp128-p512` | 4 | 1024, 512, 256, 256 | FDI_CFG_SP_128B | 1 | `AXI_PEER_DIE_MAX_DATA_WD` 512 below a 1024-bit RP (plan 14.17) |
+| `4xmix4211-sp128-p256` | 4 | 1024, 512, 256, 256 | FDI_CFG_SP_128B | 1 | `AXI_PEER_DIE_MAX_DATA_WD` 256 below 1024- and 512-bit RPs (plan 14.17) |
 | `2xmix-sp64-rxf` | 2 | 1024, 256 | FDI_CFG_SP_64B | 1 | Non-default RX FIFO depth per RP and class, RX FIFO register slices off (plan 3.25) |
 
 Reading a name:
@@ -202,7 +204,11 @@ Run-time plusargs go in `PLUSARGS` (for example
 `+train_trigger=0|1` sets how the L2 Adapter model trains again after
 LinkError, LinkReset or Disabled -> Reset. With 1, the default, it waits for a
 NOP->Active transition on `lp_state_req` (UCIe r1.1 §8.3.3.8), and with
-`FDI_ENC=SPEC` FDI-R51 fails the run if the DUT doesn't give one. With 0 it
+`FDI_ENC=SPEC` FDI-R51 fails the run if the DUT doesn't give one. After a
+deliberate teardown (the DUT's own LinkReset request, or Disabled) the DUT gives
+it only after an activation request; if the test gives none, the model's
+software pulses `I_SW_ACTIVATE_START` after `sw_restart_delay` cycles
+(`+sw_restart_delay=N`, 0 never; random in [50:1500] by default). With 0 it
 trains again by itself, like an Adapter or remote die that restarts the link
 without the trigger.
 
@@ -211,12 +217,36 @@ without the trigger.
 asynchronous (integration guide 8.5.3), so the testlists try slow (40000),
 fast (600) and near-equal (1013) PCLK:CLK ratios (plan 11.17).
 
+`+v0p8` holds the DUT to expectations that only AoU v0.8 adds; the DUT implements
+v0.7.1. Today that is the 4.4 Misc placement on the DUT's flits: AOU-R6 (an Activation
+message alone in its flit) and AOU-R7 (at most 2 other Misc per half-flit). Without it
+the DUT is held to v0.7.1's rule (at most one Activation message per flit, at G0). The
+remote die's own flits follow v0.8 either way. Further v0.8-only DUT checks belong
+behind the same switch.
+
+Traffic and remote-die knobs (run time, any T1 test):
+- `+small_size_pct=N`: N% of requests are small, register-like accesses
+  (AxSIZE below 5), both from the S ports and from the remote die. The default
+  is 0: ordinary random requests are 32 bytes up to the bus (AxSIZE 5 or more),
+  so small ones come only from this knob, a test's own size list or the
+  directed tests (`aou_dp_size_test`, `aou_small_size_test`, `aou_dw_test`). `+small_size_wt=w0,w1,w2,w3,w4` weights AxSIZE 0..4 (default
+  2,4,45,45,4), and `+small_burst_pct=N` (default 10) makes N% of them 2-4 beats
+  instead of one. They live in `aou_axi_rand_seq`, which `aou_dp_seq` extends.
+- `+remote_bytes=N` or `N0,N1,..`: the remote die's AXI data bytes.
+- `+remote_wreq=awsize|upsize|dut_like`: how the remote die sizes its
+  WriteReqs and WriteData; all three are legal.
+- `+remote_max_burst=2^n`: the remote splitter's longest burst (default 256).
+  `+remote_max_burst_rand=1` re-picks it whenever the remote is idle.
+
 FDI corner knobs (run time, `testlists/fdi.toml`): `+fdi_trdy=always|random|holes|bursty`,
 `+fdi_stall_pct=N` stand-alone stalls, `+fdi_stall_mid_pct=N` the share raised
 inside a DUT TX flit, `+fdi_stall_trdy_free=1` lets `pl_trdy` drop between
 `pl_stallreq` and `lp_stallack` (UCIe r1.1 8.3.2 rule 7), `+l1_cancel_pct=N` and
 `+l1_cancel_mix=1` (second-half, both-halves and repeated flit cancels),
-`+le_mid_flit_pct=N` (Adapter LinkErrors entered mid-flit, 8.3.3.7) and, in
+`+le_mid_flit_pct=N` (Adapter LinkErrors entered mid-flit, 8.3.3.7),
+`+fdi_rx_early=N` (on every Active entry from Reset the Adapter forwards RX flits for N
+cycles after the rx_active handshake while `pl_state_sts` is still Reset, as UCIe r1.1
+8.2.7 allows when the remote die went Active first; off by default) and, in
 two-PHY builds, `+active_phy=1 +park_idle_phy=1` (the unselected PHY stays in Reset,
 so state and stalls must come from the selected one). The `l1.cg_fdi_stall`,
 `cg_fdi_cancel` and `cg_fdi_abandon` bins show the corners were reached.
@@ -273,7 +303,9 @@ Builds and runs are submitted to LSF when `bsub` is available (`LSF=0` runs
 them on the current host). Load the simulator modules first; the job inherits
 the environment. Requests default to what the jobs actually use: `BUILD_MEM` 4 GB
 for Verilator (`JOBS=8` build threads) and 2 GB for VCS, and `RUN_MEM=1` GB with
-`RUN_CPUS=1` per simulation. VCS compiles also reserve a VCS licence through LSF. Every build and run appends its CPU time,
+`RUN_CPUS=1` per simulation. Both are numbers of GB, and the LSF request always
+carries the unit (`rusage[mem=<N>GB]`), since a bare number means GB on some clusters
+and MB on others. VCS compiles also reserve a VCS licence through LSF. Every build and run appends its CPU time,
 peak memory and run time to `build/metrics.jsonl`, which is what the defaults
 are tuned from.
 
@@ -399,7 +431,11 @@ link is lost while AoU isn't DISABLED, the transactions in flight can't complete
 port's next reset (then as above), or to the end of the test; each hold and release
 is logged. The same component expects the rules a deliberately unmatched response
 from the local subordinate trips (`inject_orphan`, the ID-mismatch tests) on that
-port while it is presented (`uvm/env/axi4pc/aou_axi4pc_pkg.sv`).
+port while it is presented (`uvm/env/axi4pc/aou_axi4pc_pkg.sv`). Once the DUT takes
+such an orphan, Axi4PC's own transaction tracking is wrong (an unmatched B or RLAST
+corrupts its CAMs until reset), so that checker is reset once, in the port's next quiet
+cycle and only for that cycle; it is never held while the port is active, and a reset still
+waiting at the end of the test is an error.
 
 ## Coverage
 

@@ -534,7 +534,7 @@ yet carries the `blocked` tag and its reason in the sidecar; `run_list.py` and
 **Decision.** `CONFIG` selects the T1 (and register bench) build parameters: RP
 count, data width per RP, `FDI_CONFIG` and, where it is not the default 1024,
 `AXI_PEER_DIE_MAX_DATA_WD`, `TX_NXT_PACKING_EN` (and, in `-rxf`, the RX FIFO
-parameters). Eleven configurations exist:
+parameters). Thirteen configurations exist:
 
 | CONFIG | RPs | RP widths | FDI_CONFIG | Purpose |
 |---|---|---|---|---|
@@ -548,6 +548,8 @@ parameters). Eleven configurations exist:
 | 2x512-tp32_64 | 2 | 512 each | 3 (TP_32B_64B) | Two-PHY FDI with a 256-bit PHY0, two RPs at one width |
 | 1x512-sp64-p512 | 1 | 512 | 1 (SP_64B) | `AXI_PEER_DIE_MAX_DATA_WD` 512 (plan 14.17) |
 | 1x512-sp64-nxt | 1 | 512 | 1 (SP_64B) | `TX_NXT_PACKING_EN` 1: the registered TX packer output stage |
+| 4xmix4211-sp128-p512 | 4 | 1024, 512, 256, 256 | 2 (SP_128B) | `AXI_PEER_DIE_MAX_DATA_WD` 512 below a 1024-bit RP (plan 14.17) |
+| 4xmix4211-sp128-p256 | 4 | 1024, 512, 256, 256 | 2 (SP_128B) | `AXI_PEER_DIE_MAX_DATA_WD` 256 below 1024- and 512-bit RPs (plan 14.17) |
 | 2xmix-sp64-rxf | 2 | 1024, 256 | 1 (SP_64B) | Non-default RX FIFO depths, RX FIFO register slices off |
 
 Names describe the configuration and refer to nothing else:
@@ -588,11 +590,16 @@ the DUT's parameterization lives, and a single build covers only one point of
 each. A full cross product would multiply build and regression cost for little
 gain. The integration guide puts no constraint on RP widths per `FDI_CONFIG`, so
 `2x512-tp32_64` keeps 512-bit RPs and differs from `2xmix-tp64_128` in the FDI
-pair alone. `AXI_PEER_DIE_MAX_DATA_WD` gets one build, at 512, with the RP no
-wider than the peer: 256 does not elaborate (the RX core sizes its 512-bit
-message path with `AXI_PEER_DIE_MAX_DATA_WD - 512`), and a peer narrower than
-the local RP would have to return ReadData wider than itself (AoU 5.7:
-ReadData follows ARSIZE).
+pair alone. Every pairing of a local RP width and a remote RP width (256, 512,
+1024) is legal, and the remote's width is not known when the DUT is built, so
+the remote width is a run-time knob (`+remote_bytes`, per RP) and the mixed
+builds cover all nine pairings. `AXI_PEER_DIE_MAX_DATA_WD` is the integrator's
+promise that the remote die sends no WriteData wider than it; the default 1024
+allows every pairing. It gets three restricted builds (the bench limits the
+remote die to the parameter): `1x512-sp64-p512`; `4xmix4211-sp128-p512`, where
+a 1024-bit RP is wider than the parameter and its own reads still get
+ReadData1024 (AoU 5.7: ReadData follows ARSIZE); and `4xmix4211-sp128-p256`,
+the largest ratio (a 1024-bit ReadData path over a 256-bit WriteData path).
 
 **Rejected.** *One configuration* (misses the converters and the other FDI
 widths). *A full cross product* (cost). *Names after a purpose or another bench*
@@ -1013,6 +1020,64 @@ call; until then the harness branch that vendored `VERIF` is stale
 root from the bench's position (the Makefile, the two shell scripts,
 `sim_cfg.py`) is four levels deep now; a script that assumed one level would
 have reached `hw/ip/aou`.
+
+## D18. The system resets both dies after an FDI link-down
+
+**Decision.**
+
+- When the FDI link goes down (LinkReset, LinkError or Disabled, started by
+  the DUT, the Adapter or the remote die, including the DUT's own teardown
+  after a deactivation), the bench's software and system model resets both
+  dies while the link is down: AOU_SW_RESET on the DUT (the bring-up
+  controller, outside AOU_CORE, keeps its state) and the remote die's reset
+  of its AoU state (`reset_flush()`). Software then reprograms the last
+  `program_cfg()` and the dies activate again from DISABLED.
+- It applies unless both dies are cleanly DISABLED with no activation message
+  pending or in flight in either direction (`aou_quiet()`: the DUT and the
+  remote DISABLED, the remote's activation queue empty). A received
+  ActivateReq or a queued ActivateAck keeps the DUT out of DISABLED, so those
+  cases reset. The DUT's own last DeactivateAck leaves it DISABLED once
+  handed to TX; that case is covered by the remote, which cannot be DISABLED
+  until it receives that Ack. Non-activation messages still in a TX path
+  when both are DISABLED (a CrdtGrant permitted after DeactivateAck) are not
+  seen; one would surface as a checker failure, not be hidden.
+  Ordinary deactivate-then-relink flows are quiet and unchanged.
+- `relink()` applies it, and so does `link_event()` for a link-down the
+  Adapter brings back up by itself; that hook re-activates the dies itself,
+  so a test that wants to drive re-activation after such an event sets
+  `+sysrst_on_linkdown=0`. `recover()` and `sw_reset()` already reset the DUT
+  for the error LinkReset (MAS 7.3.6). `cfg.sysrst_on_linkdown`
+  (`+sysrst_on_linkdown=0`) turns it off.
+- AOU_FDI_CHECKER resets all of its state on every FDI Reset.
+
+**Why.**
+
+- The owners' documents assign AOU_SW_RESET only to the LinkReset that
+  AOU_CORE requests itself (MAS 7.3.6, integration guide 6.5.3). They are
+  silent on the other link-downs, and the RTL never clears its activation
+  state on one.
+- AoU v0.8 reads as the interface state not surviving an FDI reset (9.1/9.2,
+  8.3.3, 8.2/8.4). UCIe flushes the Adapters' pipelines on LinkReset and
+  Disabled, so a message in flight across the reset may be lost.
+- The project's principle is to keep the hardware simple and let software or a
+  system reset controller own clearing state.
+- Without the reset, an exchange split across the reset (the DUT's queued
+  ActivateAck going out after the relink) is out of sequence under a checker
+  that starts afresh at the reset.
+
+**Rejected.**
+
+- *A checker activation epoch that survives an FDI reset* (gated on the
+  DUT's own DISABLED). The state before the reset may be what caused it, and
+  the checker would trust the device under check about when to forget its
+  model.
+- *Resetting on every link-down.* That would churn every deactivate-and-relink
+  test for no gain, because a quiet interface has nothing to clear.
+- *An RTL change that clears the activation FSM on link-down.* It is neither
+  sufficient (the queued TX flit survives) nor documented.
+
+The owner question is open (038/011): who resets AOU_CORE after a link-down it
+did not request, and must a flit already in its TX path be dropped?
 
 ## Open items
 

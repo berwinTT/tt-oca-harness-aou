@@ -153,6 +153,13 @@ module tb_top;
       !u_dut.u_aou_core_top.u_async_apb_bridge.u_async_apb_bridge_mi.r_mi_done_clkm &&
       !u_dut.u_aou_core_top.u_async_apb_bridge.u_async_apb_bridge_mi.w_si_req_clkm;
   assign rst.rx_w_pend = 8'(u_dut.u_aou_core_top.w_aou_rx_wlast_gen_wvalid);
+  assign rst.rx_msgcrdt_valid = u_dut.u_aou_core_top.u_aou_core.w_rxcore_msgcrdt_valid;
+  assign rst.rx_msgcrdt = {u_dut.u_aou_core_top.u_aou_core.w_rxcore_msgcrdt_rp,
+                           u_dut.u_aou_core_top.u_aou_core.w_rxcore_msgcrdt_wrespcred,
+                           u_dut.u_aou_core_top.u_aou_core.w_rxcore_msgcrdt_rdatacred,
+                           u_dut.u_aou_core_top.u_aou_core.w_rxcore_msgcrdt_wdatacred,
+                           u_dut.u_aou_core_top.u_aou_core.w_rxcore_msgcrdt_rreqcred,
+                           u_dut.u_aou_core_top.u_aou_core.w_rxcore_msgcrdt_wreqcred};
   // With the BUGS/021 guard the S-port pins belong to the guard, not the core,
   // from the core reset to the end of the guard's drain.
   for (genvar r = 0; r < 8; r++) begin : g_port_iso
@@ -339,9 +346,11 @@ module tb_top;
   // ---------------------------------------------------------------------------
   logic [WD0-1:0] lp0_data;
   assign fdi_mb0.lp_data = BUS_W'(lp0_data);
+  assign fdi_mb0.rx_active = fdi_lsm.pl_rx_active_req && fdi_lsm.lp_rx_active_sts;
 `ifdef TWO_PHY
   logic [WD1-1:0] lp1_data;
   assign fdi_mb1.lp_data = BUS_W'(lp1_data);
+  assign fdi_mb1.rx_active = fdi_lsm.pl_rx_active_req && fdi_lsm.lp_rx_active_sts;
 `endif
 
   // Core-to-bringup triggers for the bringup reference model and the status
@@ -651,11 +660,13 @@ module tb_top;
 `define AOU_AXI4PC_PORT(P) \
     aou_axi4pc_gate u_``P``_gate ( \
       .clk(clk), .bus_rst_n(rst_n), .port_rst_n(axi_port_rst_n), .off_set(axi4pc_ctl.off_set), \
+      .resync(axi4pc_ctl.P``_resync[r]), \
       .awvalid(P``_awvalid[r]), .awready(P``_awready[r]), .wvalid(P``_wvalid[r]), \
       .wready(P``_wready[r]), .wlast(P``_wlast[r]), .bvalid(P``_bvalid[r]), \
       .bready(P``_bready[r]), .arvalid(P``_arvalid[r]), .arready(P``_arready[r]), \
       .rvalid(P``_rvalid[r]), .rready(P``_rready[r]), .rlast(P``_rlast[r]), \
-      .chk_rst_n(P``_chk_rst_n), .off(axi4pc_ctl.P``_off[r]) \
+      .chk_rst_n(P``_chk_rst_n), .off(axi4pc_ctl.P``_off[r]), \
+      .sync_wait(axi4pc_ctl.P``_sync_wait[r]) \
     ); \
     Axi4PC #( \
       .DATA_WIDTH(rp_w(r)), .WID_WIDTH(10), .RID_WIDTH(10), .ADDR_WIDTH(64), \
@@ -689,6 +700,8 @@ module tb_top;
   for (genvar r = RP_COUNT; r < 8; r++) begin : g_axi4pc_none
     assign axi4pc_ctl.s_off[r] = 1'b0;
     assign axi4pc_ctl.m_off[r] = 1'b0;
+    assign axi4pc_ctl.s_sync_wait[r] = 1'b0;
+    assign axi4pc_ctl.m_sync_wait[r] = 1'b0;
   end
   assign axi4pc_ctl.present = 1'b1;
 `undef AOU_AXI4PC_PORT
@@ -696,6 +709,8 @@ module tb_top;
   assign axi4pc_ctl.present = 1'b0;
   assign axi4pc_ctl.s_off = '0;
   assign axi4pc_ctl.m_off = '0;
+  assign axi4pc_ctl.s_sync_wait = '0;
+  assign axi4pc_ctl.m_sync_wait = '0;
 `endif
 
 endmodule : tb_top
