@@ -213,9 +213,9 @@
     still in the DUT's TX backlog, crosses it on the link, and is open when the DUT sends
     DeactivateReq (MAS 7.3.5/7.3.6 re-activation vs AoU v0.8 8.4). Matches only when every
     unanswered request on that RP arrived after L3's DeactivateReq; any other AOU-R33 fails.
-    4x512-sp64 VCS +who=both +order=simul +deact_who=both +credit_manage=0 +busy=1 seed 3 on an earlier stimulus stream; not reached since, with
-    those args on seeds 1-60 nor with the scenarios' own args (none, and +who=both +order=simul
-    +deact_who=both +busy=0) on seeds 1-20
+    4x512-sp64 VCS +who=both +order=simul +deact_who=both +credit_manage=0 +busy=1: seeds 11 and
+    45 of 1-100; FDI backpressure widens the window, and the link list's 4x512-sp64 scenario with
+    +fdi_trdy=random reaches it (seeds 5 and 13 of 1-13)
 
 - test: aou_link_act_deact_test
   bug: BUGS/033
@@ -292,44 +292,6 @@
   note: CREDIT_MANAGE=1, the DUT returns RDATA/WRESP credit after its DeactivateAck (first seen with +when=queued)
 
 # Entries added on the integration branch by streams I, J, K and L.
-- test: aou_id_mismatch_test
-  bug: BUGS/029
-  check: 'T1-RM01: WriteResp with no write outstanding'
-  seed_dependent: true
-  note: +side=mgr +kind=b. Clearing SPLIT_BID_MISMATCH_ERR sends WriteResps with the previous B's ID to the remote die
-
-- test: aou_id_mismatch_test
-  bug: BUGS/029
-  check: 'T1-RM02: ReadData with no read outstanding'
-  seed_dependent: true
-  note: +side=mgr +kind=r. Clearing SPLIT_RID_MISMATCH_ERR sends the never-accepted R beat to the remote die
-
-- test: aou_id_mismatch_test
-  bug: BUGS/029
-  check: 'split_bid_mismatch_err read 0x1, expected 0x0'
-  seed_dependent: true
-  note: +side=mgr. The error sets again while the unaccepted response is still presented
-
-- test: aou_id_mismatch_test
-  bug: BUGS/029
-  check: 'split_rid_mismatch_err read 0x1, expected 0x0'
-  seed_dependent: true
-
-- test: aou_id_mismatch_test
-  bug: BUGS/029
-  check: 'split_bid_mismatch_info read 0x'
-  seed_dependent: true
-
-- test: aou_id_mismatch_test
-  bug: BUGS/029
-  check: 'split_rid_mismatch_info read 0x'
-  seed_dependent: true
-
-- test: aou_id_mismatch_test
-  bug: BUGS/029
-  check: 'T1-E06: INT_MI0_ID_MISMATCH is 1, expected 0'
-  seed_dependent: true
-
 # BUGS/033 in aou_pack_test +pk=act (CREDIT_MANAGE=0): a MsgCredit in the flit of the
 # DUT's DeactivateAck.
 - test: aou_pack_test
@@ -428,9 +390,9 @@
   when_re: 'PERF_GATE (1x512-sp64|4x512-sp64|3x512-sp64|2x512-tp32_64)\|\d\|S1\|'
   seed_dependent: true
   note: >-
-    reads both ways: the DUT TX link carries remote read data at ~97.0-97.8% of the model,
-    right on the gate (1x512 bw_rd l2r 0.9704 in the first gated run, passing); not
-    seed-dependent on this deterministic bench, but borderline, so it may or may not fire
+    reads both ways: the DUT TX link carries remote read data at 97.0-97.8% of the model, just
+    above the gate (bw_rd l2r: 1x512 0.9704, 3x512 0.9735, 4x512 0.9773, 2x512-tp32_64 0.9780 and
+    0.9735; the same on every seed), so it does not fire today; kept for when it dips below
 
 - test: aou_dft_scan_test
   bug: BUGS/052
@@ -575,14 +537,6 @@
   seed_dependent: true
   note: the same flit seen by AOU_FDI_CHECKER
 
-- test: aou_invalid_actmsg_test
-  bug: BUGS/019
-  check: 'T1-C40: [l3] DUT advertised'
-  seed_dependent: true
-  note: >-
-    an ActivateReq in ENABLED restarts the DUT's activation, which advertises the whole RX FIFO
-    again on top of the credit the remote die holds (019 B and its addendum); +state=enabled cases
-
 - test: '*'
   bug: BUGS/059
   check_re: 'AOU-R6: DUT->remote flit#\d+ G0: Activation message shares its flit: ActivateAck CrdtGrant( \(\+1 continuing\))?$'
@@ -595,7 +549,7 @@
 
 - test: '*'
   bug: BUGS/059
-  check_re: 'AOU-R6: DUT->remote flit#\d+ G0: Activation message shares its flit: DeactivateReq( (WriteResp|ReadData\d+))+( \(\+1 continuing\))?$'
+  check_re: 'AOU-R6: DUT->remote flit#\d+ G0: Activation message shares its flit: DeactivateReq( (WriteResp|ReadData\d+))*( \(\+1 continuing\))?$'
   when_re: 'DUT rules: AoU v0\.8 \(\+v0p8\)'
   seed_dependent: true
   note: >-
@@ -605,12 +559,13 @@
 
 - test: aou_act_flit_test
   bug: BUGS/059
-  check_re: 'AOU-R6: DUT->remote flit#\d+ G0: Activation message shares its flit: (ActivateAck|DeactivateReq) '
-  when_re: 'DUT rules: AoU v0\.8 \(\+v0p8\)'
+  check_re: 'AOU-R6: DUT->remote flit#\d+ G0: Activation message shares its flit: ActivateAck '
+  when_re: 'DUT rules: AoU v0\.8 \(\+v0p8\)[\s\S]*\[aou_act_flit_vseq\] requests while DISABLED'
   note: >-
-    +v0p8: the stimulus this test exists for. Requests held across the activation leave in the
-    ActivateAck's flit, and responses in the DeactivateReq's; the DUT follows v0.7.1 (Activation
-    at G0 only)
+    +v0p8 +mode=act_req: the stimulus this test exists for. Requests held across the activation
+    leave in the ActivateAck's flit; the DUT follows v0.7.1 (Activation at G0 only). +mode=deact_rsp
+    needs no entry of its own: its ActivateAck+CrdtGrant and DeactivateReq+response flits are the
+    two layouts the all-test entries above cover (an entry here would never match, an XPASS)
 
 - test: aou_act_flit_test
   bug: BUGS/060
@@ -628,3 +583,44 @@
   check_re: 'AOU-R29: AOU_FDI_CHECKER VIOL_ADV_ORDER LP\(DUT->peer\) .* CREDIT_MANAGE=1'
   seed_dependent: true
   note: credits after DeactivateAck; which seeds reach it depends on the traffic at deactivation
+
+# aou_lp_mode_traffic_test: credits after the DUT's own DeactivateAck when the remote die
+# deactivates after a traffic burst.
+- test: aou_lp_mode_traffic_test
+  bug: BUGS/009
+  check_re: 'AOU-R29: AOU_FDI_CHECKER VIOL_ADV_ORDER LP\(DUT->peer\) .* CREDIT_MANAGE=1'
+  seed_dependent: true
+  note: >-
+    CREDIT_MANAGE=1: the DUT returns RDATA credit after its own DeactivateAck, until its own
+    DeactivateReq (1x512-sp64 seed 3: DeactivateAck in LP flit 2463 at 23036 ns, RDATA credit
+    in flits 2463-2467; also 1x512-sp64-nxt and 4x512-sp64)
+
+# aou_zero_credit_test: DEACTIVATE_START while a ReadData or WriteResp waits for credit.
+- test: aou_zero_credit_test
+  bug: BUGS/058
+  check_re: 'T1-L47: DUT DeactivateReq \(CREDIT_MANAGE=0\) with \d+ remote (read|write)\(s\) unanswered'
+  when_re: 'DEACTIVATE_START with (RDATA|WRESP) traffic waiting for credit'
+  seed_dependent: true
+  note: >-
+    a ReadData or WriteResp held in its RP FIFO for credit is invisible to the deactivate
+    gate, so DeactivateReq goes out with it queued (1x256-sp32 seed 2 +credit=wresp +deact=1
+    +grant=2: DEACTIVATE at 4362.5 ns with one WriteResp in the B FIFO and one in the output stage)
+
+- test: aou_zero_credit_test
+  bug: BUGS/058
+  check: 'T1-V04: remote (L3) not DISABLED'
+  requires: BUGS/058
+  seed_dependent: true
+  note: the remote die waits for the responses and never sends its DeactivateReq
+
+- test: aou_zero_credit_test
+  bug: BUGS/058
+  check: 'T1-V05: DUT not DISABLED'
+  requires: BUGS/058
+  seed_dependent: true
+
+- test: aou_zero_credit_test
+  bug: BUGS/058
+  check: 'T1-V08: traffic did not complete'
+  requires: BUGS/058
+  seed_dependent: true

@@ -27,18 +27,18 @@
 |===
 | Item | Requirement | Priority | Scenarios
 | 2.1 | Verify DeactivateReq → DeactivateAck handshake and state transitions ENABLED → DEACTIVATE → DISABLED | P0 | `aou_link_act_deact_test`, `aou_link_act_deact_test.who-both.order-simul.deact_who-both.busy-0`, `aou_t1_deact_test`, `aou_t1_remote_act_test`
-| 2.2 | Attempt deactivation while write transactions are pending; verify `mst_tr_complete` gating | P1 | `aou_link_act_deact_test`, `aou_link_act_deact_test.who-apb.deact_who-apb.credit_manage-0.busy-1`, `aou_link_act_deact_test.who-remote.deact_who-remote.credit_manage-1.busy-1`
-| 2.3 | Attempt deactivation while read transactions are pending; verify `slv_tr_complete` gating | P1 | `aou_link_act_deact_test`, `aou_link_act_deact_test.who-apb.deact_who-apb.credit_manage-0.busy-1`, `aou_link_act_deact_test.who-remote.deact_who-remote.credit_manage-1.busy-1`
+| 2.2 | Attempt deactivation while write transactions are pending; verify `mst_tr_complete` gating | P1 | `aou_link_act_deact_test`, `aou_link_act_deact_test.who-apb.deact_who-apb.credit_manage-0.busy-1`, `aou_link_act_deact_test.who-both.order-simul.deact_who-both.credit_manage-0.busy-1.fdi_trdy-random.4x512-sp64`, `aou_link_act_deact_test.who-remote.deact_who-remote.credit_manage-1.busy-1`
+| 2.3 | Attempt deactivation while read transactions are pending; verify `slv_tr_complete` gating | P1 | `aou_link_act_deact_test`, `aou_link_act_deact_test.who-apb.deact_who-apb.credit_manage-0.busy-1`, `aou_link_act_deact_test.who-both.order-simul.deact_who-both.credit_manage-0.busy-1.fdi_trdy-random.4x512-sp64`, `aou_link_act_deact_test.who-remote.deact_who-remote.credit_manage-1.busy-1`
 | 2.4 | Complete deactivate then re-activate; verify clean restart and credit re-initialization | P1 | merged into 1.6
 | 2.5 | Deactivate when TX queue has pending messages due to no credits | P2 | `aou_zero_credit_test.credit-rdata.deact-1`, `aou_zero_credit_test.credit-rreq.deact-1`, `aou_zero_credit_test.credit-wdata.deact-1`, `aou_zero_credit_test.credit-wreq.deact-1`, `aou_zero_credit_test.credit-wresp.deact-1`, `aou_zero_credit_test.credit-wresp.deact-1.grant-2`
 | 2.6 | Verify behavior when DeactivateAck not received within timeout; verify `deact_ack_err` | P2 | `aou_linkreset_timeout_test.src-deact_ack`
 | 2.7 | Test `deactivate_force` CSR field; verify immediate deactivation | P2 | `aou_link_force_deact_test` (expected failure only)
-| 2.8 | Test AoU v0.5 mode where req/resp credits managed together during deactivation | P1 | `aou_link_act_deact_test`, `aou_link_act_deact_test.who-apb.deact_who-apb.credit_manage-0.busy-1`
+| 2.8 | Test AoU v0.5 mode where req/resp credits managed together during deactivation | P1 | `aou_link_act_deact_test`, `aou_link_act_deact_test.who-apb.deact_who-apb.credit_manage-0.busy-1`, `aou_link_act_deact_test.who-both.order-simul.deact_who-both.credit_manage-0.busy-1.fdi_trdy-random.4x512-sp64`
 | 2.9 | Test separate req/resp credit management during deactivation; verify response messages allowed | P1 | `aou_link_act_deact_test`, `aou_link_act_deact_test.who-remote.deact_who-remote.credit_manage-1.busy-1`
 | 2.10 | Verify `int_deactivate_property` status bit during deactivation | P2 | `aou_deact_ctrl_test.mode-property`
 | 2.11 | No credit message in DISABLED; no response credit after the sender's DeactivateAck (request credits after it are permitted, v0.8 8.4) | P2 | `aou_link_act_deact_test`
 | 2.12 | DEACTIVATE_TIME_OUT_VALUE sweep: a quiet window of 2^(v+3) cycles with nothing to transmit | P2 | `aou_deact_ctrl_test.mode-tov`
-| 2.13 | No DeactivateReq while the DUT's own requests are outstanding | P2 | `aou_link_act_deact_test.who-apb.deact_who-apb.credit_manage-0.busy-1`, `aou_link_act_deact_test.who-remote.deact_who-remote.credit_manage-1.busy-1`
+| 2.13 | No DeactivateReq while the DUT's own requests are outstanding | P2 | `aou_link_act_deact_test.who-apb.deact_who-apb.credit_manage-0.busy-1`, `aou_link_act_deact_test.who-both.order-simul.deact_who-both.credit_manage-0.busy-1.fdi_trdy-random.4x512-sp64`, `aou_link_act_deact_test.who-remote.deact_who-remote.credit_manage-1.busy-1`
 | 2.14 | Requests received after DeactivateReq are still answered in DEACTIVATE | P2 | `aou_act_flit_test.mode-deact_rsp.v0p8`, `aou_link_act_deact_test.who-apb.deact_who-apb.credit_manage-0.busy-1`, `aou_link_act_deact_test.who-remote.deact_who-remote.credit_manage-1.busy-1`
 |===
 ==== 2.3 Credit Management Tests
@@ -392,7 +392,13 @@
 | 16.14 | Change `early_bresp_en` when `write_resp_done=1` | P2 | `aou_early_bresp_test.early_en-0.early_toggle-1.dp_buf_pct-50`, `aou_early_bresp_test.early_en-1.early_toggle-1.dp_buf_pct-50`, `aou_early_bresp_test.early_en-per_rp.early_toggle-1.dp_buf_pct-50`
 | 16.15 | Different `early_bresp_en` per RP | P2 | `aou_early_bresp_test.early_en-per_rp.dp_buf_pct-50`, `aou_early_bresp_test.early_en-per_rp.early_toggle-1.dp_buf_pct-50`
 | 16.16 | B response presented zero cycles after the AW/W handshakes complete (issue 64) | P1 | `aou_dp_b_zero_test`
-| 16.17 | Write kept waiting at the early-response limit (O_PENDING_CNT_OVER removed by PR #89; watchdog INT_EARLY_WDT_ERR observed, not checked) | P2 | `aou_early_bresp_test.early_en-1.early_full-1.early_over-1`
+| 16.17 | Write kept waiting at the early-response limit (O_PENDING_CNT_OVER removed by PR #89; the write watchdog that replaced it is 16.18-16.23) | P2 | `aou_early_bresp_test.early_en-1.early_full-1.early_over-1`
+| 16.18 | Write watchdog expiry: writes outstanding with no AW or B handshake for WDT_THRESHOLD cycles set WDT_TRANS_TIMEOUT_ERR and INT_EARLY_WDT_ERR, with early response on or off | P1 | `aou_wdt_test`, `aou_wdt_test.wdt_case-masked`, `aou_wdt_test.wdt_case-multi_rp.4x512-sp64`, `aou_wdt_test.wdt_case-multi_rp.4xmix4211-sp128`, `aou_wdt_test.wdt_case-near_miss.wdt_thr-64`, `aou_wdt_test.wdt_thr-0.wdt_reset-sw`
+| 16.19 | Write watchdog count restarted by an AW handshake up to the cycle that would have expired: no expiry | P2 | `aou_wdt_test.wdt_case-near_miss.wdt_thr-64`
+| 16.20 | Write watchdog with WDT_THRESHOLD 0: expiry on the first cycle with a write outstanding and no handshake | P2 | `aou_wdt_test.wdt_thr-0.wdt_reset-sw`
+| 16.21 | INT_EARLY_WDT_MASK gates INT_EARLY_WDT_ERR, not the status; clearing the mask with the status set raises the pin | P2 | `aou_wdt_test.wdt_case-masked`
+| 16.22 | Write watchdog expires once per reset: the W1C clears status and pin, no second expiry while the RP stays hung, and a software or hard reset re-arms it | P1 | `aou_wdt_test`, `aou_wdt_test.wdt_case-masked`, `aou_wdt_test.wdt_case-multi_rp.4x512-sp64`, `aou_wdt_test.wdt_case-multi_rp.4xmix4211-sp128`, `aou_wdt_test.wdt_case-near_miss.wdt_thr-64`, `aou_wdt_test.wdt_thr-0.wdt_reset-sw`
+| 16.23 | Write watchdog on several RPs: each expires on its own, and the pin stays high while any RP is set | P2 | `aou_wdt_test.wdt_case-multi_rp.4x512-sp64`, `aou_wdt_test.wdt_case-multi_rp.4xmix4211-sp128`
 |===
 ==== 2.17 AXI Aggregator Tests
 [cols="1,5,1,4",options="header"]
