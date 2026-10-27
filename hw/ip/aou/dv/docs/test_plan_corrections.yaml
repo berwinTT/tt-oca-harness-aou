@@ -250,7 +250,7 @@
   title: 'Reserved ACTIVATIONOP (4-15) received: the testbench checkers report it; the DUT reaction is undefined (v0.8 8.3.3) and software recovers'
   note: Coverage-closure gap analysis 4.3 (decision D9); priority to be reviewed.
 - id: '2.11'
-  added: 'AoU 8.2/8.4; BUGS/009, BUGS/033'
+  added: 'AoU 8.2/8.4'
   priority: P2
   title: 'No credit message in DISABLED; credits of every class are permitted after the sender''s DeactivateAck (v0.8 8.4, MAS 7.3.1), including in the flit whose Ack completes the teardown'
   note: Coverage-closure gap analysis 4.3 (decision D9); priority to be reviewed. Response credits after the DeactivateAck became permitted when AOU_CON0.CREDIT_MANAGE was removed (2026-10-26).
@@ -260,7 +260,7 @@
   title: 'DEACTIVATE_TIME_OUT_VALUE sweep: a quiet window of 2^(v+3) cycles with nothing to transmit'
   note: Coverage-closure gap analysis 4.3 (decision D9); priority to be reviewed.
 - id: '2.13'
-  added: 'AoU 8.3.2/8.4; BUGS/032'
+  added: 'AoU 8.3.2/8.4'
   priority: P2
   title: 'No DeactivateReq while the DUT''s own requests are outstanding'
   note: Coverage-closure gap analysis 4.3 (decision D9); priority to be reviewed.
@@ -380,6 +380,11 @@
   priority: P2
   title: 'Local and remote RP_COUNT differ: the effective count is the smaller, and a larger remote die is configured down to it (AoU v0.8 6.2)'
   note: Coverage-closure gap analysis 4.3 (decision D9); priority to be reviewed.
+- id: '12.21'
+  added: 'MAS 3.2.1; PR #98'
+  priority: P1
+  title: 'A write burst the DUT has committed is not held open by back-to-back single-beat writes on another RP (both managers saturating, AWLEN 0 against AWLEN 31-63)'
+  note: 'Found missing by the PR #98 review: a stream of short writes starved an open burst in an early version of the TX aligner. T1-C43 checks in every test that a committed write keeps making progress while it is next in write-data order; it does not bound how long the short writes delay a burst that still trickles.'
 - id: '13.19'
   added: 'RDL ARB_MODE; MAS 3.2.1'
   priority: P2
@@ -442,9 +447,9 @@
   title: 'Write watchdog on several RPs: each expires on its own, and the pin stays high while any RP is set'
   note: 'Added with the write-watchdog checker.'
 - id: '18.13'
-  added: 'UCIe r1.1 8.3.3.4; BUGS/015'
+  added: 'UCIe r1.1 8.3.3.4; MAS software-operation 7.3.7'
   priority: P2
-  title: 'Retrain while ENABLED with traffic is transparent to AoU (interim expectation)'
+  title: 'Retrain while ENABLED with traffic is transparent to AoU'
   note: Coverage-closure gap analysis 4.3 (decision D9); priority to be reviewed.
 - id: '18.14'
   added: 'UCIe r1.1 8.3.3.7, Table 8-2'

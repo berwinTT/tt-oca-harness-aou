@@ -32,9 +32,12 @@ class aou_t1_env extends uvm_env;
   aou_t1_mo_chk        mo_chk;
   aou_t1_sw_reset_chk  sw_rst_chk;
   aou_t1_lp_cfg_chk    lp_cfg_chk;
+  aou_t1_force_deact_chk force_chk;
   aou_t1_dbg_fifo_chk  dbg_chk;
   aou_t1_crd_flow_chk  crd_chk;
   aou_t1_crd_rr_chk    crd_rr;
+  aou_t1_crd_block_chk crd_blk;
+  aou_t1_wr_order_chk  wr_order;
   aou_t1_early_tbl_chk early_tbl;
   aou_t1_wdt_chk       wdt_chk;
   aou_t1_attr_chk      attr_chk;
@@ -110,12 +113,16 @@ class aou_t1_env extends uvm_env;
     mo_chk = aou_t1_mo_chk::type_id::create("mo_chk", this);
     sw_rst_chk = aou_t1_sw_reset_chk::type_id::create("sw_rst_chk", this);
     lp_cfg_chk = aou_t1_lp_cfg_chk::type_id::create("lp_cfg_chk", this);
+    force_chk = aou_t1_force_deact_chk::type_id::create("force_chk", this);
     dbg_chk = aou_t1_dbg_fifo_chk::type_id::create("dbg_chk", this);
     dbg_chk.cfg = cfg;
     crd_chk = aou_t1_crd_flow_chk::type_id::create("crd_chk", this);
     crd_chk.cfg = cfg;
     crd_rr = aou_t1_crd_rr_chk::type_id::create("crd_rr", this);
     crd_rr.n_rp = cfg.n_rp;
+    crd_blk = aou_t1_crd_block_chk::type_id::create("crd_blk", this);
+    crd_blk.cfg = cfg;
+    wr_order = aou_t1_wr_order_chk::type_id::create("wr_order", this);
     rx_align = aou_t1_rx_align_chk::type_id::create("rx_align", this);
     early_tbl = aou_t1_early_tbl_chk::type_id::create("early_tbl", this);
     early_tbl.cfg = cfg;
@@ -184,6 +191,12 @@ class aou_t1_env extends uvm_env;
     foreach (s_mgr[r]) crd_chk.s_vif[r] = s_mgr[r].cfg.vif;
     foreach (m_sub[r]) crd_chk.m_vif[r] = m_sub[r].cfg.vif;
     foreach (fdi[p]) crd_chk.mb_vif[p] = fdi[p].vif;
+    l3.ap_rx_msg.connect(crd_blk.rx_msg_imp);
+    apb.mon.ap.connect(crd_blk.apb_imp);
+    crd_blk.rm = regs.model;
+    crd_chk.blk = crd_blk;
+    l3.ap_rx_msg.connect(wr_order.rx_msg_imp);
+    wr_order.model = l3.model;
     // After l3's own subscription, so the model has taken the header's credit.
     bridge.ap.connect(crd_rr.dut_flit_imp);
     crd_rr.crd = l3.model.crd;
@@ -195,6 +208,7 @@ class aou_t1_env extends uvm_env;
     wdt_chk.rm = regs.model;
     early_tbl.vif = new[cfg.n_rp];
     foreach (s_mgr[r]) early_tbl.vif[r] = s_mgr[r].cfg.vif;
+    if (fdi_chk != null) fdi_chk.l3_cfg = cfg.l3_cfg;
     lsm.mon.ap.connect(axi4pc.lsm_imp);
     axi4pc.m_drv = new[cfg.n_rp];
     foreach (m_sub[r]) axi4pc.m_drv[r] = m_sub[r].drv;
@@ -229,6 +243,15 @@ class aou_t1_env extends uvm_env;
     lp_cfg_chk.rm = regs.model;
     lp_cfg_chk.status = status;
     apb.mon.ap.connect(lp_cfg_chk.apb_imp);
+    force_chk.apb_vif = apb.cfg.vif;
+    force_chk.rst_vif = rst.vif;
+    force_chk.lsm_vif = lsm_vif;
+    force_chk.rm = regs.model;
+    force_chk.status = status;
+    force_chk.l3_cfg = cfg.l3_cfg;
+    force_chk.cfg = cfg;
+    foreach (fdi[p]) force_chk.mb_vif[p] = fdi[p].vif;
+    l3.ap_rx_msg.connect(force_chk.dut_imp);
     rx_align.rst_vif = rst.vif;
     if (rx_fifo_chk != null) begin
       rx_fifo_chk.vif = new[cfg.n_rp];
@@ -284,8 +307,11 @@ class aou_t1_env extends uvm_env;
     mo_chk.clear();
     status.reset_flush();
     lp_cfg_chk.reset_flush();
+    force_chk.reset_flush();
     dbg_chk.reset_flush();
     crd_chk.reset_flush();
+    crd_blk.reset_flush();
+    wr_order.reset_flush();
     early_tbl.reset_flush();
     foreach (s_mgr[r]) begin
       s_mgr[r].drv.reset_flush(aborted, bus_reset);
@@ -311,7 +337,8 @@ class aou_t1_env extends uvm_env;
   // request to the core reset. The local managers' transactions on the bus in
   // the window are marked reset_outstanding: a write that completes before the
   // reset is lost or landed (the scoreboard allows either), a read may end with
-  // SLVERR (BUGS/015 interim). The rest are aborted by reset_flush() at the
+  // SLVERR (MAS 7.3.6 says the reset loses it and defines no response; the
+  // SLVERR is taken from the RTL). The rest are aborted by reset_flush() at the
   // core reset, as are the remote die's, which cannot complete with the link down.
   function void sw_reset_window(bit open);
     foreach (s_mgr[r]) if (s_mgr[r].mon != null) s_mgr[r].mon.sw_reset_window(open);

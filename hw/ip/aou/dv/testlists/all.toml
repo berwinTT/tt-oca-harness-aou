@@ -88,7 +88,7 @@ tests = [
 # Functional areas (no stress, matrix, perf or assertion builds)
 [[groups]]
 name = "functional"
-expected_count = 246
+expected_count = 258
 tests = [
   "aou_t1_slice_test",
   "aou_t1_deact_test",
@@ -97,6 +97,7 @@ tests = [
   "aou_fdi_t1_bringup_spec_test",
   "aou_fdi_t1_linkerror_spec_test",
   "aou_fdi_t1_linkdown_spec_test",
+  "aou_fdi_t1_abort_test",
   "aou_t1_link_event_test",
   "aou_t1_lp_mode_test",
   "aou_t1_inject_test",
@@ -226,6 +227,13 @@ tests = [
   "aou_zero_credit_test.credit-wreq.limit-12",
   "aou_zero_credit_test.credit-rreq.limit-4",
   "aou_zero_credit_test.credit-rreq.limit-12",
+  "aou_zero_credit_test.credit-wdata.limit-2",
+  "aou_zero_credit_test.credit-wdata.limit-6",
+  "aou_zero_credit_test.hold_wreq_rp-0",
+  "aou_zero_credit_test.hold_wreq_rp-2.hold_max_len-31.4x512-sp64",
+  "aou_zero_credit_test.fair-1.4x512-sp64",
+  "aou_zero_credit_test.fair-1.4xmix4211-sp128",
+  "aou_zero_credit_test.fair-1.fair_short-3.fair_long-0.4xmix4211-sp128",
   "aou_link_act_deact_test.early_act-1",
   "aou_act_rx_drain_test",
   "aou_rx_credit_test",
@@ -270,7 +278,10 @@ tests = [
   "aou_axi_err_resp_test.part-fifo.err_len-1.agg_en-1.remote_bytes-32.rdata_crd-8.crd_delay-64.flood-1.flood_len-3.pair_gap-64.pair_writes-3.4x512-sp64",
   "aou_axi_err_resp_test.part-fifo.err_len-7.agg_en-1.remote_bytes-32.pair_gap-64.4xmix2144-sp64",
   "aou_axi_err_resp_test.part-fifo.take_overlap-4.take_flood-15.4x512-sp64",
+  "aou_axi_err_resp_test.part-fifo.take_overlap-4.take_flood-15.read_after_pop-1.4x512-sp64",
   "aou_axi_err_resp_test.part-fifo.pop_lead-16.wresp_crd-1.crd_delay-256.4x512-sp64",
+  "aou_axi_err_resp_test.part-fifo.take_pair-1.dbg_len-15",
+  "aou_axi_err_resp_test.part-fifo.take_pair-1.take_wflood-6.dbg_len-3.wresp_crd-1.crd_delay-48.4x512-sp64",
   "aou_axi_err_resp_test.part-fifo.err_len-1.err_off-32.agg_en-1.remote_bytes-32.4x512-sp64",
   "aou_axi_err_resp_test.part-fifo.err_len-3.err_off-32.agg_en-1.remote_bytes-32.max_awburstlen-3.max_arburstlen-1.4x512-sp64",
   "aou_axi_err_resp_test.part-fifo.err_off-32.1x256-sp32",
@@ -305,6 +316,7 @@ tests = [
   "aou_link_event_test.event-link_reset.link_down_mask-1",
   "aou_link_event_test.event-l1_act",
   "aou_link_event_test.event-retrain_act",
+  "aou_link_event_test.event-l1_traffic",
   "aou_link_event_test",
   "aou_lp_mode_traffic_test.threshold-0",
   "aou_lp_mode_traffic_test",
@@ -341,7 +353,7 @@ tests = [
 # Every runnable T1 scenario; run_list.py skips entries whose target differs
 [[groups]]
 name = "all"
-expected_count = 461
+expected_count = 473
 tests = [
   "aou_attr_test.attr_excl-1.remote_max_burst-1.4xmix4211-sp128",
   "aou_small_size_test",
@@ -360,6 +372,7 @@ tests = [
   "aou_fdi_t1_bringup_spec_test",
   "aou_fdi_t1_linkerror_spec_test",
   "aou_fdi_t1_linkdown_spec_test",
+  "aou_fdi_t1_abort_test",
   "aou_t1_link_event_test",
   "aou_t1_lp_mode_test",
   "aou_t1_inject_test",
@@ -545,6 +558,13 @@ tests = [
   "aou_zero_credit_test.credit-wreq.limit-12",
   "aou_zero_credit_test.credit-rreq.limit-4",
   "aou_zero_credit_test.credit-rreq.limit-12",
+  "aou_zero_credit_test.credit-wdata.limit-2",
+  "aou_zero_credit_test.credit-wdata.limit-6",
+  "aou_zero_credit_test.hold_wreq_rp-0",
+  "aou_zero_credit_test.hold_wreq_rp-2.hold_max_len-31.4x512-sp64",
+  "aou_zero_credit_test.fair-1.4x512-sp64",
+  "aou_zero_credit_test.fair-1.4xmix4211-sp128",
+  "aou_zero_credit_test.fair-1.fair_short-3.fair_long-0.4xmix4211-sp128",
   "aou_link_act_deact_test.early_act-1",
   "aou_act_rx_drain_test",
   "aou_rx_credit_test",
@@ -589,7 +609,10 @@ tests = [
   "aou_axi_err_resp_test.part-fifo.err_len-1.agg_en-1.remote_bytes-32.rdata_crd-8.crd_delay-64.flood-1.flood_len-3.pair_gap-64.pair_writes-3.4x512-sp64",
   "aou_axi_err_resp_test.part-fifo.err_len-7.agg_en-1.remote_bytes-32.pair_gap-64.4xmix2144-sp64",
   "aou_axi_err_resp_test.part-fifo.take_overlap-4.take_flood-15.4x512-sp64",
+  "aou_axi_err_resp_test.part-fifo.take_overlap-4.take_flood-15.read_after_pop-1.4x512-sp64",
   "aou_axi_err_resp_test.part-fifo.pop_lead-16.wresp_crd-1.crd_delay-256.4x512-sp64",
+  "aou_axi_err_resp_test.part-fifo.take_pair-1.dbg_len-15",
+  "aou_axi_err_resp_test.part-fifo.take_pair-1.take_wflood-6.dbg_len-3.wresp_crd-1.crd_delay-48.4x512-sp64",
   "aou_axi_err_resp_test.part-fifo.err_len-1.err_off-32.agg_en-1.remote_bytes-32.4x512-sp64",
   "aou_axi_err_resp_test.part-fifo.err_len-3.err_off-32.agg_en-1.remote_bytes-32.max_awburstlen-3.max_arburstlen-1.4x512-sp64",
   "aou_axi_err_resp_test.part-fifo.err_off-32.1x256-sp32",
@@ -624,6 +647,7 @@ tests = [
   "aou_link_event_test.event-link_reset.link_down_mask-1",
   "aou_link_event_test.event-l1_act",
   "aou_link_event_test.event-retrain_act",
+  "aou_link_event_test.event-l1_traffic",
   "aou_link_event_test",
   "aou_lp_mode_traffic_test.threshold-0",
   "aou_lp_mode_traffic_test",
