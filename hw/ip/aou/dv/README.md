@@ -297,12 +297,15 @@ write comes from the test itself, a random number of cycles after
 asynchronous (integration guide 8.5.3), so the testlists try slow (40000),
 fast (600) and near-equal (1013) PCLK:CLK ratios (plan 11.17).
 
-`+v0p8` holds the DUT to expectations that only AoU v0.8 adds; the DUT implements
-v0.7.1. Today that is the 4.4 Misc placement on the DUT's flits: AOU-R6 (an Activation
-message alone in its flit) and AOU-R7 (at most 2 other Misc per half-flit). Without it
-the DUT is held to v0.7.1's rule (at most one Activation message per flit, at G0). The
-remote die's own flits follow v0.8 either way. Further v0.8-only DUT checks belong
-behind the same switch.
+`+v0p9draft` holds the DUT to expectations that AoU adds after v0.7.1, as the v0.9
+draft words them (a placeholder until v0.9 is accepted); the DUT implements v0.7.1.
+Today that is the 4.4 Misc placement on the DUT's flits: AOU-R6 (an Activation message
+shares its flit only with one CrdtGrant after an ActivateReq/Ack or with responses after
+a DeactivateReq; nothing follows a DeactivateAck) and AOU-R7 (at most 2 other Misc per
+half-flit). Without it the DUT is held to v0.7.1's rule (at most one Activation message
+per flit, at G0). The remote die's own flits follow the draft either way; the share of
+its Activation flits that carry the permitted company is `act_share_pct` (default 50).
+Further post-v0.7.1 DUT checks belong behind the same switch.
 
 Traffic and remote-die knobs (run time, any T1 test):
 - `+small_size_pct=N`: N% of requests are small, register-like accesses

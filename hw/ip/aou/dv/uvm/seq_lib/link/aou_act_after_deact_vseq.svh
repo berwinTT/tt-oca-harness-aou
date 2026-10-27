@@ -12,8 +12,9 @@
 // DISABLED is held by the DUT until DISABLED: the MAS allows ACTIVATE_START
 // before link-up (7.3.2) and activation right after DISABLED (7.3.6) but says
 // nothing about DEACTIVATE (noted in BUGS/020). The placement of the
-// Activation messages (one per flit, at G0, AoU 4.4) is judged by AOU-R6 in
-// the L3 unpacker and AOU_FDI_CHECKER.
+// Activation messages (one per flit, at G0, AoU 4.4; with +v0p9draft only the
+// permitted company beside it) is judged by AOU-R6 in the L3 unpacker and
+// AOU_FDI_CHECKER.
 // The first loop calibrates the APB write time and the delay from the remote
 // DeactivateReq to the DUT's DISABLED; every later loop aims the end of the
 // ACTIVATE_START write at DISABLED + offset and logs the offset it got. The

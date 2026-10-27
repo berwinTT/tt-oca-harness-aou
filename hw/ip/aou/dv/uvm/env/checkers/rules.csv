@@ -110,8 +110,8 @@ AOU-R2,via AOU-R11,by construction (L3 packer),DUT,Every message is a whole numb
 AOU-R3,aou_unpacker,aou_fdi_chk_adapter,DUT,A MsgStart granule decodes to a defined MSGTYPE/MISCOP/ACTIVATIONOP/DLENGTH,AoU 4.3.2 Table 1/15/27 5.4
 AOU-R4,aou_unpacker,aou_fdi_chk_adapter,DUT,No MsgStart inside the body of a message in the same flit,AoU 4.4
 AOU-R5,aou_unpacker,,DUT,A message spanning flits continues at G0 of the next flit with no MsgStart in the continuation,AoU 4.4
-AOU-R6,aou_unpacker,aou_fdi_chk_adapter,DUT,At most one Activation message per flit and only at G0 (v0.7.1; always); with +v0p8: alone in its flit (v0.8 addition),AoU v0.7.1 4.4; AoU v0.8 4.4
-AOU-R7,aou_unpacker,,DUT,At most 2 non-Activation Misc messages per half-flit (v0.8 addition; on the DUT only with +v0p8),AoU v0.8 4.4
+AOU-R6,aou_unpacker,aou_fdi_chk_adapter,DUT,"At most one Activation message per flit and only at G0 (v0.7.1; always); with +v0p9draft: shares its flit only with one CrdtGrant after ActivateReq/Ack or with responses after DeactivateReq, nothing after DeactivateAck (v0.9 draft)",AoU v0.7.1 4.4; AoU v0.8 4.4 as amended in the v0.9 draft
+AOU-R7,aou_unpacker,,DUT,At most 2 non-Activation Misc messages per half-flit (v0.8 addition; on the DUT only with +v0p9draft),AoU v0.8 4.4
 AOU-R8,aou_unpacker,,DUT,ActivateReq and ActivateAck from one side are in different flits,AoU 9.2
 AOU-R9,aou_unpacker,aou_fdi_chk_adapter,DUT,Flit FDId names the bridge pair under test,AoU 4.3.1
 AOU-R10,via AOU-R3,by construction (L3 packer),DUT,AXI traffic travels only as defined AoU messages (a DUT message must decode to a defined type),AoU 4.4

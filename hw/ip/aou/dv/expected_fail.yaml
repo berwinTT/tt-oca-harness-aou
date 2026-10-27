@@ -86,39 +86,16 @@
     above the gate (bw_rd l2r: 1x512 0.9704, 3x512 0.9735, 4x512 0.9773, 2x512-tp32_64 0.9780 and
     0.9735; the same on every seed), so it does not fire today; kept for when it dips below
 
-# AoU v0.8 4.4 puts an Activation message
-# alone in its flit (v0.7.1 asks only for G0). On every activation the DUT sends its initial
-# CrdtGrant in the flit of its ActivateAck, so with +v0p8 the L3 model reports AOU-R6 in every
-# T1 test; `test: '*'` applies the entry to all of them, and `when_re` to +v0p8 runs only.
-# Only two layouts are covered: the ActivateAck with the CrdtGrant, and a
-# DeactivateReq followed only by responses. Any other message beside an Activation still
-# fails the run.
-
-- test: '*'
-  bug: BUGS/059
-  check_re: 'AOU-R6: DUT->remote flit#\d+ G0: Activation message shares its flit: ActivateAck CrdtGrant( \(\+1 continuing\))?$'
-  when_re: 'DUT rules: AoU v0\.8 \(\+v0p8\)'
-  seed_dependent: true
-  note: >-
-    the DUT's initial CrdtGrant at G1 of its ActivateAck flit (v0.8 4.4; v0.7 allowed it);
-    the TX activation gate places the Activation at G0 of an empty ring but lets later
-    messages follow it in the same flit
-
-- test: '*'
-  bug: BUGS/059
-  check_re: 'AOU-R6: DUT->remote flit#\d+ G0: Activation message shares its flit: DeactivateReq( (WriteResp|ReadData\d+))*( \(\+1 continuing\))?$'
-  when_re: 'DUT rules: AoU v0\.8 \(\+v0p8\)'
-  seed_dependent: true
-  note: >-
-    the same TX gate: pending responses (legal after the DeactivateReq, v0.8 8.4) packed
-    into the DeactivateReq's flit (4x512-sp64 aou_act_after_deact_test +busy=1 seed 2)
+# AoU 4.4 as the v0.9 draft words it (+v0p9draft): an Activation message shares its flit
+# only with one CrdtGrant after an ActivateReq/Ack or with responses after a DeactivateReq.
+# The DUT's ActivateAck+CrdtGrant and DeactivateReq+response flits are those layouts; what
+# remains is requests leaving in the ActivateAck's flit, the stimulus of aou_act_flit_test.
 
 - test: aou_act_flit_test
-  bug: BUGS/059
+  bug: tenstorrent/tt-oca-harness-aou#127
   check_re: 'AOU-R6: DUT->remote flit#\d+ G0: Activation message shares its flit: ActivateAck '
-  when_re: 'DUT rules: AoU v0\.8 \(\+v0p8\)[\s\S]*\[aou_act_flit_vseq\] requests while DISABLED'
+  when_re: 'DUT rules: AoU v0\.9 draft \(\+v0p9draft\)[\s\S]*\[aou_act_flit_vseq\] requests while DISABLED'
   note: >-
-    +v0p8 +mode=act_req: the stimulus this test exists for. Requests held across the activation
-    leave in the ActivateAck's flit; the DUT follows v0.7.1 (Activation at G0 only). +mode=deact_rsp
-    needs no entry of its own: its ActivateAck+CrdtGrant and DeactivateReq+response flits are the
-    two layouts the all-test entries above cover (an entry here would never match, an XPASS)
+    +v0p9draft +mode=act_req: the stimulus this test exists for. Requests held across the
+    activation leave in the ActivateAck's flit; the DUT follows v0.7.1 (Activation at G0 only).
+    +mode=deact_rsp passes: its flits are the permitted layouts

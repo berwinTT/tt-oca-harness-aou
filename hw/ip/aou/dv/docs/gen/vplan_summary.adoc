@@ -267,8 +267,8 @@
 | `aou_deact_ctrl_test.mode-tov` | `aou_deact_ctrl_test` | `+mode=tov` | 1-3 |  | 2.12 | 
 | `aou_deact_ctrl_test.mode-property` | `aou_deact_ctrl_test` | `+mode=property` | 1-2 |  | 2.10 | 
 | `aou_remote_react_test` | `aou_remote_react_test` |  | 1-3 |  | 1.6,6.20,18.17 | 
-| `aou_act_flit_test.mode-act_req.v0p8` | `aou_act_flit_test` | `+mode=act_req +v0p8` | 1-3 |  | 1.12 | 
-| `aou_act_flit_test.mode-deact_rsp.v0p8` | `aou_act_flit_test` | `+mode=deact_rsp +v0p8` | 1-3 |  | 2.14 | 
+| `aou_act_flit_test.mode-act_req.v0p9draft` | `aou_act_flit_test` | `+mode=act_req +v0p9draft` | 1-3 |  | 1.12 | 
+| `aou_act_flit_test.mode-deact_rsp.v0p9draft` | `aou_act_flit_test` | `+mode=deact_rsp +v0p9draft` | 1-3 |  | 2.14 | 
 |===
 ===== `testlists/errors.toml` (16 scenarios)
 [cols="3,2,2,1,1,2,2",options="header"]

@@ -486,27 +486,28 @@ reseed = 3
 tags = ["link"]
 run_modes = ["link"]
 
-# v0.8 4.4: credited messages waiting as the DUT sends an Activation message
-# (AOU-R6): requests held across an activation the DUT acks last, and responses
-# arriving at its DeactivateReq. The DUT implements v0.7.1, so these run with
-# +v0p8 (expected failures until it follows v0.8).
+# 4.4 (v0.9 draft): credited messages waiting as the DUT sends an Activation
+# message (AOU-R6): requests held across an activation the DUT acks last (an
+# expected failure: the DUT implements v0.7.1 and lets them share the Ack's
+# flit), and responses arriving at its DeactivateReq (permitted). Both run
+# with +v0p9draft.
 [[tests]]
-name = "aou_act_flit_test.mode-act_req.v0p8"
+name = "aou_act_flit_test.mode-act_req.v0p9draft"
 module = { uvm = "aou_act_flit_test" }
 seed = 1
 reseed = 3
 tags = ["link"]
 run_modes = ["link"]
-args = ["+mode=act_req", "+v0p8"]
+args = ["+mode=act_req", "+v0p9draft"]
 
 [[tests]]
-name = "aou_act_flit_test.mode-deact_rsp.v0p8"
+name = "aou_act_flit_test.mode-deact_rsp.v0p9draft"
 module = { uvm = "aou_act_flit_test" }
 seed = 1
 reseed = 3
 tags = ["link"]
 run_modes = ["link"]
-args = ["+mode=deact_rsp", "+v0p8"]
+args = ["+mode=deact_rsp", "+v0p9draft"]
 
 [[groups]]
 name = "link"
@@ -560,6 +561,6 @@ tests = [
   "aou_deact_ctrl_test.mode-tov",
   "aou_deact_ctrl_test.mode-property",
   "aou_remote_react_test",
-  "aou_act_flit_test.mode-act_req.v0p8",
-  "aou_act_flit_test.mode-deact_rsp.v0p8",
+  "aou_act_flit_test.mode-act_req.v0p9draft",
+  "aou_act_flit_test.mode-deact_rsp.v0p9draft",
 ]
