@@ -176,8 +176,7 @@ passing each time.
 ===== 4. `aou_fdi_t1_bringup_test`
 Class `aou_fdi_t1_bringup_test` extends `uvm_test` (`uvm/tests/fdi/aou_fdi_t1_bringup_test.svh`).
 
-*Purpose.* FDI bringup on the real DUT, in the bench's FDI state encoding (UCIe, or
-the pre-fix RTL codes with FDI_ENC=RTL):
+*Purpose.* FDI bringup on the real DUT, with UCIe state encodings:
 1. reset; the L2 agent runs the Adapter side of bringup (clk_req
 handshake, inband_pres) with pl_clk_req released, so the DUT waits in
 WAIT_PRESENCE until I_SW_ACTIVATE_START;
@@ -390,8 +389,8 @@ Class `aou_t1_inject_test` extends `aou_base_test` (`uvm/tests/aou_t1_inject_tes
 
 L3 error injection through the expectation registry: after traffic, the
 remote die sends a CrdtGrant with RsvdZero bits set (AOU-R11) and then a
-message with a reserved MSGTYPE (AOU-R3); the checkers must flag both. The DUT's reaction is unspecified (BUGS/012):
-INT_REQ_LINKRESET is allowed, nothing else.
+message with a reserved MSGTYPE (AOU-R3); the checkers must flag both. The DUT's reaction is left to the
+implementation (AoU v0.8 8.3.3): INT_REQ_LINKRESET is allowed, nothing else.
 
 *Rules named.* `AOU-R11`, `AOU-R3`
 
@@ -491,6 +490,7 @@ directions at once (+dp_dir=both; D41). +dp_profile picks a profile
 | `aou_dp_random_test.dp_dir-both.active_phy-1.park_idle_phy-1.fdi_trdy-holes.fdi_stall_pct-5.fdi_stall_mid_pct-50.2xmix-tp64_128` | `+dp_dir=both +active_phy=1 +park_idle_phy=1 +fdi_trdy=holes +fdi_stall_pct=5 +fdi_stall_mid_pct=50` | 1-2 | `2xmix-tp64_128` | 18.25
 | `aou_dp_random_test.dp_dir-both.active_phy-1.park_idle_phy-1.fdi_trdy-holes.fdi_stall_pct-5.fdi_stall_mid_pct-50.2x512-tp32_64` | `+dp_dir=both +active_phy=1 +park_idle_phy=1 +fdi_trdy=holes +fdi_stall_pct=5 +fdi_stall_mid_pct=50` | 1-2 | `2x512-tp32_64` | 18.25
 | `aou_dp_random_test.dp_dir-r2l` | `+dp_dir=r2l` | 1-5 |  | 6.10,6.11,6.12,6.13,6.15,7.16,8.9,8.10,12.1,12.16,18.2
+| `aou_dp_random_test.dp_dir-r2l.wdata_first_pct-100` | `+dp_dir=r2l +wdata_first_pct=100` | 1-3 |  | 4.32
 | `aou_dp_random_test.dp_dir-both` | `+dp_dir=both` | 1-5 |  | 10.3,7.16,8.9,8.10
 | `aou_dp_random_test.dp_dir-both.dp_profile-stall` | `+dp_dir=both +dp_profile=stall` | 1-3 |  | 7.16
 | `aou_dp_random_test.dp_dir-both.small_size_pct-5` | `+dp_dir=both +small_size_pct=5` | 1-3 |  | 4.1,5.1,14.10,14.11
@@ -505,6 +505,7 @@ directions at once (+dp_dir=both; D41). +dp_profile picks a profile
 *Plan items.*
 
 * 4.1: Single 1-byte write request with WriteData and WriteResp
+* 4.32: Remote WriteData sent ahead of its WriteReq (one message to the whole burst, on several RPs at once) is held and written once the WriteReq arrives
 * 5.1: Single 1-byte read
 * 6.10: Verify granules 0-11 positioned at byte offset 2. All granules are verified when decoded
 * 6.11: Verify granules 12-23 positioned at byte offset 66. All granules are verified when decoded
@@ -564,6 +565,7 @@ in the flits to the DUT); none runs every channel at full rate
 | Scenario | Arguments | Seeds | Target | Plan items
 | `aou_stress_test.st_pol-random.st_crd-slow.fdi_trdy-random.fdi_stall_pct-8.fdi_stall_mid_pct-50` | `+st_pol=random +st_crd=slow +fdi_trdy=random +fdi_stall_pct=8 +fdi_stall_mid_pct=50` | 1-2 | `1x512-sp64` | 18.22
 | `aou_stress_test.st_pol-sparse.st_crd-mixed` | `+st_pol=sparse +st_crd=mixed` | 1-2 |  | 6.3,7.16
+| `aou_stress_test.st_pol-sparse.wdata_first_pct-100` | `+st_pol=sparse +wdata_first_pct=100` | 1-3 |  | 4.32,7.16
 | `aou_stress_test.st_pol-random.st_crd-slow` | `+st_pol=random +st_crd=slow` | 1-3 |  | 7.16
 | `aou_stress_test.st_pol-split.st_crd-grant` | `+st_pol=split +st_crd=grant` | 1-2 |  | 6.9,7.16
 | `aou_stress_test.st_pol-min.st_crd-hdr` | `+st_pol=min +st_crd=hdr` | 1-2 |  | 7.16
@@ -585,6 +587,7 @@ in the flits to the DUT); none runs every channel at full rate
 *Plan items.*
 
 * 4.1: Single 1-byte write request with WriteData and WriteResp
+* 4.32: Remote WriteData sent ahead of its WriteReq (one message to the whole burst, on several RPs at once) is held and written once the WriteReq arrives
 * 5.1: Single 1-byte read
 * 6.3: Pack different message types (WriteReq + ReadReq + WriteResp) in same flit. Sparse packing with bubble between messages
 * 6.9: Reassemble message spanning multiple flits on receive
@@ -735,8 +738,7 @@ link_reset,        rise; software resets AOU_CORE while the link is down,
 inband_drop,       brings it up and activates again. In-flight
 disabled           transactions are aborted by the reset (an M-port ID
 mismatch interrupt is tolerated); all later traffic
-must complete. Disabled is Adapter-initiated and needs
-fdi_enc=SPEC.
+must complete. Disabled is Adapter-initiated.
 sw_disable         software deactivates AoU (the FDI link stays Active:
 the bringup model holds BRG_ACTIVE) and then disables
 the link on the UCIe controller (Adapter Disabled).
@@ -744,7 +746,7 @@ Local traffic queued while the link is down raises
 INT_ACTIVATE_START; the DUT must request nothing of
 the link until software restarts it (the model's NOP
 in LINKDOWN and RESET), and the activation then runs
-on the interrupt once the link is up. fdi_enc=SPEC.
+on the interrupt once the link is up.
 l1_act             software deactivates, the adapter enters L1, and
 software writes ACTIVATE_START while the link is in
 L1: the link stays in L1 (the write wakes nothing),
@@ -884,6 +886,7 @@ size and start address, each write read back; RLAST only on the last beat
 | Scenario | Arguments | Seeds | Target | Plan items
 | `aou_dp_burst_test.dp_len-1_3_7_15` | `+dp_len=1,3,7,15` | 1-3 |  | 4.9,4.10,4.11,4.12,5.9,5.10,5.11,5.12,5.19
 | `aou_dp_burst_test.dp_len-31_63_255` | `+dp_len=31,63,255` | 1-2 |  | 4.13,4.14,4.15,5.13,5.14,5.15
+| `aou_dp_burst_test.dp_len-31_63_255.wdata_first_pct-100.wdata_first_beats-256` | `+dp_len=31,63,255 +wdata_first_pct=100 +wdata_first_beats=256` | 1-2 |  | 4.13,4.14,4.15,4.32
 | `aou_dp_burst_test.dp_len-31_63_255.rtl_asserts-1` | `+dp_len=31,63,255 +rtl_asserts=1` | 1 | `1x512-sp64-assert` | 11.18
 |===
 
@@ -896,6 +899,7 @@ size and start address, each write read back; RLAST only on the last beat
 * 4.13: 32-beat incrementing burst write
 * 4.14: 64-beat incrementing burst write
 * 4.15: Write burst with AWLEN=255 (256 beats)
+* 4.32: Remote WriteData sent ahead of its WriteReq (one message to the whole burst, on several RPs at once) is held and written once the WriteReq arrives
 * 5.9: 2-beat incrementing burst read
 * 5.10: 4-beat incrementing burst read
 * 5.11: 8-beat incrementing burst read
@@ -2654,6 +2658,19 @@ queues behind the flood's, the pop completes first and the
 read returns the entry the pop removed, sampled when the
 read became active.
 
+----
++pop_lead=G +wresp_crd=N  each take is an OKAY write on the RP, then the
+----
+
+debug pop and, G cycles after it, the debug read, then a
+second debug read once both have completed. The remote
+die grants N WriteResp credits and returns each crd_delay
+ticks after use: with N = 1 the write's B uses the credit,
+so the pop's B waits for its return while the read, which
+became active after the pop, completes first with the
+entry behind the popped one. The second read, with nothing
+in flight, returns the same entry.
+
 *Pass criteria.* The base test's end-of-test checks: scoreboard drained, every declared expectation met, no unexpected `UVM_ERROR`/`UVM_FATAL`, the FDI checker clean; `scripts/check_run.py` judges the log against `expected_fail.yaml`.
 
 *Scenarios.*
@@ -2676,6 +2693,7 @@ read became active.
 | `aou_axi_err_resp_test.part-fifo.err_len-1.agg_en-1.remote_bytes-32.rdata_crd-8.crd_delay-64.flood-1.flood_len-3.pair_gap-64.pair_writes-3.4x512-sp64` | `+part=fifo +err_len=1 +agg_en=1 +remote_bytes=32 +rdata_crd=8 +crd_delay=64 +flood=1 +flood_len=3 +pair_gap=64 +pair_writes=3` | 1-2 | `4x512-sp64` | 9.13,9.14
 | `aou_axi_err_resp_test.part-fifo.err_len-7.agg_en-1.remote_bytes-32.pair_gap-64.4xmix2144-sp64` | `+part=fifo +err_len=7 +agg_en=1 +remote_bytes=32 +pair_gap=64` | 1-2 | `4xmix2144-sp64` | 9.13,9.14
 | `aou_axi_err_resp_test.part-fifo.take_overlap-4.take_flood-15.4x512-sp64` | `+part=fifo +take_overlap=4 +take_flood=15` | 1-2 | `4x512-sp64` | 9.13,9.14
+| `aou_axi_err_resp_test.part-fifo.pop_lead-16.wresp_crd-1.crd_delay-256.4x512-sp64` | `+part=fifo +pop_lead=16 +wresp_crd=1 +crd_delay=256` | 1-2 | `4x512-sp64` | 9.13,9.14
 | `aou_axi_err_resp_test.part-fifo.err_off-32.1x256-sp32` | `+part=fifo +err_off=32` | 1-2 | `1x256-sp32` | 9.13,9.14
 | `aou_axi_err_resp_test.T1_VSEQ-aou_dbg_off_vseq` | `+T1_VSEQ=aou_dbg_off_vseq` | 1-2 | `1x512-sp64` | 9.18
 | `aou_axi_err_resp_test.T1_VSEQ-aou_dbg_off_vseq.dbg_on-5` | `+T1_VSEQ=aou_dbg_off_vseq +dbg_on=5` | 1-2 | `4x512-sp64` | 9.18,9.13,9.14
@@ -2771,12 +2789,12 @@ response off the S port, sets AXI_SLV_BID/RID_MISMATCH_ERR with the ID and
 raises INT_SI0_ID_MISMATCH. With the checker disabled nothing is detected:
 the stray response goes out on the S port, where the bench's manager
 rejects it as a response with nothing outstanding, and SLV_TR_COMPLETE
-stays low afterwards. That handling is undefined (BUGS/029), so there is
-no +slv_en=0 scenario in the lists.
+stays low afterwards. The owners have not defined that handling, so there
+is no +slv_en=0 scenario in the lists.
 With +mask=1 the interrupt mask is set first: the status bit is still set
-but the interrupt stays low until the mask is cleared (interim, BUGS/029:
-interrupt = status & ~mask). Write 1 clears the error, its INFO and the
-interrupt.
+but the interrupt stays low until the mask is cleared (interrupt = status &
+~mask: the mask only suppresses the interrupt signal, MAS 7.2.2). Write 1
+clears the error, its INFO and the interrupt.
 
 ----
 +detect_only=1 (M port only): after the orphan it checks the status, INFO,
@@ -2835,16 +2853,20 @@ early every RP gets a bufferable write whose remote completion is an
 error at the same time: early OKAY, then WRITE_RESP_ERR with ID and
 type, and INT_EARLY_RESP_ERR until the last RP is cleared. +mask=1
 sets INT_EARLY_RESP_MASK: status still set, interrupt low until the
-mask is cleared (interim, BUGS/029).
+mask is cleared (the mask gates the pin, not the status: MAS 7.2.2
+and interrupts-errors 4).
 multi on every RP at once an early-response error and a WriteResp
 nobody asked for (AXI_SLV_ID_MISMATCH_EN programmed while the
 activation FSM is DISABLED, MAS 7.2.2), then an
 ActivateAck in ENABLED (LinkReset). All three interrupts and every
 status bit are set; clearing one source leaves the others; the link
-is recovered. (An M-port ID mismatch cannot join: BUGS/029.)
+is recovered. (An M-port ID mismatch cannot join: the unrequested
+response it needs is illegal AXI, and a DUT that never takes it ends
+the scenario with a hard reset; aou_id_mismatch_vseq covers it.)
 race  a write-1-to-clear of WRITE_RESP_ERR swept across the cycle a new
 early-response error sets it: the new error must never be lost
-(interim, BUGS/029: a set in the clearing cycle wins).
+(interim expectation: no document says whether a set or a clear in
+the same cycle wins; the bench requires the set to win).
 Knobs: +mode=all|w1c|early|multi|race +mask=0|1 +race_span=<cycles>.
 
 *Pass criteria.* The base test's end-of-test checks: scoreboard drained, every declared expectation met, no unexpected `UVM_ERROR`/`UVM_FATAL`, the FDI checker clean; `scripts/check_run.py` judges the log against `expected_fail.yaml`.
@@ -3155,8 +3177,8 @@ and 1024 bits covers every upsize, downsize and bypass pairing. Both
 directions, every size up to each side's width, 1-16 beats, each batch
 read back (+dp_loopback): the scoreboard checks bytes end to end, the AXI
 monitors WLAST at the M port, L3 the ReadData DLENGTH per ARSIZE (AOU-R13),
-and aou_dw_chk replication of narrow read data, the DUT's WriteData
-DLENGTH and that every targeted conversion happened.
+and aou_dw_chk replication of narrow read data; aou_dw_chk also reports
+any targeted conversion the run never produced (coverage, not an error).
 
 *Procedure.* The base class's virtual sequence `aou_dp_vseq`, configured by this class and its arguments.
 

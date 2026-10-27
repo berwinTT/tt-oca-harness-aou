@@ -48,7 +48,7 @@ make run TEST=aou_dp_random_test SEED=3 PLUSARGS='+dp_dir=both'
 python3 scripts/run_list.py --items smoke    # the bring-up gate (4 scenarios)
 python3 scripts/run_list.py --items functional -j 16 --rid nightly
 python3 scripts/run_list.py --target 4x512-sp64 -j 16   # every scenario on one target
-make check-config                            # sim configs, testlists, rules, RAL and docs freshness (what CI runs before building)
+make check-config                            # sim configs, testlists, rules, RAL, plan items and docs freshness (what CI runs before building)
 make lint                                    # check-config, Verible and Verilator lint, FDI checker guards
 ```
 
@@ -312,8 +312,9 @@ are tuned from.
 `scripts/run_list.py` runs every scenario and seed of a testlist
 (`testlists/*.toml`; default: the bench's aggregate, `testlists/all.toml` for
 T1) through `make run`, at most `-j` at a time, and writes
-`out/<build>/results.csv` (one `results_<list>.csv` per included list with
-`--per-list`). `--items <group|scenario>...` picks groups (`smoke`, `ci`, `g1a`,
+`out/<build>/results_rid.<rid>.csv` (one `results_<list>.rid.<rid>.csv` per
+included list with `--per-list`); the RID in the name means a later regression
+of the same lists never overwrites an earlier one's results. `--items <group|scenario>...` picks groups (`smoke`, `ci`, `g1a`,
 `functional`, ...) or scenario names; `--target <CONFIG>` picks the build and
 skips scenarios pinned to another target; `--reseed N` caps the seeds per
 scenario. `python3 scripts/check_testlists.py` validates the lists against the
@@ -332,9 +333,8 @@ python3 scripts/run_list.py --sim vcs --target 1x512-sp64 --rid nightly -j 8 \
   --per-list --items g1a link
 ```
 
-`--fdi-enc SPEC|RTL` passes `FDI_ENC` to every run (the FDI state encoding,
-`+FDI_ENC`); `--rtl-patch` and `--cov` pick the build as the make
-variables of the same names do.
+`--rtl-patch` and `--cov` pick the build as the make variables of the same
+names do.
 
 Your own bsub options go in `LSF_EXTRA_OPTS`. Every build and run appends it
 after the site's options (`LSF_SITE_OPTS` in `site/site.mk`), for example to keep
@@ -448,7 +448,10 @@ make cov_report COV=1
 
 Only runs whose verdict is PASS count: `make run` writes each verdict to
 `<run>/verdict.txt`, and `cov_report` skips FAIL, XFAIL and unjudged runs,
-printing how many it merged and excluded.
+printing how many it merged and excluded. It merges every passing run under
+`out/<build>/`; `COV_RID=<rid>` (`make cov_report COV=1 COV_RID=cov4`) takes only
+the runs of that RID, for the T1 and the folded-in register runs alike, so a
+report never mixes two regressions.
 
 The register bench takes the same `CONFIG` as T1, so it builds the same DUT
 parameters, and `make cov_report TB=t1` folds in its passing runs from the same
@@ -496,11 +499,6 @@ ignored (`IGN`, no target) or illegal (`ILL`, out of the denominator; a hit is
 reported under the rule that owns it), and a cross cell is ignored or made
 illegal by pattern (`XIGN`, `XILL`; see `aou_fc_point::mark`). The service's
 count is the number; the simulators' covergroup scores are not used.
-`cg_link_state.cp_fdi_enc` records the FDI state encoding each run used (`spec`,
-UCIe r1.1 Table 8-2 and the default, or `rtl`, the private codes of RTL from
-before the UCIe encoding fix, selected with `FDI_ENC=RTL`). It is informational: it
-shows whether the merged coverage includes SPEC-encoded runs. `rtl` is an
-ignored bin, not a target.
 
 With `COV=1` each run writes `<run>/fc.json`: every group, coverpoint and
 cross, every declared bin with its hit count (zero-hit bins included, so holes
@@ -554,8 +552,12 @@ still X after reset is released.
 verification branch's `dv/doc/AOU_RTL_TEST_PLAN.md`, sections 2.1-2.22) with the
 corrections in `docs/test_plan_corrections.yaml` applied: reworded items,
 duplicates merged into one surviving ID, and items dropped as untestable on this
-RTL. `scripts/gen_plan_items.py <old plan>` regenerates it; change the
-corrections, never the output.
+RTL. Change the corrections, never the output, and run
+`scripts/gen_plan_items.py` to regenerate it: the file keeps what it took from
+the old plan with a digest, so the old plan itself is needed only when that
+changes (`scripts/gen_plan_items.py <old plan>`). `make check-config` runs
+`gen_plan_items.py --check`, which fails when the file is stale or was edited by
+hand.
 
 `testlists/plan_ids.yaml` names the items each scenario covers. `make plan_status`
 matches every run under `out/` to its scenario by test class, plusargs (from
@@ -566,7 +568,11 @@ runs, with their bugs), failing, blocked (only `blocked:` entries list it) or no
 covered, followed by per-section and total counts. As for coverage, only PASS
 counts. `make compare BASELINE=<dir>` compares the `results*.csv` under `out/`
 with a kept baseline and reports every run whose verdict got worse
-(`scripts/compare_results.py`). It reads files only, so it needs no LSF. `PLAN_OUT=<dir>` reads another
+(`scripts/compare_results.py`). A run is matched by build (a `-cov` in the build
+name is ignored, so a coverage build compares with a plain one), test, plusargs
+and seed; a run that occurs twice on a side (two lists running the same test and
+seed) is a separate run, paired by occurrence. `COMPARE_OPTS='--base-rid <b>
+--after-rid <a>'` (or `--rid` for both) compares only those regressions' runs. It reads files only, so it needs no LSF. `PLAN_OUT=<dir>` reads another
 `out/`, and `PLAN_STATUS_OPTS=--judge` also judges runs that have no
 `verdict.txt` (`scripts/plan_status.py --format csv` gives CSV).
 
