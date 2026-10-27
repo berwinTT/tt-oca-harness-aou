@@ -5,8 +5,8 @@
 //   1. the continuation of a message that spans from the previous flit, at G0;
 //   2. an Activation message, only at G0 and at most one per flit, sharing
 //      the flit only with what 4.4 (v0.9 draft) permits and the policy's
-//      act_share_pct asks for: the initial CrdtGrant after an ActivateAck,
-//      responses after a DeactivateReq;
+//      act_share_pct asks for: the initial CrdtGrant after an ActivateAck (or
+//      an ActivateReq that follows our Ack), responses after a DeactivateReq;
 //   3. returned credits: the initial CrdtGrant after our ActivateAck, then
 //      header MsgCredit and/or CrdtGrant per the policy;
 //   4. credited messages whose class has credit for every granule (consumed
@@ -276,7 +276,10 @@ class aou_packer extends uvm_object;
       alone = 1'b1;   // 4.4: nothing else in an Activation's flit, except:
       if (!a.ignore_state && cfg.pol.act_share_pct != 0 &&
           $urandom_range(0, 99) < int'(cfg.pol.act_share_pct)) begin
-        share_grant = a.op == AOU_ACT_ACK;     // on_sent() has just set grant_due
+        // The initial CrdtGrant: on_sent() has just set grant_due after our Ack;
+        // after our Req it is still due only when our Ack went first (ack_first)
+        // without it, and adv_any() below keeps it behind our Ack (AOU-R29).
+        share_grant = a.op inside {AOU_ACT_ACK, AOU_ACT_REQ};
         share_rsp = a.op == AOU_DEACT_REQ;     // responses still go after it (8.4)
       end
     end

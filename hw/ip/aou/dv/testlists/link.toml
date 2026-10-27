@@ -48,6 +48,18 @@ tags = ["link"]
 run_modes = ["link"]
 args = ["+who=apb", "+deact_who=apb", "+busy=1"]
 
+# The remote die acks a DUT ActivateReq before it sends its own Req, so its
+# ActivateReq can carry its initial CrdtGrant (4.4, v0.9 draft) when the Ack
+# did not; the DUT's RX takes a CrdtGrant beside an ActivateReq.
+[[tests]]
+name = "aou_link_act_deact_test.who-apb.l3_ack_first-1"
+module = { uvm = "aou_link_act_deact_test" }
+seed = 1
+reseed = 2
+tags = ["link"]
+run_modes = ["link"]
+args = ["+who=apb", "+l3_ack_first=1"]
+
 # 2.13: both dies deactivate with requests in flight while the FDI throttles the DUT's TX,
 # so the DUT's own requests can still be open when the remote DeactivateReq arrives; its
 # DeactivateReq waits for their answers (AOU-R33).
@@ -511,12 +523,13 @@ args = ["+mode=deact_rsp", "+v0p9draft"]
 
 [[groups]]
 name = "link"
-expected_count = 50
+expected_count = 51
 tests = [
   "aou_link_act_deact_test",
   "aou_link_act_deact_test.who-both.order-simul.deact_who-both.busy-0",
   "aou_link_act_deact_test.who-remote.deact_who-remote.busy-1",
   "aou_link_act_deact_test.who-apb.deact_who-apb.busy-1",
+  "aou_link_act_deact_test.who-apb.l3_ack_first-1",
   "aou_link_act_deact_test.who-both.order-simul.deact_who-both.busy-1.fdi_trdy-random.4x512-sp64",
   "aou_link_force_deact_test",
   "aou_act_after_deact_test",

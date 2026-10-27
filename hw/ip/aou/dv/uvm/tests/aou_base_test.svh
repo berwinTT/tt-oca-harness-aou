@@ -28,6 +28,8 @@
 // DeactivateAck, and its own deactivation, for N received flits after the
 // DUT's DeactivateReq, still granting request credit meanwhile (with both, a
 // DUT that sends requests after its own DeactivateReq gets the credit to do so);
+// +l3_ack_first=1 the remote die answers a DUT ActivateReq with its Ack before
+// its own Req (the test's own setting wins where it has one);
 // +v0p9draft holds the DUT to the expectations added after AoU v0.7.1, pegged
 // to the v0.9 draft (aou_t1_env_cfg::v0p9draft; today AOU-R6/AOU-R7, the 4.4
 // Misc placement);
@@ -90,6 +92,7 @@ class aou_base_test extends ocah_test;
     `uvm_info(get_type_name(), cfg.v0p9draft ? "DUT rules: AoU v0.9 draft (+v0p9draft)" :
               "DUT rules: AoU v0.7.1 Misc placement", UVM_LOW)
     void'($value$plusargs("l3_deact_ack_hold=%d", cfg.l3_cfg.deact_ack_hold));
+    void'($value$plusargs("l3_ack_first=%d", cfg.l3_cfg.ack_first));
     if ($value$plusargs("remote_bytes=%s", rb)) cfg.set_remote_bytes(rb);
     void'($value$plusargs("remote_max_burst_rand=%d", cfg.remote_max_burst_rand));
     if ($value$plusargs("remote_wreq=%s", rb)) begin

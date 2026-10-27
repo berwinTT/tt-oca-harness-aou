@@ -132,9 +132,10 @@ class aou_l3_cov extends uvm_object;
 
   // A flit that starts an Activation message, by what shares it and by
   // direction: which side packed the initial CrdtGrant beside its ActivateAck
-  // or responses beside its DeactivateReq (4.4, v0.9 draft), and which sent
-  // the Activation alone. Stimulus quality (aou_packer_policy::act_share_pct)
-  // on our side; on the DUT's, which layouts its TX produces.
+  // (or its ActivateReq, when that follows its Ack) or responses beside its
+  // DeactivateReq (4.4, v0.9 draft), and which sent the Activation alone.
+  // Stimulus quality (aou_packer_policy::act_share_pct) on our side; on the
+  // DUT's, which layouts its TX produces.
   covergroup cg_act_flit;
     cp_layout: coverpoint s_act_layout {
       `AOU_L3_FC_ACT_FLIT(AOU_FC_CG)
@@ -311,10 +312,11 @@ class aou_l3_cov extends uvm_object;
   endfunction
 
   // Layout of a flit whose G0 starts an Activation message, from the
-  // granules (cg_act_flit): 0 ActivateReq alone, 1 ActivateAck alone,
-  // 2 ActivateAck with one CrdtGrant, 3 DeactivateReq alone, 4 DeactivateReq
-  // with WriteResp/ReadData only, 5 DeactivateAck alone, 6 any other company
-  // (4.4 forbids it); -1 when no Activation message starts at G0.
+  // granules (cg_act_flit): 0 ActivateReq alone, 1 ActivateReq with one
+  // CrdtGrant, 2 ActivateAck alone, 3 ActivateAck with one CrdtGrant,
+  // 4 DeactivateReq alone, 5 DeactivateReq with WriteResp/ReadData only,
+  // 6 DeactivateAck alone, 7 any other company (4.4 forbids it); -1 when no
+  // Activation message starts at G0.
   static function int act_layout(aou_flit f);
     int unsigned others = 0, grants = 0, rsps = 0;
     if (!f.msg_start[0] || f.g[0][39:36] != AOU_MT_MISC || f.g[0][35:33] != AOU_MISCOP_ACT)
@@ -326,11 +328,11 @@ class aou_l3_cov extends uvm_object;
       else if (f.g[p][39:36] inside {AOU_MT_WRESP, AOU_MT_RDATA}) rsps++;
     end
     case (f.g[0][32:29])
-      AOU_ACT_REQ:   return (others == 0) ? 0 : 6;
-      AOU_ACT_ACK:   return (others == 0) ? 1 : ((others == 1 && grants == 1) ? 2 : 6);
-      AOU_DEACT_REQ: return (others == 0) ? 3 : ((rsps == others) ? 4 : 6);
-      AOU_DEACT_ACK: return (others == 0) ? 5 : 6;
-      default:       return 6;
+      AOU_ACT_REQ:   return (others == 0) ? 0 : ((others == 1 && grants == 1) ? 1 : 7);
+      AOU_ACT_ACK:   return (others == 0) ? 2 : ((others == 1 && grants == 1) ? 3 : 7);
+      AOU_DEACT_REQ: return (others == 0) ? 4 : ((rsps == others) ? 5 : 7);
+      AOU_DEACT_ACK: return (others == 0) ? 6 : 7;
+      default:       return 7;
     endcase
   endfunction
 

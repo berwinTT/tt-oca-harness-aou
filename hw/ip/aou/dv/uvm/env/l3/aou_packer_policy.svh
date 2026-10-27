@@ -35,10 +35,11 @@ class aou_packer_policy extends uvm_object;
   // does not define.
   int unsigned      misc_per_half_max = 2;
   // Percent of our Activation flits that carry what 4.4 (v0.9 draft) lets
-  // share them: the initial CrdtGrant beside our ActivateAck, and the
-  // WriteResp/ReadData we still owe beside our DeactivateReq. The rest, and
-  // every ActivateReq and DeactivateAck flit, carry the Activation alone. The
-  // DUT's RX has to take both layouts.
+  // share them: the initial CrdtGrant beside our ActivateAck (or beside our
+  // ActivateReq when that follows our Ack and the grant is still due), and
+  // the WriteResp/ReadData we still owe beside our DeactivateReq. The rest,
+  // and every DeactivateAck flit, carry the Activation alone. The DUT's RX
+  // has to take both layouts.
   int unsigned      act_share_pct = 50;
   // Hold every credited message back (Misc still goes) until cleared, so a
   // batch queues up and leaves in densely packed flits; the caller kicks the

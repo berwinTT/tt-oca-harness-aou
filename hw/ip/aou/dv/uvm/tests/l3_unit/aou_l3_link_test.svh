@@ -294,9 +294,11 @@ class aou_l3_link_test extends aou_l3_unit_base_test;
   // message shares its flit only with one CrdtGrant after an ActivateReq/Ack
   // or with responses after a DeactivateReq. Anything else beside it is
   // AOU-R6 when the receiver holds its peer to the draft (v0p9draft,
-  // +v0p9draft in the T1 bench), and legal under v0.7.1 otherwise. The two
-  // permitted layouts are what the DUT sends on every activation and
-  // deactivation; the model packs them too (act_share_pct).
+  // +v0p9draft in the T1 bench), and legal under v0.7.1 otherwise. The
+  // Ack+CrdtGrant and DeactivateReq+response layouts are what the DUT sends
+  // on every activation and deactivation; the model packs them too
+  // (act_share_pct), and the grant beside its ActivateReq when its Ack went
+  // first without it (ack_first).
   function void act_share_rules();
     act_share_case(1'b0);
     act_share_case(1'b1);
@@ -342,7 +344,7 @@ class aou_l3_link_test extends aou_l3_unit_base_test;
     a.lnk.request_activate();
     void'(exchange(a, b));
     both(a, b, AOU_LS_ENABLED, {tag, ": activation with the CrdtGrant beside B's Ack"});
-    foreach (b.tx_flit_q[i]) if (aou_l3_cov::act_layout(b.tx_flit_q[i]) == 2) shared++;
+    foreach (b.tx_flit_q[i]) if (aou_l3_cov::act_layout(b.tx_flit_q[i]) == 3) shared++;
     expect_true(shared == 1, {tag, ": B packed its initial CrdtGrant beside its ActivateAck"});
     expect_true(a.crd.tx_cred[0][AOU_CC_WREQ] == 64,
                 {tag, ": A holds the credit granted beside the Ack"});
@@ -364,7 +366,7 @@ class aou_l3_link_test extends aou_l3_unit_base_test;
     f = next_act_flit(a, b, AOU_ACT_ACK);
     expect_true(f != null, {tag, ": B's ActivateAck flit"});
     if (f != null) begin
-      expect_true(aou_l3_cov::act_layout(f) == 2, {tag, ": B's ActivateAck with its CrdtGrant"});
+      expect_true(aou_l3_cov::act_layout(f) == 3, {tag, ": B's ActivateAck with its CrdtGrant"});
       f.g[3] = gg[0]; f.g[4] = gg[1]; f.msg_start[3] = 1'b1;
       chk.clear_counts();
       a.rx_flit(copy_flit(f));
@@ -411,6 +413,65 @@ class aou_l3_link_test extends aou_l3_unit_base_test;
     end
     void'(exchange(a, b));
     both(a, b, AOU_LS_DISABLED, {tag, ": deactivation completes again"});
+
+    // B acks first; its Ack goes alone and its initial CrdtGrant rides with its
+    // ActivateReq instead: legal under both, and A takes the credit from it.
+    b.cfg.ack_first = 1'b1;
+    b.cfg.pol.act_share_pct = 0;
+    a.lnk.request_activate();
+    f = next_act_flit(a, b, AOU_ACT_ACK);
+    expect_true(f != null, {tag, ": B's ActivateAck flit, acking first"});
+    if (f != null) begin
+      expect_true(aou_l3_cov::act_layout(f) == 2, {tag, ": B's ActivateAck alone"});
+      a.rx_flit(copy_flit(f));
+    end
+    b.cfg.pol.act_share_pct = 100;
+    f = next_act_flit(a, b, AOU_ACT_REQ);
+    expect_true(f != null, {tag, ": B's ActivateReq flit after its Ack"});
+    if (f != null) begin
+      expect_true(aou_l3_cov::act_layout(f) == 1, {tag, ": B's ActivateReq with its CrdtGrant"});
+      chk.clear_counts();
+      a.rx_flit(copy_flit(f));
+      expect_true(chk.count("AOU-R6") == 0,
+                  {tag, ": one CrdtGrant may share the ActivateReq's flit"});
+      expect_true(a.crd.tx_cred[0][AOU_CC_WREQ] == 64,
+                  {tag, ": A holds the credit granted beside the Req"});
+    end
+    void'(exchange(a, b));
+    both(a, b, AOU_LS_ENABLED, {tag, ": activation with the grant beside B's Req"});
+    b.lnk.request_deactivate();
+    b.maybe_release_deact();
+    void'(exchange(a, b));
+    both(a, b, AOU_LS_DISABLED, {tag, ": deactivation after the shared Req"});
+
+    // A second CrdtGrant (an empty one) behind that one: one too many under the draft.
+    b.cfg.pol.act_share_pct = 0;
+    a.lnk.request_activate();
+    f = next_act_flit(a, b, AOU_ACT_ACK);
+    if (f != null) a.rx_flit(copy_flit(f));
+    b.cfg.pol.act_share_pct = 100;
+    f = next_act_flit(a, b, AOU_ACT_REQ);
+    expect_true(f != null, {tag, ": B's second ActivateReq flit after its Ack"});
+    if (f != null) begin
+      int unsigned gp = AOU_GRANULES;
+      for (int unsigned p = 1; p < AOU_GRANULES; p++) if (f.msg_start[p]) gp = p + 2;
+      expect_true(aou_l3_cov::act_layout(f) == 1 && gp + 2 <= AOU_GRANULES,
+                  {tag, ": B's ActivateReq with its CrdtGrant, room behind it"});
+      f.g[gp] = gg[0]; f.g[gp + 1] = gg[1]; f.msg_start[gp] = 1'b1;
+      chk.clear_counts();
+      a.rx_flit(copy_flit(f));
+      expect_true(chk.count("AOU-R6") == (draft ? 1 : 0),
+                  {tag, ": two CrdtGrants beside the ActivateReq",
+                   draft ? " are AOU-R6" : " pass"});
+    end
+    void'(exchange(a, b));
+    both(a, b, AOU_LS_ENABLED, {tag, ": activation completes after the second grant"});
+    b.lnk.request_deactivate();
+    b.maybe_release_deact();
+    void'(exchange(a, b));
+    both(a, b, AOU_LS_DISABLED, {tag, ": deactivation after the second grant"});
+    b.cfg.ack_first = 1'b0;
+    b.cfg.pol.act_share_pct = 0;
 
     // A WriteResp beside the DeactivateAck: nothing may follow it under the draft.
     a.lnk.request_activate();
