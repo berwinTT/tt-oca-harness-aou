@@ -2448,7 +2448,7 @@ Knobs: +rounds=N (default 2..4) +T1_TXN.
 Class `aou_act_flit_test` extends `aou_base_test` (`uvm/tests/link/aou_act_flit_test.svh`).
 
 *Purpose.* Credited messages waiting as the DUT sends an Activation message
-(aou_act_flit_vseq, AoU v0.8 4.4).
+(aou_act_flit_vseq, AoU 4.4 as the v0.9 draft words it).
 
 *Procedure.* Virtual sequence `aou_act_flit_vseq` (`uvm/seq_lib/link/aou_act_flit_vseq.svh`):
 
