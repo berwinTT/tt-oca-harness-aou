@@ -24,6 +24,7 @@ class aou_l3_cov extends uvm_object;
   // Sampled values; each covergroup samples the members it names.
   int unsigned s_prev, s_cur, s_op, s_dir, s_kind, s_rp, s_start, s_size, s_nmsgs;
   int unsigned s_misc0, s_misc1, s_carry, s_ev, s_cls, s_nwresp, s_wf_ahead, s_wf_others;
+  int unsigned s_act_layout;
   bit          s_legal, s_span, s_credit_only, s_wf_whole;
   // cg_wr_order, from the messages the model sends: per RP, the WriteData
   // messages sent and the ones the sent WriteReqs account for.
@@ -129,6 +130,22 @@ class aou_l3_cov extends uvm_object;
     x_nwresp_dir: cross cp_nwresp, cp_dir;
   endgroup
 
+  // A flit that starts an Activation message, by what shares it and by
+  // direction: which side packed the initial CrdtGrant beside its ActivateAck
+  // (or its ActivateReq, when that follows its Ack) or responses beside its
+  // DeactivateReq (4.4, v0.9 draft), and which sent the Activation alone.
+  // Stimulus quality (aou_packer_policy::act_share_pct) on our side; on the
+  // DUT's, which layouts its TX produces.
+  covergroup cg_act_flit;
+    cp_layout: coverpoint s_act_layout {
+      `AOU_L3_FC_ACT_FLIT(AOU_FC_CG)
+    }
+    cp_dir: coverpoint s_dir {
+      `AOU_FC_DIR_BINS(AOU_FC_CG)
+    }
+    x_layout_dir: cross cp_layout, cp_dir;
+  endgroup
+
   covergroup cg_credit;
     cp_ev: coverpoint s_ev {
       `AOU_L3_FC_CREDIT_EV(AOU_FC_CG)
@@ -171,6 +188,7 @@ class aou_l3_cov extends uvm_object;
   aou_fc_group fc_span;
   aou_fc_group fc_flit_occ;
   aou_fc_group fc_wresp_flit;
+  aou_fc_group fc_act_flit;
   aou_fc_group fc_credit;
   aou_fc_group fc_wr_order;
 
@@ -183,6 +201,7 @@ class aou_l3_cov extends uvm_object;
     cg_span = new();
     cg_flit_occ = new();
     cg_wresp_flit = new();
+    cg_act_flit = new();
     cg_credit = new();
     cg_wr_order = new();
     fc_declare();
@@ -245,6 +264,13 @@ class aou_l3_cov extends uvm_object;
       p = fc_wresp_flit.cp("cp_dir"); `AOU_FC_DIR_BINS(AOU_FC_REG)
       void'(fc_wresp_flit.add_cross("x_nwresp_dir", "cp_nwresp cp_dir"));
     end
+    fc_act_flit = db.group("l3.cg_act_flit", fresh);
+    if (fresh) begin
+      p = fc_act_flit.cp("cp_layout"); `AOU_L3_FC_ACT_FLIT(AOU_FC_REG)
+      p = fc_act_flit.cp("cp_dir"); `AOU_FC_DIR_BINS(AOU_FC_REG)
+      p = fc_act_flit.add_cross("x_layout_dir", "cp_layout cp_dir");
+      `AOU_L3_FC_X_ACT_FLIT(AOU_FC_REG)
+    end
     fc_credit = db.group("l3.cg_credit", fresh);
     if (fresh) begin
       p = fc_credit.cp("cp_ev"); `AOU_L3_FC_CREDIT_EV(AOU_FC_REG)
@@ -282,6 +308,31 @@ class aou_l3_cov extends uvm_object;
       end
       AOU_MT_WRESP: return 11;
       default:      return $cast(c, m) ? 13 : 12;
+    endcase
+  endfunction
+
+  // Layout of a flit whose G0 starts an Activation message, from the
+  // granules (cg_act_flit): 0 ActivateReq alone, 1 ActivateReq with one
+  // CrdtGrant, 2 ActivateAck alone, 3 ActivateAck with one CrdtGrant,
+  // 4 DeactivateReq alone, 5 DeactivateReq with WriteResp/ReadData only,
+  // 6 DeactivateAck alone, 7 any other company (4.4 forbids it); -1 when no
+  // Activation message starts at G0.
+  static function int act_layout(aou_flit f);
+    int unsigned others = 0, grants = 0, rsps = 0;
+    if (!f.msg_start[0] || f.g[0][39:36] != AOU_MT_MISC || f.g[0][35:33] != AOU_MISCOP_ACT)
+      return -1;
+    for (int unsigned p = 1; p < AOU_GRANULES; p++) begin
+      if (!f.msg_start[p]) continue;
+      others++;
+      if (f.g[p][39:36] == AOU_MT_MISC && f.g[p][35:33] == AOU_MISCOP_CRDT) grants++;
+      else if (f.g[p][39:36] inside {AOU_MT_WRESP, AOU_MT_RDATA}) rsps++;
+    end
+    case (f.g[0][32:29])
+      AOU_ACT_REQ:   return (others == 0) ? 0 : ((others == 1 && grants == 1) ? 1 : 7);
+      AOU_ACT_ACK:   return (others == 0) ? 2 : ((others == 1 && grants == 1) ? 3 : 7);
+      AOU_DEACT_REQ: return (others == 0) ? 4 : ((rsps == others) ? 5 : 7);
+      AOU_DEACT_ACK: return (others == 0) ? 6 : 7;
+      default:       return 7;
     endcase
   endfunction
 
@@ -336,6 +387,11 @@ class aou_l3_cov extends uvm_object;
     if (s_nwresp != 0) begin
       cg_wresp_flit.sample();
       fc_wresp_flit.sample(int'(s_nwresp), int'(s_dir));
+    end
+    if (act_layout(f) >= 0) begin
+      s_act_layout = act_layout(f);
+      cg_act_flit.sample();
+      fc_act_flit.sample(int'(s_act_layout), int'(s_dir));
     end
   endfunction
 

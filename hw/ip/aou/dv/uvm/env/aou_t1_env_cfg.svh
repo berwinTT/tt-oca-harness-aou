@@ -63,11 +63,13 @@ class aou_t1_env_cfg extends uvm_object;
   // 0 only in a negative test that declares what follows. Drain: it also
   // waits for every response first.
   bit            sw_hold_on_deact = 1'b1;
-  // +v0p8: hold the DUT to expectations that only AoU v0.8 adds (the DUT
-  // implements v0.7.1). Today: the 4.4 Misc placement, AOU-R6 (an Activation
-  // message alone in its flit) and AOU-R7 (at most 2 other Misc per
-  // half-flit). Further v0.8-only DUT checks belong behind the same switch.
-  bit            v0p8;
+  // +v0p9draft: hold the DUT to expectations added after v0.7.1, which the
+  // DUT implements; the peg is the v0.9 draft until that revision is
+  // accepted. Today: the 4.4 Misc placement, AOU-R6 (an Activation message
+  // shares its flit only with one CrdtGrant after an ActivateReq/Ack or with
+  // responses after a DeactivateReq) and AOU-R7 (at most 2 other Misc per
+  // half-flit). Further post-v0.7.1 DUT checks belong behind the same switch.
+  bit            v0p9draft;
   bit            sw_drain_before_deact = 1'b0;
   // aou_t1_rx_fifo_chk (T1-C41, T1-L40, T1-L46) and the messages per RP and
   // class it allows past the RX FIFO (register slice, splitter, width converter).

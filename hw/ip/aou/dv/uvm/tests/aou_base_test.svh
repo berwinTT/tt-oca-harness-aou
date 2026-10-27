@@ -28,12 +28,17 @@
 // DeactivateAck, and its own deactivation, for N received flits after the
 // DUT's DeactivateReq, still granting request credit meanwhile (with both, a
 // DUT that sends requests after its own DeactivateReq gets the credit to do so);
-// +v0p8 holds the DUT to the expectations only AoU v0.8 adds (aou_t1_env_cfg::v0p8;
-// today AOU-R6/AOU-R7, the 4.4 Misc placement);
+// +l3_ack_first=1 the remote die answers a DUT ActivateReq with its Ack before
+// its own Req (the test's own setting wins where it has one);
+// +v0p9draft holds the DUT to the expectations added after AoU v0.7.1, pegged
+// to the v0.9 draft (aou_t1_env_cfg::v0p9draft; today AOU-R6/AOU-R7, the 4.4
+// Misc placement);
 // +rx_fifo_slack=N messages aou_t1_rx_fifo_chk allows past an RX FIFO;
 // +wdata_first_pct=N, +wdata_first_beats=N the share of the remote die's writes
 // that send WriteData ahead of their WriteReq, and how much of it
-// (aou_packer_policy; default 5% and 1 to the whole burst), over what the test sets.
+// (aou_packer_policy; default 5% and 1 to the whole burst), over what the test sets;
+// +act_share_pct=N the share of the remote die's Activation flits that carry the
+// company 4.4 permits (aou_packer_policy::act_share_pct; default 50).
 class aou_base_test extends ocah_test;
   `uvm_component_utils(aou_base_test)
 
@@ -70,7 +75,7 @@ class aou_base_test extends ocah_test;
 
   function void build_phase(uvm_phase phase);
     string rb;
-    string v0p8;
+    string v0p9draft;
     super.build_phase(phase);
     cfg = aou_t1_env_cfg::type_id::create("cfg");
     cfg.randomize_knobs();
@@ -81,11 +86,13 @@ class aou_base_test extends ocah_test;
     void'($value$plusargs("rx_fifo_slack=%d", cfg.rx_fifo_slack));
     void'($value$plusargs("sysrst_on_linkdown=%d", cfg.sysrst_on_linkdown));
     void'($value$plusargs("sw_hold_on_deact=%d", cfg.sw_hold_on_deact));
-    if ($value$plusargs("v0p8%s", v0p8)) cfg.v0p8 = (v0p8 != "=0");  // +v0p8 or +v0p8=0|1
-    cfg.l3_cfg.v0p8 = cfg.v0p8;
-    `uvm_info(get_type_name(), cfg.v0p8 ? "DUT rules: AoU v0.8 (+v0p8)" :
+    // +v0p9draft or +v0p9draft=0|1
+    if ($value$plusargs("v0p9draft%s", v0p9draft)) cfg.v0p9draft = (v0p9draft != "=0");
+    cfg.l3_cfg.v0p9draft = cfg.v0p9draft;
+    `uvm_info(get_type_name(), cfg.v0p9draft ? "DUT rules: AoU v0.9 draft (+v0p9draft)" :
               "DUT rules: AoU v0.7.1 Misc placement", UVM_LOW)
     void'($value$plusargs("l3_deact_ack_hold=%d", cfg.l3_cfg.deact_ack_hold));
+    void'($value$plusargs("l3_ack_first=%d", cfg.l3_cfg.ack_first));
     if ($value$plusargs("remote_bytes=%s", rb)) cfg.set_remote_bytes(rb);
     void'($value$plusargs("remote_max_burst_rand=%d", cfg.remote_max_burst_rand));
     if ($value$plusargs("remote_wreq=%s", rb)) begin
@@ -111,9 +118,11 @@ class aou_base_test extends ocah_test;
     configure();
     void'($value$plusargs("wdata_first_pct=%d", cfg.l3_cfg.pol.wdata_first_pct));
     void'($value$plusargs("wdata_first_beats=%d", cfg.l3_cfg.pol.wdata_first_beats));
-    `uvm_info(get_type_name(), $sformatf("remote wdata_first=%0d%% beats=%0d",
+    void'($value$plusargs("act_share_pct=%d", cfg.l3_cfg.pol.act_share_pct));
+    `uvm_info(get_type_name(), $sformatf("remote wdata_first=%0d%% beats=%0d act_share=%0d%%",
                                          cfg.l3_cfg.pol.wdata_first_pct,
-                                         cfg.l3_cfg.pol.wdata_first_beats), UVM_LOW)
+                                         cfg.l3_cfg.pol.wdata_first_beats,
+                                         cfg.l3_cfg.pol.act_share_pct), UVM_LOW)
     trdy_knobs();
     env = aou_t1_env::type_id::create("env", this);
     env.cfg = cfg;

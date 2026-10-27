@@ -53,8 +53,9 @@
   `B``_XIGN("g1,multi_flit") \
   `B``_TAG("g4,*", "v0.8")
 // Messages that span flits, by kind (msg_kind() numbers) and direction
-// (cg_span). A WriteResp is one granule and an Activation travels alone at G0,
-// so neither can span; a CrdtGrant can, but it is no packing target.
+// (cg_span). A WriteResp is one granule and an Activation starts at G0 and is
+// at most 4 granules, so neither can span; a CrdtGrant can, but it is no
+// packing target.
 `define AOU_L3_FC_SPAN_KIND(B) \
   `B``_BIN(wreq, 0, 0) `B``_BIN(rreq, 1, 1) \
   `B``_BIN(w256, 2, 2) `B``_BIN(w512, 3, 3) `B``_BIN(w1024, 4, 4) \
@@ -70,6 +71,19 @@
   `B``_BIN(one, 1, 1) `B``_BIN(two, 2, 2) `B``_BIN(few, 3, 4) `B``_BIN(many, 5, 15) \
   `B``_BIN(dense, 16, 47) `B``_BIN(full, 48, 48)
 `define AOU_L3_FC_MISC(B) `B``_VALS(n, 0, 2) `B``_BIN(over, 3, 24)
+// A flit that starts an Activation message, by what shares it (cg_act_flit;
+// aou_l3_cov::act_layout()). 4.4 (v0.9 draft) permits one CrdtGrant beside an
+// ActivateReq/Ack and responses beside a DeactivateReq; anything else is
+// AOU-R6, so it is no coverage goal. The DUT sends its initial CrdtGrant in
+// its ActivateAck's flit every time, so its Ack is never alone and its
+// ActivateReq never carries the grant (rx). Our ActivateReq carries it only
+// when our Ack went before our Req (ack_first) without it.
+`define AOU_L3_FC_ACT_FLIT(B) \
+  `B``_BIN(req_alone, 0, 0) `B``_BIN(req_grant, 1, 1) \
+  `B``_BIN(ack_alone, 2, 2) `B``_BIN(ack_grant, 3, 3) \
+  `B``_BIN(dreq_alone, 4, 4) `B``_BIN(dreq_rsp, 5, 5) `B``_BIN(dack_alone, 6, 6) \
+  `B``_IGN(forbidden, 7, 7)
+`define AOU_L3_FC_X_ACT_FLIT(B) `B``_XIGN("ack_alone,rx") `B``_XIGN("req_grant,rx")
 `define AOU_L3_FC_CARRY(B) \
   `B``_BIN(none, 0, 0) `B``_BIN(short_carry, 1, 11) `B``_BIN(long_carry, 12, 30)
 `define AOU_L3_FC_CREDIT_ONLY(B) `B``_BIN(no, 0, 0) `B``_BIN(yes, 1, 1)

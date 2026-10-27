@@ -64,13 +64,14 @@ class aou_l3_cfg extends uvm_object;
   // Send credited messages once ActivateReq is sent and ActivateAck received
   // (9.2) instead of waiting for ENABLED (8.4).
   bit                send_after_ack_rcvd;
-  // Hold the DUT to AoU v0.8-only expectations whatever the wire format
-  // (+v0p8, aou_t1_env_cfg::v0p8). Today that is the v0.8 4.4 Misc placement on
-  // the DUT's flits: an Activation message alone in its flit (AOU-R6) and at
-  // most 2 other Misc per half-flit (AOU-R7). Off, the DUT is held to v0.7.1:
-  // at most one Activation message per flit, at G0. Our own flits always
-  // follow and are checked against v0.8.
-  bit                v0p8 = 1'b0;
+  // Hold the DUT to the Misc placement rules added after v0.7.1, whatever the
+  // wire format (+v0p9draft, aou_t1_env_cfg::v0p9draft). Today that is 4.4 as
+  // the v0.9 draft words it: an Activation message shares its flit with
+  // nothing but one CrdtGrant after an ActivateReq/Ack or responses after a
+  // DeactivateReq (AOU-R6), and at most 2 other Misc per half-flit (AOU-R7).
+  // Off, the DUT is held to v0.7.1: at most one Activation message per flit,
+  // at G0. Our own flits always follow and are checked against the draft.
+  bit                v0p9draft = 1'b0;
   // v0.8: an out-of-sequence Req/Ack moves the link to ERROR (8.3.3).
   bit                error_state_en = 1'b1;
 

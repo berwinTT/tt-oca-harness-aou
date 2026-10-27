@@ -30,10 +30,17 @@ class aou_packer_policy extends uvm_object;
   int unsigned      empty_flit_pct;
   aou_cred_method_e cred_method = AOU_CRM_DUT_LIKE;
   // Non-Activation Misc messages per half-flit (v0.8 4.4 allows 2, so only
-  // 1 and 2 are legal). An Activation message always travels alone in its
-  // flit (v0.8 4.4); there is no knob for the v0.7 layout, which v0.8 forbids
-  // and whose receiver reaction it does not define.
+  // 1 and 2 are legal). There is no knob for the v0.7 layout (anything beside
+  // an Activation message), which v0.8 forbids and whose receiver reaction it
+  // does not define.
   int unsigned      misc_per_half_max = 2;
+  // Percent of our Activation flits that carry what 4.4 (v0.9 draft) lets
+  // share them: the initial CrdtGrant beside our ActivateAck (or beside our
+  // ActivateReq when that follows our Ack and the grant is still due), and
+  // the WriteResp/ReadData we still owe beside our DeactivateReq. The rest,
+  // and every DeactivateAck flit, carry the Activation alone. The DUT's RX
+  // has to take both layouts.
+  int unsigned      act_share_pct = 50;
   // Hold every credited message back (Misc still goes) until cleared, so a
   // batch queues up and leaves in densely packed flits; the caller kicks the
   // model when it clears the hold.

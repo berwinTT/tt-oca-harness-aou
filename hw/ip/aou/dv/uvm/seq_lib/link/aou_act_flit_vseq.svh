@@ -2,7 +2,9 @@
 // SPDX-FileCopyrightText: © 2026 Tenstorrent USA Inc
 
 // Credited messages waiting at the moment the DUT sends an Activation message,
-// which AoU v0.8 4.4 sends alone in its flit (AOU-R6 judges it). +loops=N
+// whose flit AoU 4.4 (v0.9 draft) lets only one CrdtGrant share after an
+// ActivateReq/Ack, and only responses after a DeactivateReq (AOU-R6 judges it).
+// +loops=N
 // loops (default 4, deact_rsp 12) of +mode=:
 //   act_req    requests held across an activation in which the DUT sends the
 //              last activation message. Local requests issued while DISABLED

@@ -3,7 +3,10 @@
 
 // Messages -> flits for the model's TX direction (spec 4.4, 6). Per flit:
 //   1. the continuation of a message that spans from the previous flit, at G0;
-//   2. an Activation message, only at G0 and at most one per flit;
+//   2. an Activation message, only at G0 and at most one per flit, sharing
+//      the flit only with what 4.4 (v0.9 draft) permits and the policy's
+//      act_share_pct asks for: the initial CrdtGrant after an ActivateAck (or
+//      an ActivateReq that follows our Ack), responses after a DeactivateReq;
 //   3. returned credits: the initial CrdtGrant after our ActivateAck, then
 //      header MsgCredit and/or CrdtGrant per the policy;
 //   4. credited messages whose class has credit for every granule (consumed
@@ -38,6 +41,9 @@ class aou_packer extends uvm_object;
   aou_msg        carry_msg;
   int unsigned   flit_cnt;
   int unsigned   credit_stalls;
+  // While building a DeactivateReq's flit that shares (pol.act_share_pct):
+  // pick() and pick_fit() offer WriteResp and ReadData only.
+  bit            rsp_only;
 
   // One-shot injections applied to the next flit built.
   int            inj_flip_start = -1;   // invert MsgStart[k]
@@ -152,16 +158,21 @@ class aou_packer extends uvm_object;
     int best = -1;
     int unsigned best_len;
     foreach (q[i]) begin
-      if (q[i].size() > 0 && eligible(q[i][0]) && !held(i) && q[i][0].num_granules() <= room &&
-          (best < 0 || q[i][0].num_granules() > best_len)) begin
+      if (q[i].size() > 0 && eligible(q[i][0]) && !held(i) && offered(q[i][0]) &&
+          q[i][0].num_granules() <= room && (best < 0 || q[i][0].num_granules() > best_len)) begin
         best = i;
         best_len = q[i][0].num_granules();
       end
     end
-    if (misc_q.size() > 0 && eligible(misc_q[0]) && misc_half_cnt < cfg.pol.misc_per_half_max &&
+    if (!rsp_only && misc_q.size() > 0 && eligible(misc_q[0]) &&
+        misc_half_cnt < cfg.pol.misc_per_half_max &&
         misc_q[0].num_granules() <= room && (best < 0 || misc_q[0].num_granules() > best_len))
       best = NQ;
     return best;
+  endfunction
+
+  function bit offered(aou_msg m);
+    return !rsp_only || m.cred_class() inside {AOU_CC_WRESP, AOU_CC_RDATA};
   endfunction
 
   // Index of the next message to place: a q[] index, NQ for misc_q, or -1.
@@ -172,11 +183,12 @@ class aou_packer extends uvm_object;
     foreach (q[i]) begin
       if (q[i].size() > 0) begin
         if (eligible(q[i][0])) begin
-          if (!held(i)) cand.push_back(i);
+          if (!held(i) && offered(q[i][0])) cand.push_back(i);
         end else if (lnk.can_send(q[i][0].cred_class()) && !cfg.pol.hold_credited) credit_stalls++;
       end
     end
-    if (misc_q.size() > 0 && eligible(misc_q[0]) && misc_half_cnt < cfg.pol.misc_per_half_max)
+    if (!rsp_only && misc_q.size() > 0 && eligible(misc_q[0]) &&
+        misc_half_cnt < cfg.pol.misc_per_half_max)
       cand.push_back(NQ);
     if (cand.size() == 0) return -1;
     if (cfg.pol.random_order) return cand[$urandom_range(0, cand.size() - 1)];
@@ -229,7 +241,9 @@ class aou_packer extends uvm_object;
     int unsigned gp;
     int unsigned nmsgs;
     int unsigned misc_half[2];
-    bit alone;
+    bit alone;          // an Activation message at G0: nothing else unless shared below
+    bit share_grant;    // ... except the initial CrdtGrant (after our ActivateAck)
+    bit share_rsp;      // ... except WriteResp/ReadData (after our DeactivateReq)
     bit first_new = 1'b1;
     aou_cred_method_e meth = cfg.pol.cred_method;
     f.seq = flit_cnt++;
@@ -259,11 +273,19 @@ class aou_packer extends uvm_object;
       lnk.on_sent(a);
       gp = a.num_granules();
       nmsgs++;
-      alone = 1'b1;   // v0.8 4.4: nothing else in an Activation's flit
+      alone = 1'b1;   // 4.4: nothing else in an Activation's flit, except:
+      if (!a.ignore_state && cfg.pol.act_share_pct != 0 &&
+          $urandom_range(0, 99) < int'(cfg.pol.act_share_pct)) begin
+        // The initial CrdtGrant: on_sent() has just set grant_due after our Ack;
+        // after our Req it is still due only when our Ack went first (ack_first)
+        // without it, and adv_any() below keeps it behind our Ack (AOU-R29).
+        share_grant = a.op inside {AOU_ACT_ACK, AOU_ACT_REQ};
+        share_rsp = a.op == AOU_DEACT_REQ;     // responses still go after it (8.4)
+      end
     end
 
     if (meth == AOU_CRM_MIXED) meth = aou_cred_method_e'($urandom_range(0, 2));
-    if (adv_any() && !alone && lnk.grant_due && gp + 2 <= AOU_GRANULES) begin
+    if (adv_any() && (!alone || share_grant) && lnk.grant_due && gp + 2 <= AOU_GRANULES) begin
       aou_msg_crdtgrant g = mk_grant();
       lnk.grant_due = 1'b0;
       if (g != null) begin
@@ -292,7 +314,8 @@ class aou_packer extends uvm_object;
       end
     end
 
-    while (!alone && gp < AOU_GRANULES && carry_g.size() == 0) begin
+    rsp_only = share_rsp;
+    while ((!alone || share_rsp) && gp < AOU_GRANULES && carry_g.size() == 0) begin
       int idx;
       aou_msg m;
       int unsigned len;
@@ -333,6 +356,7 @@ class aou_packer extends uvm_object;
       nmsgs++;
       first_new = 1'b0;
     end
+    rsp_only = 1'b0;
     for (int unsigned z = 0; z < cfg.pol.zero_grants; z++) begin
       aou_msg_crdtgrant zg;
       // A CrdtGrant, even an empty one, only once we may advertise (AOU-R29).

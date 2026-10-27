@@ -54,6 +54,25 @@ class aou_unpacker extends uvm_object;
     carry_need = 0;
   endfunction
 
+  // The kind of a message from its first granule alone, for one that has
+  // not been decoded yet (it continues into the next flit).
+  static function string start_kind(aou_granule_t g0);
+    case (g0[39:36])
+      AOU_MT_WREQ:   return "WriteReq";
+      AOU_MT_RREQ:   return "ReadReq";
+      AOU_MT_WDATA:  return $sformatf("WriteData%0d", aou_dl_bits(g0[33:32]));
+      AOU_MT_WDATAF: return $sformatf("WriteDataFull%0d", aou_dl_bits(g0[33:32]));
+      AOU_MT_RDATA:  return $sformatf("ReadData%0d", aou_dl_bits(g0[33:32]));
+      AOU_MT_WRESP:  return "WriteResp";
+      AOU_MT_MISC: begin
+        if (g0[35:33] == AOU_MISCOP_CRDT) return "CrdtGrant";
+        if (g0[35:33] == AOU_MISCOP_ACT) return aou_msg_act::op_name(g0[32:29]);
+        return $sformatf("MiscOp%0d", g0[35:33]);
+      end
+      default:       return $sformatf("MT%0d", g0[39:36]);
+    endcase
+  endfunction
+
   function void finish(aou_flit f, aou_granule_t g[$], int sflit, int spos, int unsigned nflits);
     aou_msg m = aou_msg_codec::decode(g, cfg.spec_rev);
     string r;
@@ -201,17 +220,41 @@ class aou_unpacker extends uvm_object;
       viol((req && ack) ? "AOU-R8" : "AOU-R6", f, acts[1],
            $sformatf("%0d Activation messages in one flit", acts.size()));
     end
-    // v0.8 4.4 placement, independent of the wire format (spec_rev): the
-    // Activation alone in its flit, at most 2 other Misc per half-flit. Always
-    // on our own flits; on the DUT's only with cfg.v0p8 (+v0p8) or the v0.8
-    // wire format, since the DUT implements v0.7.1's rule.
-    if (dir == AOU_L3_TX || cfg.spec_rev == AOU_SPEC_V08 || cfg.v0p8) begin
+    // 4.4 placement beyond v0.7.1, independent of the wire format (spec_rev),
+    // as the v0.9 draft words it: an Activation message shares its flit with
+    // nothing, except one CrdtGrant after an ActivateReq or ActivateAck and
+    // WriteResp/ReadData after a DeactivateReq (a message continuing into
+    // the next flit counts by its kind); at most 2 other Misc per half-flit.
+    // Whether a credit may be sent yet is AOU-R29's question, not this one.
+    // Always on our own flits; on the DUT's only with cfg.v0p9draft
+    // (+v0p9draft) or the v0.8 wire format, since the DUT implements v0.7.1's
+    // rule.
+    if (dir == AOU_L3_TX || cfg.spec_rev == AOU_SPEC_V08 || cfg.v0p9draft) begin
       ledger_chk("AOU-R7");
       if (acts.size() > 0 && f.num_starts() > acts.size()) begin
-        string k = "";
-        foreach (done[j]) k = {k, " ", done[j].kind()};
-        if (carry_need != 0) k = {k, " (+1 continuing)"};
-        viol("AOU-R6", f, acts[0], {"Activation message shares its flit:", k});
+        string k = "", bad = "";
+        int unsigned grants = 0;
+        foreach (st_g0[i]) begin
+          string kind = start_kind(st_g0[i]);
+          bit ok;
+          if (st_g0[i][39:36] == AOU_MT_MISC && st_g0[i][35:33] == AOU_MISCOP_ACT) continue;
+          k = {k, " ", kind};
+          if (st_pos[i] + st_len[i] > AOU_GRANULES) k = {k, "(continuing)"};
+          case (act_ops[0])
+            AOU_ACT_REQ, AOU_ACT_ACK: begin
+              ok = st_g0[i][39:36] == AOU_MT_MISC && st_g0[i][35:33] == AOU_MISCOP_CRDT &&
+                   grants == 0;
+              if (st_g0[i][39:36] == AOU_MT_MISC && st_g0[i][35:33] == AOU_MISCOP_CRDT) grants++;
+            end
+            AOU_DEACT_REQ: ok = st_g0[i][39:36] inside {AOU_MT_WRESP, AOU_MT_RDATA};
+            default:       ok = 1'b0;
+          endcase
+          if (!ok) bad = {bad, " ", kind};
+        end
+        if (bad != "")
+          viol("AOU-R6", f, acts[0],
+               $sformatf("Activation message shares its flit: %s%s (not permitted:%s)",
+                         aou_msg_act::op_name(act_ops[0]), k, bad));
       end
       foreach (misc_half[h]) begin
         if (misc_half[h] > 2)
