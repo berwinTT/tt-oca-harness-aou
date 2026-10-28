@@ -3629,7 +3629,7 @@ the DUT; then one grant per RP releases them (10.7)
 * 10.9: Measure full RTT (AXI read request to read response)
 * 10.10: Small transfers (S2): 1-beat reads and writes, one side and both, at least 97% of the d2d_model bytes/cycle per link
 * 10.11: Partial-strobe writes (S3, WriteData) at least 97% of the d2d_model bytes/cycle per link; the full-strobe reference is 10.1
-* 10.12: Burst-length sweep (S4) 1 to 256 beats through the DUT splitter, AxSIZE narrowed to stay within 4 KB: at least 97% of the d2d_model bytes/cycle per link, the split visible in the message mix
+* 10.12: Burst-length sweep (S4) 1 to 256 beats, AxSIZE narrowed to stay within 4 KB: at least 97% of the d2d_model bytes/cycle per link; bursts cross the link whole, the DUT dividing the ones it receives at its manager port (MAX_AxBURSTLEN)
 * 10.13: All RPs at once (S5) with 0, 50 and 100% of the transactions on the widest RP: at least 97% of the d2d_model bytes/cycle per link
 * 18.1: Configure `FDI_CFG_SP_32B`; verify 32-byte chunks
 * 18.3: Configure `FDI_CFG_SP_128B`; verify 128-byte chunks
@@ -3711,7 +3711,7 @@ are bashed: writing 1 to a clear flag must leave it 0.
 *Plan items.*
 
 * 11.17: PCLK:CLK ratios through the asynchronous APB bridge: slow, fast and near-equal PCLK
-* 20.2: Read/write control register 0 (AXI_SPLIT_TR_EN has no storage and reads 0, tenstorrent/tt-oca-harness-aou#119)
+* 20.2: Read/write control register 0 (bits [3:1] are reserved; the splitter has no enable)
 * 20.3: Read/write activation control
 * 20.4: Read/write interrupt masks
 * 20.5: Read/write/write-1-clear fields
@@ -3748,7 +3748,7 @@ Class `aou_reg_access_test` extends `aou_reg_base_test` (`uvm/tests/reg/aou_reg_
 *Plan items.*
 
 * 11.17: PCLK:CLK ratios through the asynchronous APB bridge: slow, fast and near-equal PCLK
-* 20.2: Read/write control register 0 (AXI_SPLIT_TR_EN has no storage and reads 0, tenstorrent/tt-oca-harness-aou#119)
+* 20.2: Read/write control register 0 (bits [3:1] are reserved; the splitter has no enable)
 * 20.3: Read/write activation control
 * 20.4: Read/write interrupt masks
 * 20.5: Read/write/write-1-clear fields
@@ -3827,7 +3827,7 @@ Class `aou_reg_feature_seq_test` extends `aou_reg_base_test` (`uvm/tests/reg/aou
 
 *Plan items.*
 
-* 20.2: Read/write control register 0 (AXI_SPLIT_TR_EN has no storage and reads 0, tenstorrent/tt-oca-harness-aou#119)
+* 20.2: Read/write control register 0 (bits [3:1] are reserved; the splitter has no enable)
 * 20.3: Read/write activation control
 * 20.5: Read/write/write-1-clear fields
 * 20.6: Read/write RP destination mapping
