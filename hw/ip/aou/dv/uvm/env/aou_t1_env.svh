@@ -208,6 +208,7 @@ class aou_t1_env extends uvm_env;
     wdt_chk.rm = regs.model;
     early_tbl.vif = new[cfg.n_rp];
     foreach (s_mgr[r]) early_tbl.vif[r] = s_mgr[r].cfg.vif;
+    crd_chk.early = early_tbl;
     if (fdi_chk != null) fdi_chk.l3_cfg = cfg.l3_cfg;
     lsm.mon.ap.connect(axi4pc.lsm_imp);
     axi4pc.m_drv = new[cfg.n_rp];
@@ -262,6 +263,8 @@ class aou_t1_env extends uvm_env;
       l3.ap_rx_msg.connect(rx_fifo_chk.dut_imp);
     end
     sw_isr.status = status;
+    status.model = l3.model;
+    status.rm = regs.model;
     sw_isr.rm = regs.model;
     sw_isr.apb_sqr = regs.apb.sqr;
     sw_isr.mgr = new[cfg.n_rp];
@@ -276,6 +279,7 @@ class aou_t1_env extends uvm_env;
     pump.gap_pct = cfg.l1_gap_pct;
     pump.cancel_mix = cfg.l1_cancel_mix;
     pump.fdi = fdi[cfg.lsm_cfg.active_phy];
+    status.pump = pump;
     fork
       pump.start(fdi[cfg.lsm_cfg.active_phy].sqr);
       forever begin

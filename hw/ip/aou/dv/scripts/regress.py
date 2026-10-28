@@ -264,7 +264,7 @@ def cov_cmds(args, units, configs, regdir, write=True):
     t1 = {u.config: u for u in units if u.bench == "t1"}
     reg = {u.config: u for u in units if u.bench == "reg"}
     jobs, union = [], {"sim": args.sim, "rid": args.rid, "out_root": args.out_root,
-                       "rtl_patch": args.rtl_patch, "configs": []}
+                       "rtl_patch": args.rtl_patch, "cov_el": words(args.cov_el), "configs": []}
     for c in configs:
         if c not in t1:
             continue
@@ -272,6 +272,7 @@ def cov_cmds(args, units, configs, regdir, write=True):
                f"CONFIG={c}", f"COV_RID={args.rid}", f"OUT_DIR={os.path.join(args.out_root, t1[c].build)}"]
         if args.rtl_patch:
             cmd.append(f"RTL_PATCH={args.rtl_patch}")
+        cmd.append(f"COV_EL={args.cov_el}")
         if c not in reg:
             cmd.append("COV_WITH=")
         jobs.append((f"cov-{c}", cmd))
@@ -415,9 +416,11 @@ def union(spec_path):
             vdbs += [os.path.join(build_root, b, "cov", "simv.vdb") for b in (c["t1"], c["reg"]) if b]
         with open(os.path.join(udir, "tests.txt"), "w", encoding="utf-8") as fh:
             fh.write("\n".join(tests) + "\n")
+        # The same exclusions as each configuration's report (make cov_report's COV_EL).
+        els = [a for f in spec.get("cov_el", []) for a in ("-elfile", f)]
         run(["urg", "-full64", "-dir", *vdbs, "-map", "AOU_CORE_TOP", "-tests",
-             os.path.join(udir, "tests.txt"), "-format", "both", "-report", os.path.join(udir, "urg"),
-             "-log", os.path.join(udir, "urg.log")])
+             os.path.join(udir, "tests.txt"), *els, "-format", "both", "-report",
+             os.path.join(udir, "urg"), "-log", os.path.join(udir, "urg.log")])
         # The whole dashboard: its module-definition table is the first database's
         # modules only; the instance rows carry the union. urg merges a module of another
         # configuration only where its shape matches (warning UCAPI-MAP-SHAPEMISMATCH otherwise).
@@ -493,8 +496,10 @@ def summary(args, units, notes, state, regdir):
         sec = dict.fromkeys(total, 0)
         for u in us:
             rows = read_rows(args.out_root, u.build, args.rid)
-            if not rows:
-                rc = state.get("builds", {}).get(u.build)
+            rc = state.get("builds", {}).get(u.build)
+            if not rows or rc not in (None, 0):
+                # A failed rebuild's runs were skipped: results already under this RID are
+                # from the build before it, so they don't count.
                 why = (f"build failed (rc={rc}, {os.path.join(regdir, 'logs', 'build-' + u.label + '.log')})"
                        if rc not in (None, 0) else
                        f"no results for rid {args.rid} (see {os.path.join(regdir, 'logs', 'run-' + u.label + '.log')})")
@@ -583,6 +588,9 @@ def main(argv=None):
     ap.add_argument("--lsf", default="", choices=["", "0", "1"],
                     help="1: start the jobs at once, LSF takes them (default: 1 when bsub is on PATH)")
     ap.add_argument("--cov-mem", default="16GB", help="LSF memory of each coverage job, with a unit")
+    ap.add_argument("--cov-el", default=os.path.join(UVM_ROOT, "cov", "config", "vcs", "cov_exclude.el"),
+                    help="VCS coverage exclusion files for every report and the union "
+                         "(make's COV_EL; empty: none)")
     ap.add_argument("--dry-run", action="store_true", help="print the plan; build and run nothing")
     ap.add_argument("--out-root", default=os.path.join(UVM_ROOT, "out"), help=argparse.SUPPRESS)
     ap.add_argument("--union", metavar="JSON", help=argparse.SUPPRESS)

@@ -119,6 +119,7 @@ class Regress(unittest.TestCase):
         self.assertIn("TB=l3_unit COV=0", p.stdout)
         self.assertIn("cov_report SIM=vcs TB=t1 COV=1 CONFIG=1x512-sp64 COV_RID=d2", p.stdout)
         self.assertIn("--union", p.stdout)
+        self.assertIn("COV_EL=cov/config/vcs/cov_exclude.el", p.stdout)
 
     def test_items_skip_benches_without_them(self):
         p = self.regress("--sim", "vcs", "--rid", "d3", "--items", "smoke", "--dry-run")
@@ -199,6 +200,16 @@ class Regress(unittest.TestCase):
             with open(f, newline="", encoding="utf-8") as fh:
                 rows += list(csv.DictReader(fh))
         self.assertEqual(len(rows), len(planned("t1", "testlists/all.toml", "smoke")))
+
+    def test_rebuild_failure_on_reused_rid(self):
+        # Results from an earlier build under the same RID must not hide a failed rebuild.
+        items = ("--items", "smoke", "--benches", "t1")
+        p = self.regress("--sim", "vcs", "--rid", "f1", *items)
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        p = self.regress("--sim", "vcs", "--rid", "f1", *items, FAKE_BUILD_FAIL="vcs-t1-1x512-sp64")
+        self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+        self.assertIn("vcs-t1-1x512-sp64: build failed", p.stdout)
+        self.assertIn("Result: FAIL", p.stdout)
 
     def test_bad_options(self):
         self.assertNotEqual(self.regress("--rid", "a b", "--dry-run").returncode, 0)
