@@ -15,12 +15,17 @@
 //   overgrant  credit beyond any buffer   saturation in A, AOU-R21 (checker)
 //   req_after_dreq  WriteReq after B's own DeactivateReq
 //                                         AOU-R30 (checker), AOU-R34 (A)
-//   crd_in_disabled  ReadData credit once the teardown has completed
+//   crd_in_disabled  ReadData credit from B after B's own DeactivateAck
+//                    completed the teardown
 //                                         AOU-R29 (checker), AOU-R26 (A)
 // The last two keep the deactivation windows honest: ReadData/WriteResp may
 // follow one's own DeactivateReq and every credit one's own DeactivateAck
 // (v0.8 8.4, MAS 7.3.1), but requests stop at the DeactivateReq and credits
-// at DISABLED.
+// at DISABLED. B deactivates so that its own DeactivateAck is the last one: it
+// is DISABLED from that flit on. Had A sent the last Ack, B would be DISABLED
+// only once that Ack reached it (v0.8 8.2), and nothing B sends before its
+// next Activation message shows when that was, so neither the checker nor A
+// can report its credits (aou_l3_late_adv_test).
 class aou_l3_inject_test extends aou_l3_unit_env_test;
   `uvm_component_utils(aou_l3_inject_test)
 
@@ -136,9 +141,9 @@ class aou_l3_inject_test extends aou_l3_unit_env_test;
         b.send(w);
       end
       "crd_in_disabled": begin
-        a.model.lnk.request_deactivate();
-        a.model.maybe_release_deact();
-        a.model.kick();
+        b.model.lnk.request_deactivate();
+        b.model.maybe_release_deact();
+        b.model.kick();
         wait (a.model.lnk.state == AOU_LS_DISABLED && b.model.lnk.state == AOU_LS_DISABLED);
         idle(20);
         // RP0 RDATA=1 in an otherwise empty flit ({RP, WRESP, RDATA, ...}).

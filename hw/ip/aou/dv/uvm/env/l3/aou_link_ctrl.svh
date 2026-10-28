@@ -33,6 +33,11 @@ class aou_link_ctrl extends uvm_object;
   // the DUT waits for our real DeactivateAck (AOU-R37) stands down for the
   // next deactivation: cleared when we next reach DISABLED, or on a reset.
   bit          stray_dack_enabled;
+  // We reached DISABLED by sending the final DeactivateAck. The DUT is
+  // DISABLED only once that Ack reaches it (8.2) and may advertise until then,
+  // so its credits are tolerated, and funded nowhere, until its next
+  // Activation message (peer_adv_ok). Cleared by that message or a reset.
+  bit          peer_late;
   aou_msg_act out_q[$];
   uvm_event   state_ev;
 
@@ -84,15 +89,17 @@ class aou_link_ctrl extends uvm_object;
     return open;
   endfunction
 
-  // Credits may be advertised now: after our ActivateAck (8.4), as the DUT does
-  // (MAS 7.3.1). Request credits stop at our DeactivateAck; response credits
-  // fund the answers to our own open requests and stop at our DeactivateReq,
-  // after which none is open. Later ones could reach a peer already DISABLED:
-  // the final DeactivateAck answers our DeactivateReq, and we learn of DISABLED
-  // only when it arrives.
+  // Credits may be advertised now: after our ActivateAck (8.4). Response
+  // credits fund the answers to our own open requests and stop at our
+  // DeactivateReq, after which none is open. Request credits go on until we
+  // are DISABLED (cfg.late_adv): v0.8 8.4 permits them after our DeactivateAck,
+  // and DISABLED is ours only once we have also received the DUT's
+  // DeactivateAck (8.2), so the ones sent while it is on its way reach a DUT
+  // that is already DISABLED and must drop them. With late_adv off they stop
+  // at our DeactivateAck, as the DUT's do (MAS 7.3.1).
   function bit can_advertise(bit rsp_class);
     if (state inside {AOU_LS_DISABLED, AOU_LS_ERROR} || !ack_sent) return 1'b0;
-    return rsp_class ? !dreq_sent : !dack_sent;
+    return rsp_class ? !dreq_sent : (cfg.late_adv || !dack_sent);
   endfunction
 
   // An activation message of ours went out in a flit.
@@ -111,12 +118,18 @@ class aou_link_ctrl extends uvm_object;
         ack_sent = 1'b1;
         grant_due = cfg.initial_grant;
       end
-      AOU_DEACT_REQ: dreq_sent = 1'b1;
+      AOU_DEACT_REQ: begin
+        dreq_sent = 1'b1;
+        // Stimulus: the credit held back for this moment (late_adv_hold) goes
+        // out behind our DeactivateReq, racing the DUT's final DeactivateAck.
+        crd.release_late_held();
+      end
       AOU_DEACT_ACK: dack_sent = 1'b1;
       default: ;
     endcase
     if (cov != null) cov.sample_act_op(m.op, AOU_L3_TX, 1'b1);
     update_state();
+    if (m.op == AOU_DEACT_ACK && state == AOU_LS_DISABLED) peer_late = 1'b1;
   endfunction
 
   // Whether the peer may receive op from us now (legal_rcvd from its side).
@@ -145,6 +158,8 @@ class aou_link_ctrl extends uvm_object;
   function bit on_rcvd(aou_msg_act m);
     bit legal;
     if (state == AOU_LS_ERROR) return 1'b1;   // ERROR ignores everything received
+    // Any Activation message from the DUT shows it has left DEACTIVATE.
+    peer_late = 1'b0;
     legal = legal_rcvd(m.op);
     if (cov != null) cov.sample_act_op(m.op, AOU_L3_RX, legal);
     if (!legal) begin
@@ -233,6 +248,7 @@ class aou_link_ctrl extends uvm_object;
   function void recover();
     out_q.delete();
     clear_events();
+    peer_late = 1'b0;
     link_lost = state != AOU_LS_ERROR;
     set_state(AOU_LS_DISABLED);
     link_lost = 1'b0;

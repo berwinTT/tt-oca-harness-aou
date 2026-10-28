@@ -97,14 +97,18 @@
   `B``_ILL(overflow, EV_OVERFLOW, EV_OVERFLOW, "") \
   `B``_BIN(dut_zero_stall, EV_DUT_ZERO_STALL, EV_DUT_ZERO_STALL) \
   `B``_BIN(dut_saturate, EV_DUT_SATURATE, EV_DUT_SATURATE) \
-  `B``_BIN(inj_overflow, EV_INJ_OVERFLOW, EV_INJ_OVERFLOW)
+  `B``_BIN(inj_overflow, EV_INJ_OVERFLOW, EV_INJ_OVERFLOW) \
+  `B``_BIN(late_adv, EV_LATE_ADV, EV_LATE_ADV)
 // Each event has one direction: the model stalls on DUT credit (tx), the DUT
-// waits for ours (rx), our over-grant (tx), our send without credit (tx).
+// waits for ours (rx), our over-grant (tx), our send without credit (tx), our
+// late advertisement (tx). Only request credits go on past our DeactivateReq.
 `define AOU_L3_FC_X_CREDIT(B) \
   `B``_XIGN("zero_stall,*,rx") \
   `B``_XIGN("dut_zero_stall,*,tx") \
   `B``_XIGN("dut_saturate,*,rx") \
-  `B``_XIGN("inj_overflow,*,rx")
+  `B``_XIGN("inj_overflow,*,rx") \
+  `B``_XIGN("late_adv,*,rx") \
+  `B``_XIGN("late_adv,c[3]|c[4],*")
 `define AOU_L3_FC_CLS(B) `B``_VALS(c, 0, 4)
 // A WriteReq the model sent (cg_wr_order), by how many of its own WriteData
 // messages went before it (AoU v0.8 5.7 leaves the order open; the DUT's RX

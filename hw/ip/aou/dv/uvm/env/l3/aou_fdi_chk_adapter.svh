@@ -21,6 +21,9 @@ class aou_fdi_chk_adapter extends uvm_component;
   // The DEACTIVATE_FORCE window (aou_l3_cfg::force_deact_window); null: none.
   aou_l3_cfg                 l3_cfg;
   int unsigned               forced_skips;   // forced DeactivateReqs not reported
+  // Flits per direction (0 LP, 1 PL) whose credits the checker let pass as
+  // late: sent by the die that had not yet received the final DeactivateAck.
+  int unsigned               late_adv_flits[2];
 
   function new(string name, uvm_component parent);
     super.new(name, parent);
@@ -102,6 +105,15 @@ class aou_fdi_chk_adapter extends uvm_component;
       bit [NCLS-1:0] fresh;
       @(vif.mon_cb);
       if (vif.mon_cb.rst_n !== 1'b1) continue;
+      for (int unsigned d = 0; d < 2; d++) begin
+        if (vif.mon_cb.late_adv[d] === 1'b1) begin
+          int unsigned seq = (d != 0) ? vif.mon_cb.pl_flit_seq : vif.mon_cb.lp_flit_seq;
+          late_adv_flits[d]++;
+          `uvm_info(get_type_name(), $sformatf(
+              "AOU_FDI_CHECKER: %s flit#%0d: late credits after the teardown let pass",
+              dir_name(1'(d)), seq), UVM_MEDIUM)
+        end
+      end
       fresh = vif.mon_cb.violation & ~reported;
       if (fresh == 0) continue;
       for (int unsigned c = 0; c < NCLS; c++) begin
@@ -180,7 +192,8 @@ class aou_fdi_chk_adapter extends uvm_component;
   function void report_phase(uvm_phase phase);
     super.report_phase(phase);
     ledger();
-    `uvm_info(get_type_name(), $sformatf("AOU_FDI_CHECKER: LP flits=%0d PL flits=%0d reports=%p",
-                                         vif.lp_flit_seq, vif.pl_flit_seq, reports), UVM_LOW)
+    `uvm_info(get_type_name(), $sformatf(
+        "AOU_FDI_CHECKER: LP flits=%0d PL flits=%0d reports=%p late credit flits LP=%0d PL=%0d",
+        vif.lp_flit_seq, vif.pl_flit_seq, reports, late_adv_flits[0], late_adv_flits[1]), UVM_LOW)
   endfunction
 endclass

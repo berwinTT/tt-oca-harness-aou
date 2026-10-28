@@ -88,7 +88,7 @@ tests = [
 # Functional areas (no stress, matrix, perf or assertion builds)
 [[groups]]
 name = "functional"
-expected_count = 264
+expected_count = 265
 tests = [
   "aou_t1_slice_test",
   "aou_t1_deact_test",
@@ -208,6 +208,7 @@ tests = [
   "aou_link_act_deact_test.who-apb.deact_who-apb.busy-1",
   "aou_link_act_deact_test.who-apb.l3_ack_first-1",
   "aou_link_act_deact_test.who-both.order-simul.deact_who-both.busy-1.fdi_trdy-random.4x512-sp64",
+  "aou_link_act_deact_test.who-apb.deact_who-apb.busy-0.l3_late_adv_hold-60",
   "aou_link_force_deact_test",
   "aou_act_after_deact_test",
   "aou_act_after_deact_test.busy-1",
@@ -359,7 +360,7 @@ tests = [
 # Every runnable T1 scenario; run_list.py skips entries whose target differs
 [[groups]]
 name = "all"
-expected_count = 480
+expected_count = 481
 tests = [
   "aou_attr_test.attr_excl-1.remote_max_burst-1.4xmix4211-sp128",
   "aou_small_size_test",
@@ -546,6 +547,7 @@ tests = [
   "aou_link_act_deact_test.who-apb.deact_who-apb.busy-1",
   "aou_link_act_deact_test.who-apb.l3_ack_first-1",
   "aou_link_act_deact_test.who-both.order-simul.deact_who-both.busy-1.fdi_trdy-random.4x512-sp64",
+  "aou_link_act_deact_test.who-apb.deact_who-apb.busy-0.l3_late_adv_hold-60",
   "aou_link_force_deact_test",
   "aou_act_after_deact_test",
   "aou_act_after_deact_test.busy-1",

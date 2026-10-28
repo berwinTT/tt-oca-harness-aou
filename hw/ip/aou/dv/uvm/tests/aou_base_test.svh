@@ -30,6 +30,12 @@
 // DUT that sends requests after its own DeactivateReq gets the credit to do so);
 // +l3_ack_first=1 the remote die answers a DUT ActivateReq with its Ack before
 // its own Req (the test's own setting wins where it has one);
+// +l3_late_adv=0 the remote die stops request credits at its own DeactivateAck
+// instead of advertising them until it is DISABLED (aou_l3_cfg::late_adv);
+// +l3_late_adv_hold=N it holds N granules of each request class per RP back
+// from every activation's advertisement and sends them behind its
+// DeactivateReq, where they can cross the DUT's final DeactivateAck and reach
+// a DUT already DISABLED (keep N below the remote die's RX depth);
 // +v0p9draft holds the DUT to the expectations added after AoU v0.7.1, pegged
 // to the v0.9 draft (aou_t1_env_cfg::v0p9draft; today AOU-R6/AOU-R7, the 4.4
 // Misc placement);
@@ -93,6 +99,8 @@ class aou_base_test extends ocah_test;
               "DUT rules: AoU v0.7.1 Misc placement", UVM_LOW)
     void'($value$plusargs("l3_deact_ack_hold=%d", cfg.l3_cfg.deact_ack_hold));
     void'($value$plusargs("l3_ack_first=%d", cfg.l3_cfg.ack_first));
+    void'($value$plusargs("l3_late_adv=%d", cfg.l3_cfg.late_adv));
+    void'($value$plusargs("l3_late_adv_hold=%d", cfg.l3_cfg.late_adv_hold));
     if ($value$plusargs("remote_bytes=%s", rb)) cfg.set_remote_bytes(rb);
     void'($value$plusargs("remote_max_burst_rand=%d", cfg.remote_max_burst_rand));
     if ($value$plusargs("remote_wreq=%s", rb)) begin

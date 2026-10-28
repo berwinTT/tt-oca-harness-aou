@@ -86,6 +86,7 @@ sources = [
   "hw/ip/aou/dv/uvm/env/checker/AOU_FDI_CHECKER.sv",
   "hw/ip/aou/dv/uvm/env/checker/aou_fdi_checker_if.sv",
   "hw/ip/aou/dv/uvm/env/checker/aou_fdi_chk_dir_tap.sv",
+  "hw/ip/aou/dv/uvm/env/checker/aou_fdi_chk_phy.sv",
   "hw/ip/aou/dv/uvm/env/l3/aou_l3_pkg.sv",
   "hw/ip/aou/dv/uvm/env/apb/aou_apb_if.sv",
   "hw/ip/aou/dv/uvm/env/apb/aou_apb_pkg.sv",

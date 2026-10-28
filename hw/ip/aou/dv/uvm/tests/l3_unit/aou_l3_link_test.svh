@@ -11,7 +11,11 @@
 // (AOU-R34), credits after the DUT's DeactivateAck (AOU-R26: credits of every
 // class are permitted until DISABLED, v0.8 8.4 and MAS 7.3.1, including those
 // in the flit whose Ack completes the teardown; any credit in a later
-// DISABLED flit is not), and v0.8's ERROR state with its recovery.
+// DISABLED flit is not, unless our own Ack completed the teardown: the DUT is
+// DISABLED only once that Ack reaches it, v0.8 8.2, so its credits are
+// tolerated and dropped until its next Activation message), request credits
+// we advertise after our own DeactivateAck and that cross the final one
+// (late_adv), and v0.8's ERROR state with its recovery.
 class aou_l3_link_test extends aou_l3_unit_base_test;
   `uvm_component_utils(aou_l3_link_test)
 
@@ -28,6 +32,7 @@ class aou_l3_link_test extends aou_l3_unit_base_test;
     deact_rules();
     deact_crossing();
     deact_credit_rules();
+    late_credits();
     act_share_rules();
     error_v08();
     phase.drop_objection(this);
@@ -255,8 +260,20 @@ class aou_l3_link_test extends aou_l3_unit_base_test;
                 "a response credit after the DeactivateAck is permitted (MAS 7.3.1)");
     void'(exchange(a, b));
     both(a, b, AOU_LS_DISABLED, "A's deactivation completes");
+    // A's DeactivateAck completed the teardown, so B was DISABLED only once it
+    // arrived (8.2), and nothing in B's flits tells A when that was.
     b_to_a(a, b, 'h0001, 1'b1);
-    expect_true(chk.count("AOU-R26") == 1, "a request credit in a later DISABLED flit is AOU-R26");
+    expect_true(chk.count("AOU-R26") == 0,
+                "a credit after our final DeactivateAck is tolerated: it may have crossed it");
+    expect_true(a.crd.tx_cred[0][AOU_CC_WREQ] == 0, "and it funds nothing");
+    // B's next ActivateReq shows it has left DEACTIVATE.
+    chk.expect_rule("AOU-R29");
+    b.lnk.request_activate();
+    b_to_a(a, b);
+    expect_true(!a.lnk.peer_late, "B's ActivateReq ends the tolerance");
+    b_to_a(a, b, 'h0001, 1'b1);
+    expect_true(chk.count("AOU-R29") == 1, "a credit after it, before B's ActivateAck, is AOU-R29");
+    chk.unexpect_rule("AOU-R29");
     chk.clear_counts();
     // B deactivates; its DeactivateAck completes the teardown, and the flit
     // carrying it may still carry credits of any class: they are consumed
@@ -288,6 +305,86 @@ class aou_l3_link_test extends aou_l3_unit_base_test;
     expect_true(a.crd.tx_cred[0][AOU_CC_RDATA] == fresh_rdata,
                 $sformatf("fresh RDATA balance after re-activation: %0d, expected %0d",
                           a.crd.tx_cred[0][AOU_CC_RDATA], fresh_rdata));
+  endfunction
+
+  // B advertises request credits until it is DISABLED (late_adv), and the
+  // credit it held back (late_adv_hold) follows its DeactivateReq. A answers
+  // that Req with the final DeactivateAck before B's credit flits reach it:
+  // they cross on the link. A neither reports nor counts them, and after the
+  // next activation holds B's fresh advertisement alone.
+  function void late_credits();
+    aou_l3_model a, b;
+    aou_l3_cfg cb = mk_cfg("B");
+    aou_flit q[$];
+    aou_flit f;
+    int dreq_at = -1;
+    int unsigned late = 0;
+    int unsigned fresh_wreq;
+    cb.late_adv_hold = 31;
+    a = mk_model("A", mk_cfg("A"));
+    b = mk_model("B", cb);
+    chk.clear_counts();
+    a.lnk.request_activate();
+    void'(exchange(a, b));
+    both(a, b, AOU_LS_ENABLED, "activation with B holding credit back");
+    fresh_wreq = a.crd.tx_cred[0][AOU_CC_WREQ];
+    expect_true(fresh_wreq == 64 - 31,
+                $sformatf("B advertised its WriteReq depth less the held credit: %0d", fresh_wreq));
+    a.lnk.request_deactivate();
+    a.maybe_release_deact();
+    a_to_b(a, b);
+    expect_true(a.lnk.dreq_sent && b.lnk.dreq_rcvd, "A's DeactivateReq is out");
+    // B's Ack, its Req and its late credit, none delivered yet.
+    for (int unsigned n = 0; n < 60 && b.pk.has_work(); n++) begin
+      f = b.pk.build();
+      b.post_tx(f);
+      if (dreq_at < 0 && f.msg_start[0] && f.g[0][39:36] == AOU_MT_MISC &&
+          f.g[0][35:33] == AOU_MISCOP_ACT && f.g[0][32:29] == AOU_DEACT_REQ)
+        dreq_at = q.size();
+      q.push_back(f);
+    end
+    expect_true(b.lnk.dack_sent && b.lnk.dreq_sent && b.lnk.state == AOU_LS_DEACTIVATE,
+                "B sent its Ack and Req and is still in DEACTIVATE");
+    expect_true(dreq_at >= 0 && q.size() > dreq_at + 1,
+                $sformatf("credit-only flits follow B's DeactivateReq (%0d flits, Req at %0d)",
+                          q.size(), dreq_at));
+    for (int i = 0; i <= dreq_at; i++) a.rx_flit(copy_flit(q[i]));
+    // A's final DeactivateAck: A is DISABLED; B is not until it arrives.
+    f = a.pk.build();
+    a.post_tx(f);
+    expect_true(a.lnk.state == AOU_LS_DISABLED && a.lnk.peer_late,
+                "A's DeactivateAck completes the teardown on A's side");
+    for (int i = dreq_at + 1; i < q.size(); i++) begin
+      if (q[i].msg_credit[2:0] != 0) late++;
+      a.rx_flit(copy_flit(q[i]));
+    end
+    expect_true(late > 0, "B's late flits carry WriteReq credit");
+    expect_true(chk.total() == 0,
+                $sformatf("credits crossing the final DeactivateAck are no finding (%s)",
+                          chk.summary()));
+    expect_true(a.crd.tx_cred[0][AOU_CC_WREQ] == 0, "A counts none of them");
+    b.rx_flit(copy_flit(f));
+    both(a, b, AOU_LS_DISABLED, "B reaches DISABLED on A's Ack");
+    a.lnk.request_activate();
+    void'(exchange(a, b));
+    both(a, b, AOU_LS_ENABLED, "re-activation after the late credits");
+    expect_true(a.crd.tx_cred[0][AOU_CC_WREQ] == fresh_wreq,
+                $sformatf("A holds B's fresh WriteReq advertisement alone: %0d, expected %0d",
+                          a.crd.tx_cred[0][AOU_CC_WREQ], fresh_wreq));
+    expect_true(chk.total() == 0, "the re-activation raises no finding");
+    // With late_adv off, B's request credits stop at its own DeactivateAck.
+    cb.late_adv = 1'b0;
+    a.lnk.request_deactivate();
+    a.maybe_release_deact();
+    a_to_b(a, b);
+    f = b.pk.build();
+    b.post_tx(f);
+    expect_true(b.lnk.dack_sent && !b.lnk.can_advertise(1'b0),
+                "late_adv off: no request credit after B's own DeactivateAck");
+    a.rx_flit(copy_flit(f));
+    void'(exchange(a, b));
+    both(a, b, AOU_LS_DISABLED, "deactivation with late_adv off");
+    chk.clear_counts();
   endfunction
 
   // 4.4 under the v0.7 wire format, as the v0.9 draft words it: an Activation

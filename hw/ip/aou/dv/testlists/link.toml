@@ -73,6 +73,22 @@ tags = ["link"]
 run_modes = ["link"]
 args = ["+who=both", "+order=simul", "+deact_who=both", "+busy=1", "+fdi_trdy=random"]
 
+# The DUT deactivates and the remote die sends request credit it held back
+# behind its own DeactivateReq (v0.8 8.4 permits request credits until it is
+# DISABLED), so some reaches the DUT after the DUT sent the final
+# DeactivateAck and is DISABLED. The DUT must drop it (8.2, 8.4): the next
+# activation's traffic may not spend more than the fresh advertisement, which
+# holding back 60 of the 64 request-class granules makes small enough that a
+# DUT which kept the late credits would overrun it (AOU-R16).
+[[tests]]
+name = "aou_link_act_deact_test.who-apb.deact_who-apb.busy-0.l3_late_adv_hold-60"
+module = { uvm = "aou_link_act_deact_test" }
+seed = 1
+reseed = 4
+tags = ["link"]
+run_modes = ["link"]
+args = ["+who=apb", "+deact_who=apb", "+busy=0", "+l3_late_adv_hold=60"]
+
 [[tests]]
 name = "aou_link_force_deact_test"
 module = { uvm = "aou_link_force_deact_test" }
@@ -523,7 +539,7 @@ args = ["+mode=deact_rsp", "+v0p9draft"]
 
 [[groups]]
 name = "link"
-expected_count = 51
+expected_count = 52
 tests = [
   "aou_link_act_deact_test",
   "aou_link_act_deact_test.who-both.order-simul.deact_who-both.busy-0",
@@ -531,6 +547,7 @@ tests = [
   "aou_link_act_deact_test.who-apb.deact_who-apb.busy-1",
   "aou_link_act_deact_test.who-apb.l3_ack_first-1",
   "aou_link_act_deact_test.who-both.order-simul.deact_who-both.busy-1.fdi_trdy-random.4x512-sp64",
+  "aou_link_act_deact_test.who-apb.deact_who-apb.busy-0.l3_late_adv_hold-60",
   "aou_link_force_deact_test",
   "aou_act_after_deact_test",
   "aou_act_after_deact_test.busy-1",

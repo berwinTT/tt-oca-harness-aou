@@ -21,6 +21,8 @@ class aou_l3_unit_env_test extends aou_l3_unit_base_test;
   aou_l3_unit_l4a     mem_b;
   aou_fdi_chk_adapter fdi_chk;
   string              policy = "dut";
+  // Activations, each carrying one run of the traffic, a test runs.
+  int unsigned        rounds = 1;
 
   function new(string name, uvm_component parent);
     super.new(name, parent);
@@ -128,9 +130,10 @@ class aou_l3_unit_env_test extends aou_l3_unit_base_test;
   function void check_phase(uvm_phase phase);
     super.check_phase(phase);
     expect_true(gen_a.mismatches == 0 && gen_b.mismatches == 0, "no read-data mismatch");
-    expect_true(gen_a.rd_done == gen_a.n_txn && gen_b.rd_done == gen_b.n_txn,
+    expect_true(gen_a.rd_done == gen_a.n_txn * rounds && gen_b.rd_done == gen_b.n_txn * rounds,
                 $sformatf("all reads complete (%0d, %0d of %0d)", gen_a.rd_done, gen_b.rd_done,
-                          gen_a.n_txn));
-    expect_true(a.model.lnk.enabled_cnt == 1 && b.model.lnk.enabled_cnt == 1, "one activation");
+                          gen_a.n_txn * rounds));
+    expect_true(a.model.lnk.enabled_cnt == rounds && b.model.lnk.enabled_cnt == rounds,
+                $sformatf("%0d activation(s)", rounds));
   endfunction
 endclass

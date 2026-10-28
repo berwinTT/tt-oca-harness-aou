@@ -17,8 +17,8 @@
 // *****************************************************************************
 //
 //  Module     : AOU_FDI_CHECKER
-//  Version    : 1.13
-//  Date       : 26-10-20
+//  Version    : 1.14
+//  Date       : 26-10-28
 //
 // *****************************************************************************
 //
@@ -198,10 +198,6 @@ if ((FDI_IF_BYTES != 32) && (FDI_IF_BYTES != 64) &&
     (FDI_IF_BYTES != 128)) begin : gen_unsupported_fdi_if_bytes
     $fatal(1, "AOU_FDI_CHECKER: unsupported FDI_IF_BYTES=%0d (32, 64 or 128)", FDI_IF_BYTES);
 end
-
-`ifdef TWO_PHY
-$fatal(1, "AOU_FDI_CHECKER: TWO_PHY is not supported (observes one single-PHY link)");
-`endif
 
 if ((RP_COUNT < 1) || (RP_COUNT > 4)) begin : gen_rp_count_out_of_range
     $fatal(1, "AOU_FDI_CHECKER: RP_COUNT=%0d; the protocol's plane field is two bits, so 1..4",
@@ -777,12 +773,17 @@ logic [DIR_CNT-1:0]                     r_deact_ack;
 // same way a consumed ActivateAck flit does, nothing else.
 logic [DIR_CNT-1:0]                     r_act_ack_half;
 
-// ONE STATE FOR THE LINK, NOT ONE PER DIE. 8.2's conditions -- ENABLED once an
-// ActivateAck has been sent and received, DISABLED once a DeactivateAck has
-// -- name the same four events from either die's side, so the two dies' states
-// cannot differ on the wire and are held once, combinationally off the events.
-// ENABLED is written with the request terms, which the answer rule already
-// implies, so that it says the specification's condition.
+// ONE STATE FOR THE LINK AS THE OBSERVATION POINT SEES IT. 8.2's conditions --
+// ENABLED once an ActivateAck has been sent and received, DISABLED once a
+// DeactivateAck has -- name the same four events from either die's side, and
+// this point sees every event as it crosses, so one state held combinationally
+// off the events is what both dies' states are at this point. A die receiving a
+// message beyond this point reaches the new state later, though: the die that
+// receives the final DeactivateAck is still in DEACTIVATE until it arrives, and
+// what it sends meanwhile arrives here after this state is DISABLED. That one
+// difference is carried apart, in r_late_adv below. ENABLED is written with the
+// request terms, which the answer rule already implies, so that it says the
+// specification's condition.
 logic                                   w_link_activated;
 logic                                   w_link_activating;
 logic                                   w_link_tearing_down;
@@ -911,10 +912,11 @@ logic [DIR_CNT-1:0]                     w_act_ack_nxt;
 logic [DIR_CNT-1:0]                     w_deact_req_nxt;
 logic [DIR_CNT-1:0]                     w_deact_ack_nxt;
 
-// A completed teardown returns both dies to DISABLED (8.4). Computed from the
-// events AFTER this flit, so the flit completing the exchange is judged against
-// the link it tore down. Gated with the model so that an instance holding no
-// activation state has no teardown to complete.
+// A completed teardown returns the link to DISABLED as this point sees it (8.4;
+// the receiver of the last DeactivateAck follows when it arrives, r_late_adv).
+// Computed from the events AFTER this flit, so the flit completing the exchange
+// is judged against the link it tore down. Gated with the model so that an
+// instance holding no activation state has no teardown to complete.
 logic                                   w_teardown_done;
 
 always_comb begin
@@ -953,6 +955,49 @@ always_ff @(posedge I_CLK or negedge I_RESETN) begin
                 r_act_ack_half[d] <= 1'b1;
             end
         end
+    end
+end
+
+// LATE ADVERTISEMENTS FROM THE DIE THAT RECEIVES THE FINAL DEACTIVATEACK. 8.2
+// makes DISABLED a die's own condition: the die sending the last DeactivateAck
+// is DISABLED at once, the die receiving it only once it arrives, and until
+// then it is in DEACTIVATE, where 8.4 lets it keep advertising (request credits
+// explicitly; response credits by MAS 7.3.1). Its flits built before the Ack
+// reached it arrive here after the teardown. The flight time is unknown at this
+// point, and a die in DISABLED sends nothing that would show it received the
+// Ack until its next Activation message, so its advertisements are tolerated --
+// neither reported nor counted -- from the teardown until the flit carrying its
+// next Activation message, which closes the window with the flit (it is first
+// in it, 4.4). An FDI reset closes it too. Nothing else is suspended: no
+// credited message is legal after both DeactivateReqs (each waits until its
+// sender's requests are complete), and the die that sent the last Ack is held to
+// DISABLED from that flit on. Both dies are treated alike: on a narrow FDI the
+// observed die's own flit can be under way when the peer's Ack completes. When
+// both final Acks complete on one edge, each die sent its Ack before it could
+// have received the other's, so both windows open.
+logic [DIR_CNT-1:0]                     r_late_adv;
+logic [DIR_CNT-1:0]                     w_late_adv_en;
+logic [DIR_CNT-1:0]                     w_late_adv_open;
+// A consumed flit whose advertisements the window let pass. Read by nothing
+// here; a bench taps it to see that the window was reached.
+logic [DIR_CNT-1:0]                     w_late_adv_seen;
+
+always_comb begin
+    for (int unsigned d = 0; d < DIR_CNT; d++) begin
+        // Die d is the receiver of a DeactivateAck that completes the teardown.
+        w_late_adv_open[d] = w_teardown_done & ~r_deact_ack[1-d] &
+                             w_chk_go[1-d] & w_flit_deact_ack[1-d];
+        w_late_adv_en[d]   = r_late_adv[d] & ~(w_chk_go[d] & (|w_act_msg[d]));
+    end
+end
+
+always_ff @(posedge I_CLK or negedge I_RESETN) begin
+    if (~I_RESETN) begin
+        r_late_adv <= '0;
+    end else if (I_LINK_RESET) begin
+        r_late_adv <= '0;
+    end else if (w_act_model_en) begin
+        r_late_adv <= w_late_adv_open | w_late_adv_en;
     end
 end
 
@@ -1000,7 +1045,11 @@ logic [DIR_CNT-1:0][RP_COUNT-1:0][CRD_CLS_CNT-1:0][CRD_WD-1:0]  r_crd;
 // its own DeactivateReq; pending ReadData and WriteResp must still be sent
 // after it (v0.8 8.4) and stay legal until DISABLED. Each closing message is
 // the first in its flit (4.4), so the rest of that flit is after it and the
-// windows close with the flit rather than after it.
+// windows close with the flit rather than after it. "Until DISABLED" is the
+// observation point's DISABLED; the receiver of the final DeactivateAck gets
+// there later, and its advertisements in between are r_late_adv's: not
+// reported, and funding nothing, since the die they are for is already
+// DISABLED, where it holds no credits (8.4).
 logic [DIR_CNT-1:0]                                 w_adv_en;
 logic [DIR_CNT-1:0]                                 w_consume_en;
 logic [DIR_CNT-1:0]                                 w_consume_rsp_en;
@@ -1421,6 +1470,13 @@ always_ff @(posedge I_CLK or negedge I_RESETN) begin
     end
 end
 
+always_comb begin
+    for (int unsigned d = 0; d < DIR_CNT; d++) begin
+        w_late_adv_seen[d] = w_chk_go[d] & w_late_adv_en[d] & ~w_adv_en[d] &
+                             ((|w_starts_crdtgrant[d]) | w_hdr_adv[d]);
+    end
+end
+
 // -----------------------------------------------------------------------------
 // Per-granule violation matrix. One bit per granule per violation class, and
 // the class index is the code reported. Every rule drives its own row.
@@ -1489,8 +1545,10 @@ always_comb begin
 
             // A grant is attributed to its own granule; the protocol header has
             // none, so a header finding names granule 0.
+            // A late advertisement from the die that has not yet received
+            // the final DeactivateAck is not one (r_late_adv).
             w_granule_viol[d][g][VIOL_ADV_ORDER] =
-                w_chk_class_en[VIOL_ADV_ORDER] & ~w_adv_en[d] &
+                w_chk_class_en[VIOL_ADV_ORDER] & ~w_adv_en[d] & ~w_late_adv_en[d] &
                 (w_starts_crdtgrant[d][g] | ((g == 0) & w_hdr_adv[d]));
 
             w_granule_viol[d][g][VIOL_RP_RANGE] =

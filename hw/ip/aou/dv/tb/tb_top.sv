@@ -548,73 +548,107 @@ module tb_top;
   );
 
   // ---------------------------------------------------------------------------
-  // AOU_FDI_CHECKER (single-PHY builds only) on PHY 0: LP is the DUT's TX, PL the flits driven to it.
-  // A new observed-link epoch starts whenever the Adapter reports Reset (both
-  // encodings use 0). DEST_RP is the identity map the DUT resets to.
+  // AOU_FDI_CHECKER, one per PHY at that PHY's width (aou_fdi_chk_phy). A new
+  // observed-link epoch starts whenever the Adapter reports Reset (both
+  // encodings use 0). A two-PHY build carries the link on the PHY I_PHY_TYPE
+  // selects, fixed for the test: the other PHY's instance is held in link
+  // reset, and fdi_chk shows the adapter the selected one's reports.
   // ---------------------------------------------------------------------------
 `ifndef TWO_PHY
-  logic [15:0] xchk_cnt;
-  logic        xchk_trigger, xchk_capture_valid, xchk_capture_code, xchk_capture_die;
-  logic [1:0]  xchk_capture_chk_st, xchk_capture_obs_st, xchk_compared;
-  logic [31:0] xchk_capture_flit_seq;
+  aou_fdi_chk_phy #(.WD(WD0), .RP_COUNT(RP_COUNT)) u_fdi_chk0 (
+      .clk            (clk),
+      .rst_n          (rst_n),
+      .link_reset     (fdi_mb0.pl_state_sts == 4'h0),
+      .lp_valid       (fdi_mb0.lp_valid),
+      .lp_irdy        (fdi_mb0.lp_irdy),
+      .lp_data        (lp0_data),
+      .pl_trdy        (fdi_mb0.pl_trdy),
+      .pl_valid       (fdi_mb0.pl_valid),
+      .pl_data        (fdi_mb0.pl_data[WD0-1:0]),
+      .pl_flit_cancel (fdi_mb0.pl_flit_cancel),
+      .act_st_disabled(status.activate_st_disabled),
+      .act_st_enabled (status.activate_st_enabled),
+      .err_clear      (fdi_chk.err_clear),
+      .chk            (fdi_chk)
+  );
+`else
+  aou_fdi_checker_if fdi_chk_p0 (.clk(clk));
+  aou_fdi_checker_if fdi_chk_p1 (.clk(clk));
+  // Before the LSM driver sets I_PHY_TYPE it is X; PHY 0 is watched until then.
+  wire chk_sel1 = (fdi_lsm.phy_type === 1'b1);
+
+  aou_fdi_chk_phy #(.WD(WD0), .RP_COUNT(RP_COUNT)) u_fdi_chk0 (
+      .clk            (clk),
+      .rst_n          (rst_n),
+      .link_reset     (fdi_mb0.pl_state_sts == 4'h0 || chk_sel1),
+      .lp_valid       (fdi_mb0.lp_valid),
+      .lp_irdy        (fdi_mb0.lp_irdy),
+      .lp_data        (lp0_data),
+      .pl_trdy        (fdi_mb0.pl_trdy),
+      .pl_valid       (fdi_mb0.pl_valid),
+      .pl_data        (fdi_mb0.pl_data[WD0-1:0]),
+      .pl_flit_cancel (fdi_mb0.pl_flit_cancel),
+      .act_st_disabled(status.activate_st_disabled),
+      .act_st_enabled (status.activate_st_enabled),
+      .err_clear      (fdi_chk.err_clear),
+      .chk            (fdi_chk_p0)
+  );
+
+  aou_fdi_chk_phy #(.WD(WD1), .RP_COUNT(RP_COUNT)) u_fdi_chk1 (
+      .clk            (clk),
+      .rst_n          (rst_n),
+      .link_reset     (fdi_mb1.pl_state_sts == 4'h0 || !chk_sel1),
+      .lp_valid       (fdi_mb1.lp_valid),
+      .lp_irdy        (fdi_mb1.lp_irdy),
+      .lp_data        (lp1_data),
+      .pl_trdy        (fdi_mb1.pl_trdy),
+      .pl_valid       (fdi_mb1.pl_valid),
+      .pl_data        (fdi_mb1.pl_data[WD1-1:0]),
+      .pl_flit_cancel (fdi_mb1.pl_flit_cancel),
+      .act_st_disabled(status.activate_st_disabled),
+      .act_st_enabled (status.activate_st_enabled),
+      .err_clear      (fdi_chk.err_clear),
+      .chk            (fdi_chk_p1)
+  );
 
   assign fdi_chk.rst_n = rst_n;
-
-  AOU_FDI_CHECKER #(
-      .FDI_IF_BYTES(WD0 / 8),
-      .RP_COUNT    (RP_COUNT),
-      .FDID        (0)
-  ) u_fdi_chk (
-      .I_CLK                  (clk),
-      .I_RESETN               (rst_n),
-      .I_LINK_RESET           (fdi_mb0.pl_state_sts == 4'h0),
-      .I_LP_VALID             (fdi_mb0.lp_valid),
-      .I_LP_IRDY              (fdi_mb0.lp_irdy),
-      .I_LP_DATA              (lp0_data),
-      .I_PL_TRDY              (fdi_mb0.pl_trdy),
-      .I_PL_VALID             (fdi_mb0.pl_valid),
-      .I_PL_DATA              (fdi_mb0.pl_data[WD0-1:0]),
-      .I_PL_FLIT_CANCEL       (fdi_mb0.pl_flit_cancel),
-      .I_CFG_RP_DEST_RP       ({2'd3, 2'd2, 2'd1, 2'd0}),
-      .I_LP_ACT_ST_DISABLED   (status.activate_st_disabled),
-      .I_LP_ACT_ST_ENABLED    (status.activate_st_enabled),
-      .I_PL_ACT_ST_DISABLED   (1'b0),
-      .I_PL_ACT_ST_ENABLED    (1'b0),
-      .O_VIOLATION            (fdi_chk.violation),
-      .O_VIOLATION_TRIGGER    (fdi_chk.trigger),
-      .O_VIOLATION_CNT        (fdi_chk.viol_cnt),
-      .O_CAPTURE_VALID        (fdi_chk.capture_valid),
-      .O_CAPTURE_CODE         (fdi_chk.capture_code),
-      .O_CAPTURE_DIR          (fdi_chk.capture_dir),
-      .O_CAPTURE_FLIT_SEQ     (fdi_chk.capture_flit_seq),
-      .O_CAPTURE_GRANULE_IDX  (fdi_chk.capture_granule_idx),
-      .O_CAPTURE_GRANULE      (fdi_chk.capture_granule),
-      .O_CHECK_ENABLED        (fdi_chk.check_enabled),
-      .O_LP_FLIT_SEQ          (fdi_chk.lp_flit_seq),
-      .O_PL_FLIT_SEQ          (fdi_chk.pl_flit_seq),
-      .O_XCHK_VIOLATION       (fdi_chk.xchk_violation),
-      .O_XCHK_TRIGGER         (xchk_trigger),
-      .O_XCHK_CNT             (xchk_cnt),
-      .O_XCHK_CAPTURE_VALID   (xchk_capture_valid),
-      .O_XCHK_CAPTURE_CODE    (xchk_capture_code),
-      .O_XCHK_CAPTURE_DIE     (xchk_capture_die),
-      .O_XCHK_CAPTURE_CHK_ST  (xchk_capture_chk_st),
-      .O_XCHK_CAPTURE_OBS_ST  (xchk_capture_obs_st),
-      .O_XCHK_CAPTURE_FLIT_SEQ(xchk_capture_flit_seq),
-      .O_XCHK_COMPARED        (xchk_compared),
-      .I_ERR_CLEAR            (fdi_chk.err_clear)
-  );
-
-  aou_fdi_chk_dir_tap u_fdi_chk_dir (
-      .clk          (clk),
-      .rst_n        (rst_n),
-      .clr          (fdi_chk.err_clear),
-      .go           (u_fdi_chk.w_chk_go),
-      .granule_viol (u_fdi_chk.w_granule_viol),
-      .flit_seq     (u_fdi_chk.r_flit_seq),
-      .dir_violation(fdi_chk.dir_violation),
-      .dir_flit_seq (fdi_chk.dir_flit_seq)
-  );
+  always_comb begin
+    if (chk_sel1) begin
+      fdi_chk.violation           = fdi_chk_p1.violation;
+      fdi_chk.trigger             = fdi_chk_p1.trigger;
+      fdi_chk.viol_cnt            = fdi_chk_p1.viol_cnt;
+      fdi_chk.capture_valid       = fdi_chk_p1.capture_valid;
+      fdi_chk.capture_code        = fdi_chk_p1.capture_code;
+      fdi_chk.capture_dir         = fdi_chk_p1.capture_dir;
+      fdi_chk.capture_flit_seq    = fdi_chk_p1.capture_flit_seq;
+      fdi_chk.capture_granule_idx = fdi_chk_p1.capture_granule_idx;
+      fdi_chk.capture_granule     = fdi_chk_p1.capture_granule;
+      fdi_chk.check_enabled       = fdi_chk_p1.check_enabled;
+      fdi_chk.lp_flit_seq         = fdi_chk_p1.lp_flit_seq;
+      fdi_chk.pl_flit_seq         = fdi_chk_p1.pl_flit_seq;
+      fdi_chk.xchk_violation      = fdi_chk_p1.xchk_violation;
+      fdi_chk.dir_violation       = fdi_chk_p1.dir_violation;
+      fdi_chk.dir_flit_seq        = fdi_chk_p1.dir_flit_seq;
+      fdi_chk.late_adv            = fdi_chk_p1.late_adv;
+    end else begin
+      fdi_chk.violation           = fdi_chk_p0.violation;
+      fdi_chk.trigger             = fdi_chk_p0.trigger;
+      fdi_chk.viol_cnt            = fdi_chk_p0.viol_cnt;
+      fdi_chk.capture_valid       = fdi_chk_p0.capture_valid;
+      fdi_chk.capture_code        = fdi_chk_p0.capture_code;
+      fdi_chk.capture_dir         = fdi_chk_p0.capture_dir;
+      fdi_chk.capture_flit_seq    = fdi_chk_p0.capture_flit_seq;
+      fdi_chk.capture_granule_idx = fdi_chk_p0.capture_granule_idx;
+      fdi_chk.capture_granule     = fdi_chk_p0.capture_granule;
+      fdi_chk.check_enabled       = fdi_chk_p0.check_enabled;
+      fdi_chk.lp_flit_seq         = fdi_chk_p0.lp_flit_seq;
+      fdi_chk.pl_flit_seq         = fdi_chk_p0.pl_flit_seq;
+      fdi_chk.xchk_violation      = fdi_chk_p0.xchk_violation;
+      fdi_chk.dir_violation       = fdi_chk_p0.dir_violation;
+      fdi_chk.dir_flit_seq        = fdi_chk_p0.dir_flit_seq;
+      fdi_chk.late_adv            = fdi_chk_p0.late_adv;
+    end
+  end
 `endif
 
 `ifdef UVM

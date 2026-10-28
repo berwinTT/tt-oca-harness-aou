@@ -54,8 +54,8 @@ class aou_t1_env_cfg extends uvm_object;
   bit            sb_en = 1'b1;
   // aou_t1_attr_chk: request attributes, exclusive responses and FLEX across the link.
   bit            attr_chk_en = 1'b1;
-  // The top instantiates AOU_FDI_CHECKER in single-PHY builds only.
-  bit            fdi_chk_en = (AOU_T1_N_PHY == 1);
+  // AOU_FDI_CHECKER on the PHY the test selects (tb_top).
+  bit            fdi_chk_en = 1'b1;
   bit            status_en = 1'b1;
   // Local software answers INT_ACTIVATE_START / INT_DEACTIVATE_START.
   bit            sw_isr_en = 1'b1;

@@ -63,6 +63,18 @@ tags = ["l3_unit"]
 run_modes = ["l3_unit"]
 args = ["+L3_INJECT=crd_in_disabled"]
 
+# Credits that cross the final DeactivateAck in both directions: each model
+# advertises request credit until it is DISABLED and holds some back to send
+# behind its own DeactivateReq. Neither AOU_FDI_CHECKER nor the receiving model
+# may report them, and both must have seen them.
+[[tests]]
+name = "aou_l3_late_adv_test"
+module = { uvm = "aou_l3_late_adv_test" }
+seed = 1
+reseed = 3
+tags = ["l3_unit"]
+run_modes = ["l3_unit"]
+
 [[tests]]
 name = "aou_l3_link_test"
 module = { uvm = "aou_l3_link_test" }
@@ -86,7 +98,7 @@ run_modes = ["l3_unit"]
 
 [[groups]]
 name = "l3_unit"
-expected_count = 10
+expected_count = 11
 tests = [
   "aou_l3_codec_test",
   "aou_l3_credit_test",
@@ -95,6 +107,7 @@ tests = [
   "aou_l3_inject_test",
   "aou_l3_inject_test.L3_INJECT-req_after_dreq",
   "aou_l3_inject_test.L3_INJECT-crd_in_disabled",
+  "aou_l3_late_adv_test",
   "aou_l3_link_test",
   "aou_l3_loopback_test",
   "aou_l3_unit_env_test",
@@ -109,7 +122,7 @@ tests = [
 
 [[groups]]
 name = "all"
-expected_count = 10
+expected_count = 11
 tests = [
   "aou_l3_codec_test",
   "aou_l3_credit_test",
@@ -118,6 +131,7 @@ tests = [
   "aou_l3_inject_test",
   "aou_l3_inject_test.L3_INJECT-req_after_dreq",
   "aou_l3_inject_test.L3_INJECT-crd_in_disabled",
+  "aou_l3_late_adv_test",
   "aou_l3_link_test",
   "aou_l3_loopback_test",
   "aou_l3_unit_env_test",

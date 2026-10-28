@@ -250,9 +250,9 @@ software recovers; 2.10 sends PropertyReq 0 only.
   the reported DUT bugs; `make plan_status` lists them as xfail-only.
 * *FDI state encoding.* The L2 model uses the UCIe state codes (UCIe r1.1
   Table 8-2) only.
-* *Two-PHY targets.* `AOU_FDI_CHECKER` is not instantiated on the two-PHY
-  configurations; the L3 rule checker and the L1 monitor are the protocol
-  checks there, and the remote die uses one PHY per run (`+active_phy`).
+* *Two-PHY targets.* The remote die uses one PHY per run (`+active_phy`), and
+  `AOU_FDI_CHECKER` watches that PHY; the PHY `I_PHY_TYPE` does not select is
+  not checked.
 * *Performance.* Targets come from the d2d model (`scripts/perf_model.py`,
   `D2D_COMPARE`); numeric latency and efficiency bounds per FDI width (10.14)
   have no scenario.

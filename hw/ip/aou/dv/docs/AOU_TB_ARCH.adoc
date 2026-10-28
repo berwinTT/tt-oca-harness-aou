@@ -98,7 +98,7 @@ tb_top                                  tb/tb_top.sv (no ports)
   apb : aou_apb_if
   status, irq, rst : aou_status_if, aou_irq_if, aou_rst_if
   wdt : aou_wdt_if                      write-watchdog taps (early-response controllers, SFR)
-  u_chk : AOU_FDI_CHECKER               single-PHY targets only; ports on aou_fdi_checker_if "fdi_chk"
+  u_fdi_chk<p> : aou_fdi_chk_phy        AOU_FDI_CHECKER per PHY; the selected PHY's on aou_fdi_checker_if "fdi_chk"
   (COV=1) axi_tx_rp<n>, axi_rx_rp<n>    bound AXI4 coverage monitors (cov/sv/aou_axi4_cov_bind.sv)
   `ifdef UVM                            uvm_config_db registration of every interface, run_test()
     uvm_test_top : <test>               uvm/tests/aou_tests.sv, chosen by +UVM_TESTNAME

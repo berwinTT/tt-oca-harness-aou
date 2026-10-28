@@ -297,9 +297,9 @@ the other's findings, not about who may clear them.
 
 A checker that silently mis-parses a configuration it was not written for is
 worse than none, so each of these is a compile error: `FDI_IF_BYTES` in
-{32, 64, 128} and `TWO_PHY` undefined (the two-PHY split is not supported; the
-three widths give 8, 4 and 2 beats, so a 128B half is always whole beats and
-needs no guard of its own); `RP_COUNT` 1..4 and `FDID` 0..3 (both two-bit fields on
+{32, 64, 128} (the three widths give 8, 4 and 2 beats, so a 128B half is always
+whole beats and needs no guard of its own; a two-PHY bench instantiates one
+checker per PHY, at that PHY's width); `RP_COUNT` 1..4 and `FDID` 0..3 (both two-bit fields on
 the wire); positive counter widths; `CRD_CAPACITY` at least 1; `CHK_PROFILE` a
 posture the package names (an unknown one would otherwise fall through to the
 full set and elaborate more than was asked); every enable 0 or 1 ("2" would
@@ -621,10 +621,17 @@ says the specification's condition: ENABLED once both a request and an
 acknowledge have been sent and received (the request terms are implied by the
 answer rule and written anyway), ACTIVATE from the first activation message
 until then, DEACTIVATE once any deactivation message of the exchange has been
-seen, DISABLED before and after. There is one state, not one per die: 8.2's
-conditions name the same four events from either side, so two per-die states
-could only ever be equal, and an earlier revision that held two was carrying a
-distinction the wire cannot make. A completed teardown clears the events,
+seen, DISABLED before and after. There is one state, the link's as the
+observation point sees it: 8.2's conditions name the same four events from
+either side, and this point sees each event as it crosses, so it is each die's
+state *as of the messages that have crossed here*. It is not each die's own
+state. A die that receives a message beyond this point reaches the new state
+later, and in one case only does that let it send something the link-wide
+state would judge wrongly: the die that receives the final DeactivateAck is still in
+DEACTIVATE until it arrives, while the die that sent it is DISABLED at once
+(see "Late advertisements" under [Credit accounting](#credit-accounting)). An
+earlier revision of this text said two per-die states could only ever be equal;
+that was wrong for exactly this case. A completed teardown clears the events,
 computed from the events *after* the flit so the completing flit is judged
 against the link it tore down; reset and teardown are the only ways back to
 DISABLED.
@@ -663,8 +670,9 @@ that runs into the next flit; Misc is not credited.
 Boundary messages on the same stream affect the remainder of their own flit:
 an Activation message is first (4.4), so later messages in that flit are after
 it. The advertising window therefore opens with the die's own ActivateAck
-flit and closes after the flit that completes the teardown, and the request
-part of the consume window closes with its own DeactivateReq flit. Its opening boundary is a received ActivateAck on the
+flit and closes after the flit that completes the teardown (for the die that
+receives that flit's DeactivateAck, later: see "Late advertisements"), and the
+request part of the consume window closes with its own DeactivateReq flit. Its opening boundary is a received ActivateAck on the
 opposite stream, so credited traffic is enabled once that ActivateAck is
 received: when its flit is consumed, or earlier when it lies in a committed
 first half (see "First halves fund early").
@@ -686,7 +694,8 @@ The windows are v0.8 8.4's, which made the consume window depend on the class
   ordered by byte position among its messages. So the flit carrying the
   DeactivateAck that completes the teardown is judged against the link it tore
   down, and its credits are legal (they are discarded with the rest at
-  DISABLED). Outside the window: `VIOL_ADV_ORDER`. Before the advertiser's
+  DISABLED). Outside the window, other than the late advertisements below:
+  `VIOL_ADV_ORDER`. Before the advertiser's
   ActivateAck and in DISABLED the advertisement funds nothing; inside it, every
   credit funds the counters.
 - **Sending credited messages**: from the die having sent an ActivateReq and
@@ -724,9 +733,54 @@ advertising flit's consume. Without this the checker funded credit one half late
 and reported an underflow against a die that spent a first-half grant before the
 second half arrived.
 
-Both dies may advertise until DISABLED and the response counters keep being
-spent until DISABLED, so the windows are all teardown needs and nothing is
-suspended.
+**Late advertisements.** Both dies may advertise until DISABLED and the
+response counters keep being spent until DISABLED, but DISABLED is a die's own
+condition (8.2): a die is DISABLED once it has sent and received a
+DeactivateAck. The die sending the last DeactivateAck is DISABLED at once; the
+die receiving it stays in DEACTIVATE until it arrives, and 8.4 lets it keep
+advertising there (request credits explicitly, response credits by MAS 7.3.1).
+Its flits built before the Ack reached it cross the observation point after the
+link-wide state went DISABLED. Reporting them would report legal traffic; a
+first half carrying a grant that committed before the teardown and completed
+after it would even be funded and then reported. So from the teardown the
+checker tolerates the receiving die's advertisements (`r_late_adv`, one flop
+per die): they are neither reported nor funded -- the die they are for is
+DISABLED and holds no credits (8.4) -- until the flit carrying that die's next
+Activation message, which closes the window with the flit since the message is
+first in it (4.4), or an FDI reset. Nor are they judged against `CRD_CAPACITY`:
+that rule guards the shadow counter's tracking (see "Capacity" below), and an
+advertisement that funds nothing leaves nothing untracked.
+
+That is the strictest rule that never reports legal traffic, and its limits are
+what the observation point cannot know:
+
+- **Flight time is unknown here.** Nothing bounds how long the Ack takes to
+  reach the far die, or how long the far die takes to act on it, so no cycle
+  count can close the window.
+- **A die in DISABLED sends nothing that shows it received the Ack** until its
+  next Activation message (DISABLED permits only ActivateReq, 8.4). Every
+  flit in between could have been built before the Ack arrived.
+- **So a receiving die that keeps advertising after the Ack reached it is not
+  reported**, and its credits are dropped rather than counted. The die that
+  sent the last Ack is held to DISABLED from that flit on, every die is held to
+  it before its first activation and after its next Activation message, and an
+  advertisement before the advertiser's own ActivateAck in the next activation
+  is still `VIOL_ADV_ORDER`.
+- **Only advertisements are tolerated.** No credited message is legal after
+  both DeactivateReqs have crossed -- each waits until its sender's requests are
+  complete, so no response is owed either way -- and none is tolerated.
+- **Both dies are treated alike.** The observed die can be the late one: on a
+  narrow FDI its own flit can be under way when the peer's Ack completes, and
+  a pipeline inside the die can hold a flit built before. When both last Acks
+  complete on one edge, each die sent its Ack before it could have received the
+  other's, and both windows open.
+
+The die the late credits are for has discarded every credit on entering
+DISABLED (8.2) and, in DISABLED, holds none (8.4); credits may be received
+again only after an ActivateAck (8.4 ACTIVATE). So a die that carried late
+credits into the next activation spends more than it was advertised there, and
+the shadow counter, which never counted them, reports the underflow. That is
+the behaviour the far-side model's late advertising stimulus exercises.
 
 **Planes.** A counter is per die, per local plane, per class. The plane field
 means two things: a credited message carries the **destination** plane, already
@@ -954,7 +1008,13 @@ not tried again.
   consume window closed with the DeactivateReq's. Both boundary messages are
   first in their flit, so both windows now close with the flit.
 - **One activation state per die**, two arrays always equal to each other; see
-  [Activation handshake model](#activation-handshake-model).
+  [Activation handshake model](#activation-handshake-model). The one way the
+  dies' own states do differ, the receiver of the final DeactivateAck, is
+  carried as a late-advertisement window instead.
+- **Holding the far-side model to advertising windows narrower than v0.8's** so
+  that its credits could never cross the final DeactivateAck. It hid the
+  checker's link-wide DISABLED and left the DUT's handling of credits that
+  arrive after it is DISABLED unexercised; see "Late advertisements".
 - **Judging the adapter's NOP flits** on the inbound stream; see
   [Flit reconstruction](#flit-reconstruction).
 - **Indexing the peer's credit counters through `I_CFG_RP_DEST_RP`**, which

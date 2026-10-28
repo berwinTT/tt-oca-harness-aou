@@ -74,6 +74,17 @@ class aou_l3_cfg extends uvm_object;
   bit                v0p9draft = 1'b0;
   // v0.8: an out-of-sequence Req/Ack moves the link to ERROR (8.3.3).
   bit                error_state_en = 1'b1;
+  // Request credits are advertised until we are DISABLED, past our own
+  // DeactivateAck (v0.8 8.4 permits it): the widest window the spec allows, so
+  // on by default. Those sent while the DUT's final DeactivateAck is on its way
+  // reach a DUT already DISABLED, which must drop them. Off: they stop at our
+  // DeactivateAck, as the DUT's do (MAS 7.3.1).
+  bit                late_adv = 1'b1;
+  // Stimulus for late_adv: granules per request class (WriteReq, ReadReq,
+  // WriteData) and RP held back from each activation's advertisement and
+  // released when our DeactivateReq goes out, so that credit-only flits follow
+  // it while the DUT's final DeactivateAck may already be on its way. 0: none.
+  int unsigned       late_adv_hold;
 
   // Checks on the DUT.
   bit                chk_deact_quiesce = 1'b1;   // AOU-R33

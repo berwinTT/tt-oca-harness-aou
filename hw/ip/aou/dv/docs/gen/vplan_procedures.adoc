@@ -1975,6 +1975,7 @@ keeps the Adapter from bringing the link up after reset.
 | `aou_link_act_deact_test.who-apb.deact_who-apb.busy-1` | `+who=apb +deact_who=apb +busy=1` | 1-2 |  | 2.2,2.3,2.13,2.14
 | `aou_link_act_deact_test.who-apb.l3_ack_first-1` | `+who=apb +l3_ack_first=1` | 1-2 |  | 1.1,1.6
 | `aou_link_act_deact_test.who-both.order-simul.deact_who-both.busy-1.fdi_trdy-random.4x512-sp64` | `+who=both +order=simul +deact_who=both +busy=1 +fdi_trdy=random` | 1-13 | `4x512-sp64` | 2.2,2.3,2.13
+| `aou_link_act_deact_test.who-apb.deact_who-apb.busy-0.l3_late_adv_hold-60` | `+who=apb +deact_who=apb +busy=0 +l3_late_adv_hold=60` | 1-4 |  | 1.6,2.11
 | `aou_link_act_deact_test.early_act-1` | `+early_act=1` | 1-3 |  | 1.11,1.1
 | `aou_link_act_deact_test.who-apb.deact_who-apb.busy-1.pclk_ps-40000` | `+who=apb +deact_who=apb +busy=1 +pclk_ps=40000` | 1 |  | 11.17
 | `aou_link_act_deact_test.who-apb.deact_who-apb.busy-1.pclk_ps-600` | `+who=apb +deact_who=apb +busy=1 +pclk_ps=600` | 1 |  | 11.17
@@ -3965,12 +3966,17 @@ act_place  Activation not at G0       AOU-R6  (A, B self-check, checker)
 overgrant  credit beyond any buffer   saturation in A, AOU-R21 (checker)
 req_after_dreq  WriteReq after B's own DeactivateReq
 AOU-R30 (checker), AOU-R34 (A)
-crd_in_disabled  ReadData credit once the teardown has completed
+crd_in_disabled  ReadData credit from B after B's own DeactivateAck
+completed the teardown
 AOU-R29 (checker), AOU-R26 (A)
 The last two keep the deactivation windows honest: ReadData/WriteResp may
 follow one's own DeactivateReq and every credit one's own DeactivateAck
 (v0.8 8.4, MAS 7.3.1), but requests stop at the DeactivateReq and credits
-at DISABLED.
+at DISABLED. B deactivates so that its own DeactivateAck is the last one: it
+is DISABLED from that flit on. Had A sent the last Ack, B would be DISABLED
+only once that Ack reached it (v0.8 8.2), and nothing B sends before its
+next Activation message shows when that was, so neither the checker nor A
+can report its credits (aou_l3_late_adv_test).
 
 *Procedure.* The class's own `run_phase` (see the file).
 
@@ -3988,8 +3994,42 @@ at DISABLED.
 | `aou_l3_inject_test.L3_INJECT-crd_in_disabled` | `+L3_INJECT=crd_in_disabled` | 1 |  | 
 |===
 
+[[aou-proc-aou_l3_late_adv_test]]
+===== 77. `aou_l3_late_adv_test`
+Class `aou_l3_late_adv_test` extends `aou_l3_unit_env_test` (`uvm/tests/l3_unit/aou_l3_late_adv_test.svh`).
+
+*Purpose.* Credits that cross the final DeactivateAck. DISABLED is a die's own state
+(AoU v0.8 8.2): the die sending the last DeactivateAck is DISABLED at once,
+the die receiving it only when it arrives, and until then it may still send
+request credits (8.4). Both models advertise until they are DISABLED
+(aou_l3_cfg::late_adv) and hold back some request credit to send behind
+their own DeactivateReq (late_adv_hold), so it races the peer's final
+DeactivateAck. The link has 20 cycles of flight time, about five flits, so
+the race is not decided by a single cycle. Two rounds: A deactivates, so B's
+late credits cross A's final DeactivateAck on the PL stream; then B
+deactivates, so A's late credits cross B's final DeactivateAck on the LP
+stream. Neither AOU_FDI_CHECKER nor the receiving model may
+report them, the checker must have seen some each way, and the next
+activation must start from the fresh advertisement alone: a receiver that
+counted late credits would overrun its peer there (AOU-R16,
+VIOL_CRD_UNDERFLOW).
+
+*Procedure.* The class's own `run_phase` (see the file).
+
+*Rules named.* `AOU-R16`
+
+*Pass criteria.* The base test's end-of-test checks: scoreboard drained, every declared expectation met, no unexpected `UVM_ERROR`/`UVM_FATAL`, the FDI checker clean; `scripts/check_run.py` judges the log against `expected_fail.yaml`.
+
+*Scenarios.*
+
+[cols="3,2,1,1,3",options="header"]
+|===
+| Scenario | Arguments | Seeds | Target | Plan items
+| `aou_l3_late_adv_test` |  | 1-3 |  | 
+|===
+
 [[aou-proc-aou_l3_link_test]]
-===== 77. `aou_l3_link_test`
+===== 78. `aou_l3_link_test`
 Class `aou_l3_link_test` extends `aou_l3_unit_base_test` (`uvm/tests/l3_unit/aou_l3_link_test.svh`).
 
 *Purpose.* Link controller, two models back to back without time. Legal sequences:
@@ -4002,7 +4042,11 @@ crossed our own DeactivateReq counted apart), a request after DeactivateReq
 (AOU-R34), credits after the DUT's DeactivateAck (AOU-R26: credits of every
 class are permitted until DISABLED, v0.8 8.4 and MAS 7.3.1, including those
 in the flit whose Ack completes the teardown; any credit in a later
-DISABLED flit is not), and v0.8's ERROR state with its recovery.
+DISABLED flit is not, unless our own Ack completed the teardown: the DUT is
+DISABLED only once that Ack reaches it, v0.8 8.2, so its credits are
+tolerated and dropped until its next Activation message), request credits
+we advertise after our own DeactivateAck and that cross the final one
+(late_adv), and v0.8's ERROR state with its recovery.
 
 *Procedure.* The class's own `run_phase` (see the file).
 
@@ -4019,7 +4063,7 @@ DISABLED flit is not), and v0.8's ERROR state with its recovery.
 |===
 
 [[aou-proc-aou_l3_loopback_test]]
-===== 78. `aou_l3_loopback_test`
+===== 79. `aou_l3_loopback_test`
 Class `aou_l3_loopback_test` extends `aou_l3_unit_env_test` (`uvm/tests/l3_unit/aou_l3_loopback_test.svh`).
 
 *Purpose.* Legal traffic both ways between two L3 models under the chosen packer and
@@ -4040,7 +4084,7 @@ from AOU_FDI_CHECKER.
 |===
 
 [[aou-proc-aou_l3_unit_env_test]]
-===== 79. `aou_l3_unit_env_test`
+===== 80. `aou_l3_unit_env_test`
 Class `aou_l3_unit_env_test` extends `aou_l3_unit_base_test` (`uvm/tests/l3_unit/aou_l3_unit_env_test.svh`).
 
 *Purpose.* Clocked unit environment: two L3 agents (A on the LP stream in the DUT's
@@ -4066,7 +4110,7 @@ Plusargs: +L3_POLICY=dut|sparse|min|max|random|split, +L3_FORK=1,
 
 ==== AXI agent self-test bench (no DUT)
 [[aou-proc-aou_axi_selftest_test]]
-===== 80. `aou_axi_selftest_test`
+===== 81. `aou_axi_selftest_test`
 Class `aou_axi_selftest_test` extends `uvm_test` (`uvm/tests/axi_selftest/aou_axi_selftest_test.svh`).
 
 *Purpose.* Loopback self-test: random traffic, then the #56 and #64 directed sequences,
@@ -4090,7 +4134,7 @@ e.g. AOU_AXI_TIMING_STALL> (default: random per seed), +AXI_NUM_TXNS=<n>.
 |===
 
 [[aou-proc-aou_axi_selftest_neg_test]]
-===== 81. `aou_axi_selftest_neg_test`
+===== 82. `aou_axi_selftest_neg_test`
 Class `aou_axi_selftest_neg_test` extends `aou_axi_selftest_test` (`uvm/tests/axi_selftest/aou_axi_selftest_neg_test.svh`).
 
 *Purpose.* Checks the checkers: the subordinate flips read-data bits, drops writes and
@@ -4110,7 +4154,7 @@ errors are demoted to info and counted; the test fails if either count is 0.
 |===
 
 [[aou-proc-aou_axi_sb_reset_test]]
-===== 82. `aou_axi_sb_reset_test`
+===== 83. `aou_axi_sb_reset_test`
 Class `aou_axi_sb_reset_test` extends `uvm_test` (`uvm/tests/axi_selftest/aou_axi_sb_reset_test.svh`).
 
 *Purpose.* Directed check of the scoreboard's reset rule, with no bus: transactions are

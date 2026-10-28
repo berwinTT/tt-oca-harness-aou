@@ -20,6 +20,10 @@ class aou_l3_cov extends uvm_object;
   localparam int EV_DUT_ZERO_STALL = 7;
   localparam int EV_DUT_SATURATE   = 8;
   localparam int EV_INJ_OVERFLOW   = 9;
+  // We advertised credit with both our DeactivateReq and DeactivateAck sent
+  // and the DUT's DeactivateAck not yet received: it may reach a DUT that is
+  // already DISABLED (late_adv).
+  localparam int EV_LATE_ADV       = 10;
 
   // Sampled values; each covergroup samples the members it names.
   int unsigned s_prev, s_cur, s_op, s_dir, s_kind, s_rp, s_start, s_size, s_nmsgs;

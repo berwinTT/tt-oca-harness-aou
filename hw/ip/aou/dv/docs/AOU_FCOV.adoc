@@ -80,7 +80,10 @@ or a cross exclusion by pattern (`XIGN`, `XILL`). The notable definitions:
   starts at with its size and whether it spans a flit, over the DUT-like,
   sparse, minimum- and maximum-density packer policies of the remote die.
 * `cg_credit.x_ev_cls_dir` crosses the credit event (grant, return, zero
-  stall, saturation, injected overflow) with the credit class and direction.
+  stall, saturation, injected overflow, and `late_adv`: request credit the
+  remote die sent while the DUT's final DeactivateAck may already have been
+  on its way, so that it can reach a DUT already DISABLED) with the credit
+  class and direction.
 * `txn_cg` has no burst coverpoint: the DUT supports INCR only and `AXI-R19`
   flags any other burst as a stimulus error.
 * `cg_mo.full` and `cg_early_tbl`'s fill bins record that a limit was reached
@@ -167,8 +170,6 @@ this table so `fc_report` can report coverage per plan item is an open item
   `cov/config/vcs/cov_fsm_reset.filter`.
 * The `v0.8` bins (`cg_act_op` four-granule ActivateReq, the ERROR state,
   `cg_flit_occ` half-flit Misc limit) need an AoU v0.8 DUT or partner.
-* `AOU_FDI_CHECKER` is not instantiated on the two-PHY configurations; the
-  FDI groups there come from the L1 monitor alone.
 * Verilator scores covergroups as zero; its code coverage (line, branch,
   expression, toggle) is reported by module (`summary.txt`, lcov
   `merged.info`), and the functional numbers come from the service on every

@@ -296,6 +296,28 @@ class aou_l3_model extends uvm_object;
     for (int unsigned c = 0; c < AOU_CC_NUM; c++) begin
       if (hn[c] != 0) cov.sample_credit(aou_l3_cov::EV_HDR_GRANT, aou_cred_class_e'(c), dir);
     end
+    if (dir == AOU_L3_TX && late_adv_flit(f)) begin
+      for (int unsigned c = 0; c < AOU_CC_NUM; c++) begin
+        bit any = hn[c] != 0;
+        foreach (f.msgs[i]) begin
+          if ($cast(cg, f.msgs[i])) begin
+            for (int unsigned r = 0; r < AOU_RP_MAX; r++) if (cg.enc[r][c] != 0) any = 1'b1;
+          end
+        end
+        if (any) cov.sample_credit(aou_l3_cov::EV_LATE_ADV, aou_cred_class_e'(c), dir);
+      end
+    end
+  endfunction
+
+  // A flit of ours that may reach the DUT after it is DISABLED: both our
+  // DeactivateReq and our DeactivateAck went out in earlier flits and the
+  // DUT's DeactivateAck, which it may already have sent, has not arrived.
+  function bit late_adv_flit(aou_flit f);
+    aou_msg_act a;
+    if (lnk.state != AOU_LS_DEACTIVATE || !lnk.dreq_sent || !lnk.dack_sent || lnk.dack_rcvd)
+      return 1'b0;
+    foreach (f.msgs[i]) if ($cast(a, f.msgs[i])) return 1'b0;
+    return 1'b1;
   endfunction
 
   // ---- RX --------------------------------------------------------------
@@ -370,13 +392,18 @@ class aou_l3_model extends uvm_object;
   // requests (MAS 7.3.1; v0.8 is silent on them). WriteData counts as a
   // request class (interim: 8.4 does not say). A flit's credits are consumed
   // with the flit (MAS 7.3.1), so the flit carrying the DeactivateAck that
-  // completes the teardown may still carry them; they are discarded.
+  // completes the teardown may still carry them; they are discarded. When our
+  // DeactivateAck completed the teardown, the DUT stays in DEACTIVATE until it
+  // arrives (8.2) and may still advertise: its credits are tolerated, and fund
+  // nothing, until its next Activation message (lnk.peer_late), since nothing
+  // the DUT sends in between shows whether it had our Ack yet.
   static function bit req_class(aou_cred_class_e c);
     return c inside {AOU_CC_WREQ, AOU_CC_RREQ, AOU_CC_WDATA};
   endfunction
 
   function bit peer_adv_ok(aou_cred_class_e c, output string why);
     why = "";
+    if (lnk.peer_late) return 1'b1;
     if (lnk.state == AOU_LS_DISABLED) begin
       if (!dut_dack_flit) why = "in DISABLED";
     end else if (!lnk.ack_rcvd) why = "before its ActivateAck";
@@ -389,7 +416,7 @@ class aou_l3_model extends uvm_object;
   // teardown is handled after the counters were reset, and its credits would
   // otherwise carry into the next activation.
   function bit peer_adv_funds(aou_cred_class_e c);
-    if (lnk.state == AOU_LS_DISABLED) return 1'b0;
+    if (lnk.state == AOU_LS_DISABLED || lnk.peer_late) return 1'b0;
     return !(req_class(c) && (lnk.dack_rcvd || dut_dack_flit));
   endfunction
 
