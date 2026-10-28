@@ -50,7 +50,6 @@ SIM_CFG = os.path.join(UVM_ROOT, "aou_sim_cfg.toml")
 
 DEFAULT_TOL = 0.03          # gate: measured >= (1 - tol) x model
 EPS_BYTES = 256             # above-model margin: one flit per window (quantization only)
-REMOTE_BYTES_DEFAULT = 64   # aou_t1_env_cfg.remote_bytes
 AXI_4K = 4096
 FDI_PHY_BYTES = {0: [32], 1: [64], 2: [128], 3: [32, 64], 4: [64, 128]}   # FDI_CONFIG -> PHY widths
 DIRS = ("l2r", "r2l")
@@ -194,7 +193,8 @@ def window_sides(w, conf):
     when a burst would cross 4 KB on some issuing side."""
     n = len(conf["rp_bytes"])
     rps, share, kinds, den = _shares(w, conf)
-    rb = _ilist(w.get("remote_bytes", REMOTE_BYTES_DEFAULT))
+    # aou_perf_test runs the remote die at each RP's own width unless told otherwise
+    rb = _ilist(w["remote_bytes"]) if "remote_bytes" in w else list(conf["rp_bytes"])
     rem = [rb[r] if r < len(rb) else rb[0] for r in range(n)]
     offset = int(w.get("offset", 0))
     partial = w.get("strb", "full") == "partial"

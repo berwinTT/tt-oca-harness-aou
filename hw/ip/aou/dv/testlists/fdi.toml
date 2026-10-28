@@ -27,6 +27,16 @@ tags = ["fdi"]
 run_modes = ["fdi"]
 args = ["+dp_dir=both", "+fdi_trdy=holes", "+fdi_stall_pct=5", "+fdi_stall_mid_pct=60", "+fdi_stall_trdy_free=1"]
 
+# Short stalls: pl_stallreq drops 0 to 2 cycles after lp_stallack, the shortest
+# stall the DUT can see.
+[[tests]]
+name = "aou_dp_random_test.dp_dir-both.fdi_stall_pct-10.fdi_stall_hold_min-0.fdi_stall_hold_max-2"
+module = { uvm = "aou_dp_random_test" }
+seed = 1
+tags = ["fdi"]
+run_modes = ["fdi"]
+args = ["+dp_dir=both", "+fdi_stall_pct=10", "+fdi_stall_hold_min=0", "+fdi_stall_hold_max=2"]
+
 [[tests]]
 name = "aou_stress_test.st_pol-random.st_crd-slow.fdi_trdy-random.fdi_stall_pct-8.fdi_stall_mid_pct-50"
 module = { uvm = "aou_stress_test" }
@@ -255,9 +265,10 @@ args = ["+event=retrain", "+active_phy=1", "+park_idle_phy=1"]
 
 [[groups]]
 name = "fdi"
-expected_count = 22
+expected_count = 23
 tests = [
   "aou_dp_random_test.dp_dir-both.fdi_trdy-holes.fdi_stall_pct-5.fdi_stall_mid_pct-60.fdi_stall_trdy_free-1",
+  "aou_dp_random_test.dp_dir-both.fdi_stall_pct-10.fdi_stall_hold_min-0.fdi_stall_hold_max-2",
   "aou_stress_test.st_pol-random.st_crd-slow.fdi_trdy-random.fdi_stall_pct-8.fdi_stall_mid_pct-50",
   "aou_lp_mode_test.lp_mode-1.fdi_trdy-holes.fdi_stall_pct-5.fdi_stall_mid_pct-90.fdi_stall_trdy_free-1",
   "aou_lp_mode_test.lp_mode-1.lp_thr-0.fdi_trdy-random.fdi_stall_pct-5.fdi_stall_mid_pct-90.fdi_stall_trdy_free-1",

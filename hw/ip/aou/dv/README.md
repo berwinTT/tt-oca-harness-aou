@@ -74,6 +74,7 @@ python3 scripts/regress.py --help                       # every option, every st
 python3 scripts/regress.py --sim vcs --rid full1        # every CONFIG, every bench, every testlist
 python3 scripts/regress.py --sim verilator --rid full1v # the same on Verilator, without the RTL assertions
 python3 scripts/regress.py --sim vcs --rid pr1 --configs "1x512-sp64 2x512-tp32_64" --items "smoke ci assertions"
+python3 scripts/regress.py --sim vcs --rid nop1 --lists all,-perf  # every testlist but perf
 python3 scripts/regress.py --sim vcs --rid full1 --dry-run   # the plan and the run counts only
 make regress SIM=vcs RID=full1                          # the same as the second line
 ```
@@ -131,6 +132,7 @@ them, in `out/<build>/`.
 | `RTL_PATCH` | none | Absolute path of a candidate RTL fix ([below](#building-against-a-candidate-rtl-fix)) |
 | `RUN_JOBS` | 8 (LSF), CPU count | Runs in flight per `run_list.py` |
 | `STEPS` | `build,run,summary` (`,cov`) | The steps to do, in their fixed order |
+| `LISTS` | every testlist | Testlists by name, comma separated: `all` is every list and `-name` drops one (`all,-perf`) |
 | `RERUN_FAILED` | none | An earlier RID: run only its scenarios with a FAIL or XPASS run |
 | `COV_MEM` | `16GB` | LSF memory of each coverage job, always with a unit |
 | `DRY_RUN` | 0 | 1: print the plan, build and run nothing |
@@ -332,7 +334,9 @@ Traffic and remote-die knobs (run time, any T1 test):
 FDI corner knobs (run time, `testlists/fdi.toml`): `+fdi_trdy=always|random|holes|bursty`,
 `+fdi_stall_pct=N` stand-alone stalls, `+fdi_stall_mid_pct=N` the share raised
 inside a DUT TX flit, `+fdi_stall_trdy_free=1` lets `pl_trdy` drop between
-`pl_stallreq` and `lp_stallack` (UCIe r1.1 8.3.2 rule 7), `+l1_cancel_pct=N` and
+`pl_stallreq` and `lp_stallack` (UCIe r1.1 8.3.2 rule 7), `+fdi_stall_hold_min=N` and
+`+fdi_stall_hold_max=N` the cycles `pl_stallreq` stays high after `lp_stallack` (default
+1..8; 0 drops it as soon as the ack is seen), `+l1_cancel_pct=N` and
 `+l1_cancel_mix=1` (second-half, both-halves and repeated flit cancels),
 `+le_mid_flit_pct=N` (Adapter LinkErrors entered mid-flit, 8.3.3.7),
 `+fdi_rx_early=N` (on every Active entry from Reset the Adapter forwards RX flits for N

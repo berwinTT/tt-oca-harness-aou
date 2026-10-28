@@ -80,6 +80,11 @@ class aou_t1_early_tbl_chk extends uvm_component;
     return (wlast[r] > freed[r]) ? wlast[r] - freed[r] : 0;
   endfunction
 
+  // Both counts are indexed by the DUT's own RP. WLAST is counted at that RP's
+  // S port; a WriteResp names the DUT RP it is for, since the remote die sends
+  // responses through its own DEST_RP, the symmetric inverse of the DUT's (MAS
+  // 3.10.1), and the DUT routes a received WriteResp by that field alone. So a
+  // remapped DEST_RP needs no translation here.
   function void write(aou_msg m);
     if (m.msg_type == AOU_MT_WRESP && int'(m.rp) < AOU_RP_MAX) freed[m.rp]++;
   endfunction

@@ -48,6 +48,12 @@ class aou_t1_traffic_cfg extends uvm_object;
         c.timing = AOU_AXI_TIMING_ZERO;
       end
       "long": c.max_len = 8'd255;
+      // Every RP's window below 4GB (the other profiles start at 4GB), so the
+      // low half of the address space is used on every RP, not only RP0.
+      "low": begin
+        c.base = 64'h0000_0000_1000_0000;
+        c.rp_stride = 64'h0000_0000_1000_0000;
+      end
       "short": c.max_len = 8'd3;
       "narrow": c.strb_mode = AOU_AXI_STRB_RANDOM;
       "stall": begin

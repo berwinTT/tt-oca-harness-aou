@@ -20,7 +20,8 @@
 #   widest_pct   share of transactions on the widest RP (lowest index if tied);
 #                the rest split evenly over the other RPs
 #   remote_bytes remote die's AXI data bytes, one value or one per RP
-#                (default 64, the bench's +remote_bytes default)
+#                (default: each RP's own width, which aou_perf_test sets
+#                unless +remote_bytes is given)
 #   configs      all, or the CONFIGs the window runs on
 #   optional     yes: generated only with perf_targets OPTIONAL=1
 #   plan_ids     test-plan items the window gives criteria to

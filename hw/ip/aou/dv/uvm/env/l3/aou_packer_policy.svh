@@ -2,7 +2,8 @@
 // SPDX-FileCopyrightText: © 2026 Tenstorrent USA Inc
 
 // How the packer lays messages into flits. The default is DUT-like: messages
-// in submission order, packed back to back from the first free granule,
+// in submission order, except that requests and responses go ahead of bulk
+// data (bulk_last), packed back to back from the first free granule,
 // spanning freely into the next flit, credits returned through the header,
 // except that a few writes send WriteData ahead of their WriteReq
 // (wdata_first_pct). Every other setting is still legal unless a field says
@@ -24,6 +25,14 @@ class aou_packer_policy extends uvm_object;
   // Pick randomly among the eligible queue heads instead of oldest first:
   // reorders across RPs and credit classes, never within one.
   bit               random_order;
+  // Requests, write responses and Misc go ahead of queued ReadData and
+  // WriteData, oldest first among themselves, as a die with a separate lane
+  // per message class sends them (the DUT does). Without it every message
+  // waits behind all data queued before it: a ReadReq or WriteResp queued
+  // behind 32 bursts of read data waits hundreds of cycles, and the other
+  // die's link idles for want of requests. 0 is the plain oldest-first order,
+  // still legal. random_order ignores it.
+  bit               bulk_last = 1'b1;
   // Send a flit that only returns credits when nothing else is ready.
   bit               credit_only_flits = 1'b1;
   // Percent chance that a flit with work pending goes out empty instead.
@@ -55,6 +64,11 @@ class aou_packer_policy extends uvm_object;
   // Zero-credit CrdtGrant messages added to a flit, up to misc_per_half_max
   // per half (legal Misc no DUT sends).
   int unsigned      zero_grants;
+  // Percent of flits whose CrdtGrant (when credit is due) starts at G47 and
+  // ends in G0 of the next flit, after empty granules, instead of going early
+  // in the flit. 4.4 lets any message continue in G0 of the next flit; no DUT
+  // layout puts a Misc message there.
+  int unsigned      grant_span_pct;
   // Percent of WriteReqs held back until wdata_first_beats of their own
   // WriteData messages have gone first. AoU v0.8 5.7 does not order a
   // WriteReq against its WriteData, and another die may send the data first;
@@ -84,11 +98,13 @@ class aou_packer_policy extends uvm_object;
     split_at = -1;
     allow_span = 1'b1;
     random_order = 1'b0;
+    bulk_last = 1'b1;
     empty_flit_pct = 0;
     cred_method = AOU_CRM_DUT_LIKE;
     hold_credited = 1'b0;
     prof_pct = 0;
     zero_grants = 0;
+    grant_span_pct = 0;
     best_fit = 1'b0;
     wdata_first_pct = 5;
     wdata_first_beats = 0;
@@ -120,6 +136,7 @@ class aou_packer_policy extends uvm_object;
     max_msgs_per_flit = $urandom_range(0, 3) == 0 ? $urandom_range(1, 4) : 0;
     allow_span = 1'($urandom_range(0, 3) != 0);
     random_order = 1'($urandom_range(0, 1));
+    bulk_last = 1'($urandom_range(0, 1));
     empty_flit_pct = $urandom_range(0, 1) * 5;
     cred_method = aou_cred_method_e'($urandom_range(0, 3));
     wdata_first_pct = $urandom_range(0, 2) * 25;
@@ -129,10 +146,12 @@ class aou_packer_policy extends uvm_object;
   virtual function string convert2string();
     return $sformatf({"max_msgs=%0d hole=%0d%%/%0d start=%0d split=%0d span=%0d rand=%0d ",
                       "cred_only=%0d empty=%0d%% cred=%0d misc_half=%0d hold=%0d ",
-                      "prof=%0d%% zero_grants=%0d best_fit=%0d wdata_first=%0d%%/%0d hold_wreq=%b"},
+                      "prof=%0d%% zero_grants=%0d grant_span=%0d%% best_fit=%0d ",
+                      "wdata_first=%0d%%/%0d hold_wreq=%b bulk_last=%0d"},
                      max_msgs_per_flit, hole_pct, max_hole, start_granule, split_at,
                      allow_span, random_order, credit_only_flits, empty_flit_pct,
                      cred_method, misc_per_half_max, hold_credited, prof_pct,
-                     zero_grants, best_fit, wdata_first_pct, wdata_first_beats, hold_wreq_rps);
+                     zero_grants, grant_span_pct, best_fit, wdata_first_pct, wdata_first_beats,
+                     hold_wreq_rps, bulk_last);
   endfunction
 endclass

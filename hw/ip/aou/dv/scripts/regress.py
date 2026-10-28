@@ -6,7 +6,7 @@
     make regress [SIM=vcs|verilator] [RID=<rid>] [CONFIGS="<config> ..."] [COV=1]
                  [RTL_PATCH=<abs path>] [ITEMS="<group|scenario> ..."] [RUN_JOBS=N]
                  [BENCHES="t1 reg assert l3_unit axi_selftest"] [STEPS=build,run,summary]
-                 [RERUN_FAILED=<rid>] [DRY_RUN=1]
+                 [LISTS="all,-perf"] [RERUN_FAILED=<rid>] [DRY_RUN=1]
 
 (or python3 scripts/regress.py --help for the same options). The steps, in order:
 
@@ -120,6 +120,25 @@ def list_names(path):
     return set(tests) | set(groups)
 
 
+def stem(path):
+    return os.path.splitext(os.path.basename(path))[0]
+
+
+def select_lists(spec, names):
+    """The testlist names a --lists selection keeps: comma (or space) separated words read
+    left to right, where 'all' adds every list, a name adds that list and -name drops it.
+    A selection of drops only starts from every list, so 'all,-perf' and '-perf' agree."""
+    words_ = [w for w in re.split(r"[,\s]+", spec) if w]
+    keep = set() if any(not w.startswith("-") for w in words_) else set(names)
+    for w in words_:
+        drop, name = w.startswith("-"), w.lstrip("-")
+        if name != "all" and name not in names:
+            die(f"unknown list '{name}' in LISTS; use all or some of {' '.join(sorted(names))}")
+        sel = set(names) if name == "all" else {name}
+        keep = keep - sel if drop else keep | sel
+    return keep
+
+
 def results_files(out_root, build, rid):
     d = os.path.join(out_root, build)
     esc = glob.escape(rid)
@@ -201,6 +220,9 @@ def plan(args):
 
     t1_includes = ["testlists/" + i for i in sim_cfg.load_toml(os.path.join(UVM_ROOT, T1_LIST))
                    .get("includes", [])]
+    all_lists = set(map(stem, t1_includes + [sim_cfg.load(tb)["testlist"]["path"]
+                                             for tb in ("reg", "l3_unit", "axi_selftest")]))
+    selected = select_lists(args.lists, all_lists) if args.lists else all_lists
     kept = []
     for u in units:
         if u.bench == "t1":
@@ -225,7 +247,10 @@ def plan(args):
                 continue
             u.lists, u.items = [agg], items
         else:
-            u.lists = full
+            u.lists = [lst for lst in full if stem(lst) in selected]
+            if not u.lists:
+                notes.append(f"{u.label}: none of its testlists selected by LISTS; skipped")
+                continue
         kept.append(u)
     for u in kept:
         if not u.build:
@@ -578,6 +603,10 @@ def main(argv=None):
     ap.add_argument("--rtl-patch", default="", help="RTL_PATCH=<absolute path> for the DUT builds")
     ap.add_argument("--items", default="", help="groups or scenarios, space separated, run on every "
                                                  "bench whose testlist defines them (default: everything)")
+    ap.add_argument("--lists", default="",
+                    help="testlists to run, by name (errors, perf, registers, ...), comma separated: "
+                         "'all' is every list, '-name' drops one, e.g. 'all,-perf' (default: all); "
+                         "a value starting with '-' goes after '=', as in --lists=-perf")
     ap.add_argument("--rerun-failed", default="", metavar="RID",
                     help="run only the scenarios that had a FAIL or XPASS run in that earlier RID")
     ap.add_argument("--reseed", type=int, default=0, help="run_list.py --reseed N")
@@ -607,6 +636,8 @@ def main(argv=None):
         die("RERUN_FAILED needs a new RID, not the one it reruns")
     if args.rerun_failed and args.items:
         die("give ITEMS or RERUN_FAILED, not both")
+    if args.lists and (args.items or args.rerun_failed):
+        die("LISTS selects whole testlists; give it without ITEMS or RERUN_FAILED")
     if not re.fullmatch(r"[0-9]+(MB|GB)", args.cov_mem):
         die(f"COV_MEM needs a unit (16GB, 16000MB), not '{args.cov_mem}'")
     if args.rtl_patch:

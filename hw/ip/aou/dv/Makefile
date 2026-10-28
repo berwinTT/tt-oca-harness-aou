@@ -427,7 +427,7 @@ help:
 	  'make test                  Build, then run' \
 	  'make regress [SIM=..]      Build and run everything: every bench, CONFIG and testlist,' \
 	  '           [RID=..] [COV=1]  then one PASS/XFAIL/FAIL/XPASS summary (out/regress/<RID>/);' \
-	  '                           CONFIGS, BENCHES, ITEMS, RTL_PATCH, RUN_JOBS, STEPS, RERUN_FAILED, DRY_RUN=1' \
+	  '                           CONFIGS, BENCHES, ITEMS, LISTS, RTL_PATCH, RUN_JOBS, STEPS, RERUN_FAILED, DRY_RUN=1' \
 	  'TB=t1|reg [CONFIG=<name>]  T1 / register bench build configuration, a [targets.<name>]' \
 	  '                           of aou_sim_cfg.toml (default $(shell $(SIM_CFG) default-target))' \
 	  'make configs               List the build configurations (CONFIG names and parameters)' \
@@ -506,6 +506,7 @@ run:
 CONFIGS ?=
 BENCHES ?=
 ITEMS ?=
+LISTS ?=
 RUN_JOBS ?=
 STEPS ?=
 RERUN_FAILED ?=
@@ -515,7 +516,7 @@ regress:
 	python3 -I $(UVM_ROOT)/scripts/regress.py --sim $(SIM) --lsf $(LSF) --cov $(COV) \
 	  $(if $(filter-out default file,$(origin RID)),--rid '$(RID)') $(if $(RTL_PATCH),--rtl-patch '$(RTL_PATCH)') \
 	  $(if $(CONFIGS),--configs '$(CONFIGS)') $(if $(BENCHES),--benches '$(BENCHES)') \
-	  $(if $(ITEMS),--items '$(ITEMS)') $(if $(RUN_JOBS),-j $(RUN_JOBS)) $(if $(STEPS),--steps '$(STEPS)') \
+	  $(if $(ITEMS),--items '$(ITEMS)') $(if $(LISTS),--lists='$(LISTS)') $(if $(RUN_JOBS),-j $(RUN_JOBS)) $(if $(STEPS),--steps '$(STEPS)') \
 	  $(if $(RERUN_FAILED),--rerun-failed '$(RERUN_FAILED)') --cov-mem $(COV_MEM) --cov-el '$(COV_EL)' \
 	  $(if $(filter 1,$(DRY_RUN)),--dry-run)
 

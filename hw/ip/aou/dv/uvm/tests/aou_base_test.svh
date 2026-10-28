@@ -119,10 +119,13 @@ class aou_base_test extends ocah_test;
     void'($value$plusargs("wdata_first_pct=%d", cfg.l3_cfg.pol.wdata_first_pct));
     void'($value$plusargs("wdata_first_beats=%d", cfg.l3_cfg.pol.wdata_first_beats));
     void'($value$plusargs("act_share_pct=%d", cfg.l3_cfg.pol.act_share_pct));
-    `uvm_info(get_type_name(), $sformatf("remote wdata_first=%0d%% beats=%0d act_share=%0d%%",
+    void'($value$plusargs("l3_bulk_last=%d", cfg.l3_cfg.pol.bulk_last));
+    `uvm_info(get_type_name(), $sformatf({"remote wdata_first=%0d%% beats=%0d act_share=%0d%% ",
+                                          "bulk_last=%0d"},
                                          cfg.l3_cfg.pol.wdata_first_pct,
                                          cfg.l3_cfg.pol.wdata_first_beats,
-                                         cfg.l3_cfg.pol.act_share_pct), UVM_LOW)
+                                         cfg.l3_cfg.pol.act_share_pct,
+                                         cfg.l3_cfg.pol.bulk_last), UVM_LOW)
     trdy_knobs();
     env = aou_t1_env::type_id::create("env", this);
     env.cfg = cfg;

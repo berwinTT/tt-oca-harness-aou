@@ -24,9 +24,11 @@
 //   WRESP  M-port B presented and not accepted; or an M-port B accepted, no
 //          other M-port write of that ID open, whose WriteResp has not been
 //          sent.
-// A message the DUT sends ends every pending entry of its ID, the queues
-// restart whenever the link closes, and an M-port response counts only for a
-// request issued since the link last closed, so a request split into several
+// A message the DUT sends ends every pending entry of its ID. When the link
+// closes the M-port queues restart, and an M-port response counts only for a
+// request issued since the link last closed; S-port requests not yet sent stay
+// pending, since the DUT still holds them and sends them once the link
+// reopens, so a request split into several
 // M-port bursts, a response the DUT drops or an orphan beat after a reset
 // never counts as work.
 // Write work counts only while no other RP's manager is behind with write
@@ -149,9 +151,13 @@ class aou_t1_crd_flow_chk extends uvm_component;
   protected int unsigned w_need[AOU_RP_MAX];
   protected int unsigned w_got[AOU_RP_MAX];
   // Beats of each AW in aw_pend, and their sum: w_need less pend_beats is the
-  // data of the accepted writes no longer waiting to be sent (sent, answered,
-  // or forgotten when the link closed).
+  // data of the accepted writes no longer waiting to be sent (sent, or
+  // forgotten at a reset).
   protected int unsigned aw_pend_beats[AOU_RP_MAX][$];
+  // Each AW in aw_pend already answered on the S port: with EARLY_BRESP_EN
+  // the B may come before the write is sent (MAS 3.7). The write stays
+  // pending until its WriteReq goes out, which then has no B left to wait for.
+  protected bit          aw_pend_early[AOU_RP_MAX][$];
   protected int unsigned pend_beats[AOU_RP_MAX];
   protected bit          sent[AOU_CC_NUM];
   protected longint unsigned cyc;
@@ -339,9 +345,12 @@ class aou_t1_crd_flow_chk extends uvm_component;
       rp_wait[x][c] = 0;
       rp_rep[x][c] = 1'b0;
       if ($cast(q, m)) begin
-        if (c == AOU_CC_WREQ && drop_aw(x, q.id)) begin
-          aw_sent[x].push_back(q.id);
-          return;
+        if (c == AOU_CC_WREQ) begin
+          bit answered;
+          if (drop_aw(x, q.id, answered)) begin
+            if (!answered) aw_sent[x].push_back(q.id);
+            return;
+          end
         end
         if (c == AOU_CC_RREQ && drop_id(ar_pend[x], q.id)) begin
           ar_sent[x].push_back(q.id);
@@ -408,6 +417,7 @@ class aou_t1_crd_flow_chk extends uvm_component;
   protected function void forget(int unsigned x);
     aw_pend[x].delete();
     aw_pend_beats[x].delete();
+    aw_pend_early[x].delete();
     pend_beats[x] = 0;
     ar_pend[x].delete();
     aw_sent[x].delete();
@@ -417,16 +427,35 @@ class aou_t1_crd_flow_chk extends uvm_component;
   endfunction
 
   // Drops x's oldest AW of this ID waiting to be sent, with its beats.
-  protected function bit drop_aw(int unsigned x, bit [9:0] id);
+  protected function bit drop_aw(int unsigned x, bit [9:0] id, output bit answered);
+    answered = 1'b0;
     foreach (aw_pend[x][i]) begin
       if (aw_pend[x][i] == id) begin
+        answered = aw_pend_early[x][i];
         pend_beats[x] -= aw_pend_beats[x][i];
         aw_pend[x].delete(i);
         aw_pend_beats[x].delete(i);
+        aw_pend_early[x].delete(i);
         return 1'b1;
       end
     end
     return 1'b0;
+  endfunction
+
+  // An S-port B for a write of x not yet sent: with EARLY_BRESP_EN the DUT
+  // answered it early and still holds it, so the oldest such write of the ID
+  // is marked answered and stays pending. Otherwise the write is gone.
+  protected function void answer_aw(int unsigned x, bit [9:0] id);
+    bit answered;
+    if (early == null || !early.early_en(x)) begin
+      void'(drop_aw(x, id, answered));
+      return;
+    end
+    foreach (aw_pend[x][i])
+      if (aw_pend[x][i] == id && !aw_pend_early[x][i]) begin
+        aw_pend_early[x][i] = 1'b1;
+        return;
+      end
   endfunction
 
   static function bit drop_id(ref bit [9:0] ids[$], input bit [9:0] id);
@@ -469,14 +498,14 @@ class aou_t1_crd_flow_chk extends uvm_component;
     if (s_vif[x].mon_cb.awvalid === 1'b1 && s_vif[x].mon_cb.awready === 1'b1) begin
       aw_pend[x].push_back(s_vif[x].mon_cb.awid);
       aw_pend_beats[x].push_back(int'(s_vif[x].mon_cb.awlen) + 1);
+      aw_pend_early[x].push_back(1'b0);
       pend_beats[x] += int'(s_vif[x].mon_cb.awlen) + 1;
       wr_fly[x]++;
       w_need[x] += int'(s_vif[x].mon_cb.awlen) + 1;
     end
     if (s_vif[x].mon_cb.wvalid === 1'b1 && s_vif[x].mon_cb.wready === 1'b1) w_got[x]++;
     if (s_vif[x].mon_cb.bvalid === 1'b1 && s_vif[x].mon_cb.bready === 1'b1) begin
-      if (!drop_id(aw_sent[x], s_vif[x].mon_cb.bid))
-        void'(drop_aw(x, s_vif[x].mon_cb.bid));
+      if (!drop_id(aw_sent[x], s_vif[x].mon_cb.bid)) answer_aw(x, s_vif[x].mon_cb.bid);
       if (wr_fly[x] > 0) wr_fly[x]--;
     end
     if (s_vif[x].mon_cb.arvalid === 1'b1 && s_vif[x].mon_cb.arready === 1'b1) begin
@@ -559,8 +588,11 @@ class aou_t1_crd_flow_chk extends uvm_component;
       for (int unsigned x = 0; x < cfg.n_rp; x++) track(x);
       link_check();
       if (!link_open()) begin
+        // S-port requests stay pending (see the header); the M-port side
+        // restarts.
         for (int unsigned x = 0; x < cfg.n_rp; x++) begin
-          forget(x);
+          b_pend[x].delete();
+          r_pend[x].delete();
           if (was_open) forget_m(x);
         end
         was_open = 1'b0;

@@ -546,6 +546,7 @@ directions at once (+dp_dir=both; D41). +dp_profile picks a profile
 |===
 | Scenario | Arguments | Seeds | Target | Plan items
 | `aou_dp_random_test.dp_dir-both.fdi_trdy-holes.fdi_stall_pct-5.fdi_stall_mid_pct-60.fdi_stall_trdy_free-1` | `+dp_dir=both +fdi_trdy=holes +fdi_stall_pct=5 +fdi_stall_mid_pct=60 +fdi_stall_trdy_free=1` | 1-3 |  | 18.22
+| `aou_dp_random_test.dp_dir-both.fdi_stall_pct-10.fdi_stall_hold_min-0.fdi_stall_hold_max-2` | `+dp_dir=both +fdi_stall_pct=10 +fdi_stall_hold_min=0 +fdi_stall_hold_max=2` | 1 |  | 18.22
 | `aou_dp_random_test.dp_dir-both.l1_cancel_pct-40.l1_cancel_mix-1` | `+dp_dir=both +l1_cancel_pct=40 +l1_cancel_mix=1` | 1-3 |  | 18.24
 | `aou_dp_random_test.dp_dir-both.l1_cancel_pct-40.l1_cancel_mix-1.fdi_trdy-holes.fdi_stall_pct-8.fdi_stall_mid_pct-50.fdi_stall_trdy_free-1` | `+dp_dir=both +l1_cancel_pct=40 +l1_cancel_mix=1 +fdi_trdy=holes +fdi_stall_pct=8 +fdi_stall_mid_pct=50 +fdi_stall_trdy_free=1` | 1-2 |  | 18.22,18.24
 | `aou_dp_random_test.dp_dir-both.active_phy-1.park_idle_phy-1.fdi_trdy-holes.fdi_stall_pct-5.fdi_stall_mid_pct-50.2xmix-tp64_128` | `+dp_dir=both +active_phy=1 +park_idle_phy=1 +fdi_trdy=holes +fdi_stall_pct=5 +fdi_stall_mid_pct=50` | 1-2 | `2xmix-tp64_128` | 18.25
@@ -615,6 +616,13 @@ random stalls on one AXI channel at both ends (W and R per beat),
 on all of them, or on the FDI (bursty pl_trdy, gaps and bubbles
 in the flits to the DUT); none runs every channel at full rate
 
+----
++st_stall_max=N                           longest AXI stall, in cycles
+----
+
+(default 300); over 1000 holds a ready or valid low for longer
+than the DUT's own pipelines ever wait
+
 *Procedure.* The base class's virtual sequence `aou_dp_vseq`, configured by this class and its arguments.
 
 *Pass criteria.* The base test's end-of-test checks: scoreboard drained, every declared expectation met, no unexpected `UVM_ERROR`/`UVM_FATAL`, the FDI checker clean; `scripts/check_run.py` judges the log against `expected_fail.yaml`.
@@ -637,6 +645,7 @@ in the flits to the DUT); none runs every channel at full rate
 | `aou_stress_test.st_bp-b` | `+st_bp=b` | 1-2 |  | 7.16
 | `aou_stress_test.st_bp-r` | `+st_bp=r` | 1-2 |  | 7.16
 | `aou_stress_test.st_bp-all` | `+st_bp=all` | 1-2 |  | 7.16,10.15
+| `aou_stress_test.st_bp-all.st_stall_max-1500.4x512-sp64` | `+st_bp=all +st_stall_max=1500` | 1-2 | `4x512-sp64` | 7.16
 | `aou_stress_test.st_bp-fdi` | `+st_bp=fdi` | 1-2 |  | 7.16,10.15
 | `aou_stress_test.st_bp-all.small_size_pct-5` | `+st_bp=all +small_size_pct=5` | 1-2 |  | 4.1,5.1,14.10,14.11
 | `aou_stress_test.st_bp-all.1x512-sp64-nxt` | `+st_bp=all` | 1-2 | `1x512-sp64-nxt` | 7.16,10.15
@@ -959,6 +968,8 @@ size and start address, each write read back; RLAST only on the last beat
 | `aou_dp_burst_test.dp_len-1_3_7_15` | `+dp_len=1,3,7,15` | 1-3 |  | 4.9,4.10,4.11,4.12,5.9,5.10,5.11,5.12,5.19
 | `aou_dp_burst_test.dp_len-31_63_255` | `+dp_len=31,63,255` | 1-2 |  | 4.13,4.14,4.15,5.13,5.14,5.15
 | `aou_dp_burst_test.dp_len-31_63_255.wdata_first_pct-100.wdata_first_beats-256` | `+dp_len=31,63,255 +wdata_first_pct=100 +wdata_first_beats=256` | 1-2 |  | 4.13,4.14,4.15,4.32
+| `aou_dp_burst_test.dp_size-0_1_2_3_4.dp_len-31_63_127_255.dp_profile-low.4x512-sp64` | `+dp_size=0,1,2,3,4 +dp_len=31,63,127,255 +dp_profile=low` | 1-2 | `4x512-sp64` | 4.13,4.14,4.15,5.13,5.14,5.15
+| `aou_dp_burst_test.dp_size-0_1_2_3_4.dp_len-1_31_63_127_255.remote_max_burst_rand-1` | `+dp_size=0,1,2,3,4 +dp_len=1,31,63,127,255 +remote_max_burst_rand=1` | 1-3 | `1x512-sp64` | 4.13,4.14,4.15,5.13,5.14,5.15,14.10,14.11
 | `aou_dp_burst_test.dp_len-31_63_255.rtl_asserts-1` | `+dp_len=31,63,255 +rtl_asserts=1` | 1 | `1x512-sp64-assert` | 11.18
 |===
 
@@ -981,6 +992,8 @@ size and start address, each write read back; RLAST only on the last beat
 * 5.15: Read burst with ARLEN=255 (256 beats)
 * 5.19: Verify RLAST=1 only on final beat of burst
 * 11.18: Regression on a build with the RTL's embedded ASSERTION_ON checks
+* 14.10: Verify WLAST regenerated correctly for single-beat
+* 14.11: Verify WLAST regenerated correctly for multi-beat burst
 
 [[aou-proc-aou_dp_wstrb_test]]
 ===== 22. `aou_dp_wstrb_test`
@@ -1320,6 +1333,7 @@ bursts the DUT splits on its M port (aou_split_chk).
 | `aou_split_test.split_aw-per_rp.split_ar-per_rp.dp_len-7_15_31.dp_batch-1` | `+split_aw=per_rp +split_ar=per_rp +dp_len=7,15,31 +dp_batch=1` | 1-3 | `4x512-sp64` | 15.16
 | `aou_split_test.split_aw-15.split_ar-15.dp_len-7_15_31_63` | `+split_aw=15 +split_ar=15 +dp_len=7,15,31,63` | 1-3 | `1x256-sp32` | 15.17
 | `aou_split_test.split_aw-sweep.split_ar-sweep.dp_len-15_31_63` | `+split_aw=sweep +split_ar=sweep +dp_len=15,31,63` | 1-3 | `1x256-sp32` | 15.17
+| `aou_split_test.split_aw-255.split_ar-255.dp_full_size-0.dp_size-0_1_2_3_4.dp_len-31_63_127_255.dp_profile-low.dp_ids-high.4x512-sp64` | `+split_aw=255 +split_ar=255 +dp_full_size=0 +dp_size=0,1,2,3,4 +dp_len=31,63,127,255 +dp_profile=low +dp_ids=high` | 1-2 | `4x512-sp64` | 15.1
 | `aou_split_test.remote_bytes-128.split-255.4xmix4211-sp128` | `+remote_bytes=128 +split_aw=255 +split_ar=255` | 1-2 | `4xmix4211-sp128` | 15.17
 | `aou_split_test.remote_bytes-128.split-3.4xmix4211-sp128` | `+remote_bytes=128 +split_aw=3 +split_ar=3` | 1-2 | `4xmix4211-sp128` | 15.17
 | `aou_split_test.remote_bytes-64.split-15.4xmix4211-sp128` | `+remote_bytes=64 +split_aw=15 +split_ar=15` | 1-2 | `4xmix4211-sp128` | 15.17
@@ -1678,7 +1692,9 @@ full       best-fit packing with backlog bursts: flits filled to G47
 wresp48    remote reads of nothing but WriteResp backlog: 48 in one flit
 rp         multi-RP builds: messages of several RPs in one flit
 act        activation cycles with traffic, two zero CrdtGrants per half
-crdt       credits only through CrdtGrant messages, plus zero grants
+crdt       credits only through CrdtGrant messages, plus zero grants; in
+a quarter of the flits the grant starts at G47 and ends in G0
+of the next flit
 b2b        no idle cycles on FDI either way (trdy always, no gaps)
 prof       random PROF (FLEX[11:0]) in AXI messages to the DUT
 
@@ -3523,8 +3539,13 @@ are fixed, so every seed and simulator measures the same bench:
 
 default 0), +perf_w_before_aw=0|1 (default 1), +perf_resp_fork=0|1 (remote
 responder serves requests concurrently, default 0).
+The remote die's bus on each RP is as wide as the DUT's (+remote_bytes
+overrides), so neither side's bursts are resized on the way: a pairing of
+different widths is a correctness scenario, not a bandwidth one.
 The remote die sends every full-strobe write beat as WriteDataFull
-(+perf_remote_full_pct=<pct>, default 100), as the DUT does.
+(+perf_remote_full_pct=<pct>, default 100), as the DUT does, and every
+WriteReq ahead of its WriteData (+wdata_first_pct=0 unless given): the
+windows measure the ordinary order, the same on every seed.
 Managers keep +perf_slots outstanding (default 32): with the drivers'
 default 16 the remote die's reads could not cover their round trip when
 both sides read, and the bench, not the DUT, set the rate.

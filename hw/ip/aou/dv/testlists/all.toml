@@ -88,7 +88,7 @@ tests = [
 # Functional areas (no stress, matrix, perf or assertion builds)
 [[groups]]
 name = "functional"
-expected_count = 260
+expected_count = 264
 tests = [
   "aou_t1_slice_test",
   "aou_t1_deact_test",
@@ -104,6 +104,7 @@ tests = [
   "aou_t1_sw_reset_test",
   "aou_t1_hard_reset_test",
   "aou_dp_random_test.dp_dir-both.fdi_trdy-holes.fdi_stall_pct-5.fdi_stall_mid_pct-60.fdi_stall_trdy_free-1",
+  "aou_dp_random_test.dp_dir-both.fdi_stall_pct-10.fdi_stall_hold_min-0.fdi_stall_hold_max-2",
   "aou_stress_test.st_pol-random.st_crd-slow.fdi_trdy-random.fdi_stall_pct-8.fdi_stall_mid_pct-50",
   "aou_lp_mode_test.lp_mode-1.fdi_trdy-holes.fdi_stall_pct-5.fdi_stall_mid_pct-90.fdi_stall_trdy_free-1",
   "aou_lp_mode_test.lp_mode-1.lp_thr-0.fdi_trdy-random.fdi_stall_pct-5.fdi_stall_mid_pct-90.fdi_stall_trdy_free-1",
@@ -131,6 +132,8 @@ tests = [
   "aou_dp_burst_test.dp_len-1_3_7_15",
   "aou_dp_burst_test.dp_len-31_63_255",
   "aou_dp_burst_test.dp_len-31_63_255.wdata_first_pct-100.wdata_first_beats-256",
+  "aou_dp_burst_test.dp_size-0_1_2_3_4.dp_len-31_63_127_255.dp_profile-low.4x512-sp64",
+  "aou_dp_burst_test.dp_size-0_1_2_3_4.dp_len-1_31_63_127_255.remote_max_burst_rand-1",
   "aou_dp_wstrb_test.dp_strb-full",
   "aou_dp_wstrb_test.dp_strb-partial",
   "aou_dp_wstrb_test.dp_strb-sparse",
@@ -191,6 +194,7 @@ tests = [
   "aou_split_test.split_aw-per_rp.split_ar-per_rp.dp_len-7_15_31.dp_batch-1",
   "aou_split_test.split_aw-15.split_ar-15.dp_len-7_15_31_63",
   "aou_split_test.split_aw-sweep.split_ar-sweep.dp_len-15_31_63",
+  "aou_split_test.split_aw-255.split_ar-255.dp_full_size-0.dp_size-0_1_2_3_4.dp_len-31_63_127_255.dp_profile-low.dp_ids-high.4x512-sp64",
   "aou_aggregator_test.agg_en-per_rp.4x512-sp64",
   "aou_aggregator_test.agg_en-per_rp.4xmix4211-sp128",
   "aou_early_bresp_test.early_en-1.early_toggle-1.dp_buf_pct-50",
@@ -355,7 +359,7 @@ tests = [
 # Every runnable T1 scenario; run_list.py skips entries whose target differs
 [[groups]]
 name = "all"
-expected_count = 475
+expected_count = 480
 tests = [
   "aou_attr_test.attr_excl-1.remote_max_burst-1.4xmix4211-sp128",
   "aou_small_size_test",
@@ -381,6 +385,7 @@ tests = [
   "aou_t1_sw_reset_test",
   "aou_t1_hard_reset_test",
   "aou_dp_random_test.dp_dir-both.fdi_trdy-holes.fdi_stall_pct-5.fdi_stall_mid_pct-60.fdi_stall_trdy_free-1",
+  "aou_dp_random_test.dp_dir-both.fdi_stall_pct-10.fdi_stall_hold_min-0.fdi_stall_hold_max-2",
   "aou_stress_test.st_pol-random.st_crd-slow.fdi_trdy-random.fdi_stall_pct-8.fdi_stall_mid_pct-50",
   "aou_lp_mode_test.lp_mode-1.fdi_trdy-holes.fdi_stall_pct-5.fdi_stall_mid_pct-90.fdi_stall_trdy_free-1",
   "aou_lp_mode_test.lp_mode-1.lp_thr-0.fdi_trdy-random.fdi_stall_pct-5.fdi_stall_mid_pct-90.fdi_stall_trdy_free-1",
@@ -408,6 +413,8 @@ tests = [
   "aou_dp_burst_test.dp_len-1_3_7_15",
   "aou_dp_burst_test.dp_len-31_63_255",
   "aou_dp_burst_test.dp_len-31_63_255.wdata_first_pct-100.wdata_first_beats-256",
+  "aou_dp_burst_test.dp_size-0_1_2_3_4.dp_len-31_63_127_255.dp_profile-low.4x512-sp64",
+  "aou_dp_burst_test.dp_size-0_1_2_3_4.dp_len-1_31_63_127_255.remote_max_burst_rand-1",
   "aou_dp_wstrb_test.dp_strb-full",
   "aou_dp_wstrb_test.dp_strb-partial",
   "aou_dp_wstrb_test.dp_strb-sparse",
@@ -468,6 +475,7 @@ tests = [
   "aou_split_test.split_aw-per_rp.split_ar-per_rp.dp_len-7_15_31.dp_batch-1",
   "aou_split_test.split_aw-15.split_ar-15.dp_len-7_15_31_63",
   "aou_split_test.split_aw-sweep.split_ar-sweep.dp_len-15_31_63",
+  "aou_split_test.split_aw-255.split_ar-255.dp_full_size-0.dp_size-0_1_2_3_4.dp_len-31_63_127_255.dp_profile-low.dp_ids-high.4x512-sp64",
   "aou_aggregator_test.agg_en-per_rp.4x512-sp64",
   "aou_aggregator_test.agg_en-per_rp.4xmix4211-sp128",
   "aou_early_bresp_test.early_en-1.early_toggle-1.dp_buf_pct-50",
@@ -509,6 +517,7 @@ tests = [
   "aou_stress_test.st_bp-b",
   "aou_stress_test.st_bp-r",
   "aou_stress_test.st_bp-all",
+  "aou_stress_test.st_bp-all.st_stall_max-1500.4x512-sp64",
   "aou_stress_test.st_bp-fdi",
   "aou_qos_order_test.arb_mode-0",
   "aou_qos_order_test.arb_mode-1.qos_tiers-eq",

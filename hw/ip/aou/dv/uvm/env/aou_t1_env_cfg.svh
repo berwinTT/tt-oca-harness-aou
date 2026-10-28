@@ -201,8 +201,8 @@ class aou_t1_env_cfg extends uvm_object;
 
   // L1 corner knobs from the command line (stall and flit-cancel corners, plan
   // 18.22/18.24): +fdi_trdy=always|random|holes|bursty, +fdi_stall_pct,
-  // +fdi_stall_mid_pct, +fdi_stall_trdy_free=0|1 (every PHY), +l1_cancel_pct,
-  // +l1_cancel_mix=0|1.
+  // +fdi_stall_mid_pct, +fdi_stall_trdy_free=0|1, +fdi_stall_hold_min,
+  // +fdi_stall_hold_max (every PHY), +l1_cancel_pct, +l1_cancel_mix=0|1.
   function void l1_plusargs();
     string s;
     int unsigned v;
@@ -222,6 +222,15 @@ class aou_t1_env_cfg extends uvm_object;
       foreach (fdi_cfg[p]) fdi_cfg[p].stall_mid_pct = v;
     if ($value$plusargs("fdi_stall_trdy_free=%d", v))
       foreach (fdi_cfg[p]) fdi_cfg[p].stall_trdy_free = v != 0;
+    if ($value$plusargs("fdi_stall_hold_min=%d", v))
+      foreach (fdi_cfg[p]) fdi_cfg[p].stall_hold_min = v;
+    if ($value$plusargs("fdi_stall_hold_max=%d", v))
+      foreach (fdi_cfg[p]) fdi_cfg[p].stall_hold_max = v;
+    foreach (fdi_cfg[p])
+      if (fdi_cfg[p].stall_hold_min > fdi_cfg[p].stall_hold_max)
+        `uvm_fatal(get_type_name(), $sformatf(
+                   "+fdi_stall_hold_min=%0d is above +fdi_stall_hold_max=%0d",
+                   fdi_cfg[p].stall_hold_min, fdi_cfg[p].stall_hold_max))
     void'($value$plusargs("l1_cancel_pct=%d", l1_cancel_pct));
     if ($value$plusargs("l1_cancel_mix=%d", v)) l1_cancel_mix = v != 0;
   endfunction

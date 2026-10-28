@@ -127,6 +127,24 @@ class Regress(unittest.TestCase):
         self.assertIn("assert-1x512-sp64: none of ITEMS", p.stdout)
         self.assertIn("--items smoke", p.stdout)
 
+    def test_lists_selection(self):
+        p = self.regress("--sim", "vcs", "--rid", "d4", "--dry-run")
+        self.assertIn("testlists/perf.toml", p.stdout)          # the default runs every list
+        p = self.regress("--sim", "vcs", "--rid", "d4", "--lists", "all,-perf", "--dry-run")
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertNotIn("perf.toml", p.stdout)
+        self.assertIn("testlists/errors.toml", p.stdout)
+        self.assertIn("testlists/registers.toml", p.stdout)
+        p = self.regress("--sim", "vcs", "--rid", "d4", "--lists", "errors,link", "--dry-run")
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertIn("testlists/link.toml testlists/errors.toml", p.stdout)
+        self.assertIn("reg-1x512-sp64: none of its testlists", p.stdout)
+        self.assertIn("# build: 1 job(s)", p.stdout)
+        self.assertNotEqual(self.regress("--lists", "bogus", "--dry-run").returncode, 0)
+        p = self.regress("--lists=-perf", "--items", "smoke", "--dry-run")
+        self.assertNotEqual(p.returncode, 0)
+        self.assertIn("without ITEMS", p.stdout + p.stderr)
+
     def test_run_summary_resume_rerun(self):
         items = ("--items", "smoke assertions")
         p = self.regress("--sim", "vcs", "--rid", "r1", *items,

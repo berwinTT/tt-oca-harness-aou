@@ -181,7 +181,13 @@ class ScenarioTest(unittest.TestCase):
         self.assertEqual([(e[1], e[3], e[6]) for e in loc],
                          [(2048, 128, 3), (512, 32, 1), (1024, 64, 1), (512, 32, 1)])
         self.assertEqual(pm.rp_weights(w, self.CONFS["4xmix"]), [3, 1, 1, 1])
+        # the remote die runs each RP at that RP's own width unless the window says otherwise
+        self.assertEqual([(e[1], e[3], e[6]) for e in rem],
+                         [(2048, 128, 3), (512, 32, 1), (1024, 64, 1), (512, 32, 1)])
+        w["remote_bytes"] = "64"
+        _, rem = pm.window_sides(w, self.CONFS["4xmix"])
         self.assertEqual({e[3] for e in rem}, {64})
+        del w["remote_bytes"]
         w["widest_pct"] = "0"
         loc, _ = pm.window_sides(w, self.CONFS["4xmix"])
         self.assertEqual([e[3] for e in loc], [32, 64, 32])

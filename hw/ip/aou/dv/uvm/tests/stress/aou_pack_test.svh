@@ -14,7 +14,9 @@
 //   wresp48    remote reads of nothing but WriteResp backlog: 48 in one flit
 //   rp         multi-RP builds: messages of several RPs in one flit
 //   act        activation cycles with traffic, two zero CrdtGrants per half
-//   crdt       credits only through CrdtGrant messages, plus zero grants
+//   crdt       credits only through CrdtGrant messages, plus zero grants; in
+//              a quarter of the flits the grant starts at G47 and ends in G0
+//              of the next flit
 //   b2b        no idle cycles on FDI either way (trdy always, no gaps)
 //   prof       random PROF (FLEX[11:0]) in AXI messages to the DUT
 class aou_pack_test extends aou_dp_base_test;
@@ -93,6 +95,7 @@ class aou_pack_test extends aou_dp_base_test;
       "crdt": begin
         pol.cred_method = AOU_CRM_GRANT;
         pol.zero_grants = 1;
+        pol.grant_span_pct = 25;
       end
       "b2b": begin
         foreach (cfg.fdi_cfg[p]) cfg.fdi_cfg[p].trdy_policy = AOU_TRDY_ALWAYS;

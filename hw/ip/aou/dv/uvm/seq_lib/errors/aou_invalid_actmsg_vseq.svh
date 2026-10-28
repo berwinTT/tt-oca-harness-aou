@@ -242,13 +242,19 @@ class aou_invalid_actmsg_vseq extends aou_link_base_vseq;
   // After a permitted opcode the DUT did not flag at once: activation (from
   // DISABLED), traffic and deactivation, each raced against
   // INT_REQ_LINKRESET. A LinkReset here is the DUT reacting late to the
-  // stray, an accepted ending; software then recovers.
+  // stray, an accepted ending; software then recovers. Reaching the target
+  // state on both sides is not the end of the handshake: a DUT that took the
+  // stray as the remote die's answer gets there early, and the real answer
+  // is still on its way and may then be flagged. So each handshake also
+  // waits (settle) until the DUT has seen and reacted to everything the
+  // remote die sent, before traffic starts or the case ends.
   task followup(st_e s, bit [3:0] op);
     int unsigned irq0 = irq_rises("INT_REQ_LINKRESET");
     if (s == ST_DISABLED) begin
       ensure_link();
       dut_activate(AOU_T1_BY_APB);
       race_state(1'b1, irq0);
+      if (!race_lr) settle(irq0);
       if (race_lr) begin
         late_linkreset(s, op);
         return;
@@ -270,18 +276,35 @@ class aou_invalid_actmsg_vseq extends aou_link_base_vseq;
     race_state(1'b0, irq0);
     // A LinkReset may also follow DISABLED (after a DeactivateAck in
     // ENABLED, the remote die's own DeactivateAck arriving after the DUT
-    // disabled early). Once the remote die has nothing left to send the DUT,
-    // give the DUT the status watcher's reaction time, so software recovers
-    // from such a LinkReset before the test ends.
-    if (!race_lr) begin
-      int unsigned n = 0;
-      while (!env.status.remote_tx_idle() && n++ < cfg.act_timeout) wait_cycles(1);
-      wait_cycles(aou_t1_status::REACT_CYCLES + 1);
-      linkreset_seen(irq0);
-      race_lr = lr_seen;
-    end
+    // disabled early); software recovers from it before the case ends.
+    if (!race_lr) settle(irq0);
     if (race_lr) late_linkreset(s, op);
     else ensure_link();
+  endtask
+
+  // Bounded wait for a late reaction: until the remote die has nothing left
+  // to send the DUT (no queued message, no flit on the FDI), then the status
+  // watcher's reaction time, so a LinkReset the DUT raises for the last
+  // message it received is seen here (race_lr=1) and not in the next step.
+  // A LinkReset that rises meanwhile ends the wait at once.
+  task settle(int unsigned irq0);
+    int unsigned n = 0;
+    while (!env.status.remote_tx_idle() && irq_rises("INT_REQ_LINKRESET") == irq0) begin
+      if (n++ == cfg.act_timeout) begin
+        // The remote die cannot hand the DUT what it still has: a stall, not
+        // one of the accepted endings.
+        `uvm_error(get_type_name(), $sformatf(
+                   "T1-L16: remote die still has messages for the DUT %0d cycles on",
+                   cfg.act_timeout))
+        break;
+      end
+      wait_cycles(1);
+    end
+    for (int unsigned i = 0; i <= aou_t1_status::REACT_CYCLES &&
+                             irq_rises("INT_REQ_LINKRESET") == irq0; i++)
+      wait_cycles(1);
+    linkreset_seen(irq0);
+    race_lr = lr_seen;
   endtask
 
   task late_linkreset(st_e s, bit [3:0] op);

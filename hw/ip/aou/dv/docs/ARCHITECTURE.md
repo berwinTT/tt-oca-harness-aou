@@ -141,7 +141,7 @@ the DUT's RX FIFOs still hold, and the DEACTIVATE_TIME_OUT_VALUE quiet window;
 `cfg.rx_fifo_chk_en`, `cfg.rx_fifo_slack`), `cfg.remote_rp_count` (the remote die's RP
 count, `+remote_rp_count`), `env.outstanding(why)`, and in the base vseq `inject_mem_error()`, `wait_link()`,
 `wait_l3()`, `write_field()`. Traffic profiles are `aou_t1_traffic_cfg` objects
-(`aou_t1_traffic_cfg::named("rand"|"unaligned"|"b_zero"|"long"|"short"|"narrow"|"stall")`).
+(`aou_t1_traffic_cfg::named("rand"|"unaligned"|"b_zero"|"long"|"short"|"narrow"|"stall"|"low")`).
 `scoreboard.remote_imp` gets the remote managers' completed transactions (L4a
 originated, as this document defines it), not the remote model's responses.
 

@@ -120,7 +120,7 @@ class aou_fdi_tx_responder extends uvm_component;
       if (cfg.gate.open && (mid ? tx_beat != 0 : tx_beat == 0) && !stall_busy &&
           $urandom_range(99) < cfg.stall_pct) begin
         stall_begin();
-        repeat ($urandom_range(cfg.stall_hold_max, 1)) @(vif.drv_cb);
+        repeat ($urandom_range(cfg.stall_hold_max, cfg.stall_hold_min)) @(vif.drv_cb);
         stall_end();
         repeat (cfg.bpf()) @(vif.drv_cb);
       end

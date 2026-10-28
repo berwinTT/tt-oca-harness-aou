@@ -321,6 +321,19 @@ tags = ["stress"]
 run_modes = ["stress"]
 args = ["+st_bp=all"]
 
+# Stalls of up to 1500 cycles on every AXI channel at both ends, with the
+# managers' B and R ready held low longest while their writes and reads are
+# outstanding.
+[[tests]]
+name = "aou_stress_test.st_bp-all.st_stall_max-1500.4x512-sp64"
+module = { uvm = "aou_stress_test" }
+target = "4x512-sp64"
+seed = 1
+reseed = 2
+tags = ["stress"]
+run_modes = ["stress"]
+args = ["+st_bp=all", "+st_stall_max=1500"]
+
 [[tests]]
 name = "aou_stress_test.st_bp-fdi"
 module = { uvm = "aou_stress_test" }
@@ -560,7 +573,7 @@ args = ["+st_bp=all", "+small_size_pct=5"]
 
 [[groups]]
 name = "stress"
-expected_count = 57
+expected_count = 58
 tests = [
   "aou_stress_test.st_bp-all.small_size_pct-5",
   "aou_pack_test.pk-crossflit.remote_bytes-32",
@@ -597,6 +610,7 @@ tests = [
   "aou_stress_test.st_bp-b",
   "aou_stress_test.st_bp-r",
   "aou_stress_test.st_bp-all",
+  "aou_stress_test.st_bp-all.st_stall_max-1500.4x512-sp64",
   "aou_stress_test.st_bp-fdi",
   "aou_qos_order_test.arb_mode-0",
   "aou_qos_order_test.arb_mode-1.qos_tiers-eq",
