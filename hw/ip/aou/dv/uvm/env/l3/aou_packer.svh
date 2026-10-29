@@ -213,6 +213,8 @@ class aou_packer extends uvm_object;
     aou_granule_t g[$];
     aou_cred_class_e c = m.cred_class();
     m.dir = AOU_L3_TX;
+    // Random FLEX to the DUT (aou_packer_policy::prof_pct): the low 12 bits,
+    // FLEX[15:12] 0 for a v0.7 receiver.
     if (c != AOU_CC_NONE && cfg.pol.prof_pct != 0 && $urandom_range(99) < cfg.pol.prof_pct)
       m.flex[11:0] = 12'($urandom());
     m.to_granules(g);

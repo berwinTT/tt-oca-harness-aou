@@ -4,7 +4,10 @@
 // AXI request attributes and exclusive responses across the link, and FLEX,
 // in every T1 test (cfg.attr_chk_en). WriteReq and ReadReq carry AxLOCK,
 // AxCACHE, AxPROT and AxQOS (AoU 5.3; Basic Profile Table 31), responses carry
-// EXOKAY, and FLEX is USER[15:0] (5.2), which this DUT does not have.
+// EXOKAY, and FLEX is USER[15:0] (5.2 / 11.1): the DUT takes AWUSER, ARUSER
+// and WUSER on its S port and BUSER and RUSER on its M port (16 bits each)
+// and sends them as the FLEX of WriteReq, ReadReq, WriteData, WriteResp and
+// ReadData. It has no USER outputs, so the receive direction is not checked.
 //
 // A request seen at the far side (the remote model for local requests, the M
 // port for remote ones) is matched to the requester's transaction by RP,
@@ -23,7 +26,18 @@
 // DP-R07: an exclusive transaction's BRESP/RRESP at the requester is the far
 //   subordinate's (EXOKAY or OKAY; AXI4 A7.2: only the subordinate's monitor
 //   can decide), when the DUT neither split nor merged it.
-// DP-R08: FLEX is 0 in every AXI message the DUT sends (no USER ports).
+// DP-R08: FLEX in each AXI message the DUT sends equals the AXI USER value
+//   the DUT's AXI port received: WriteReq = AWUSER, ReadReq = ARUSER,
+//   WriteData(Full) = the WUSER of its W beat, WriteResp = BUSER (of the
+//   first sub-burst's B when the DUT's burst splitter merged several),
+//   ReadData = RUSER of the R beat (of the transaction's first R beat when
+//   the DUT's downsizer merged several local beats into one). Checked on the
+//   matched pair: the far side of a local request carries the FLEX of the
+//   DUT's WriteReq/ReadReq (user) and WriteData beats (wuser[], message
+//   order; aou_t1_l4a_adapter); a remote request's near side carries the FLEX
+//   of the DUT's WriteResp (buser) and ReadData beats (ruser[];
+//   aou_t1_remote_mgr_driver), its far pieces the BUSER/RUSER the M port
+//   returned. Responses the DUT makes up match nothing and are not checked.
 // DP-R09: the size of each WriteReq the DUT sends is at least the AWSIZE of
 //   the S-port write it came from (a writer may raise the size, never lower it),
 //   matched by RP, ID and address as above.
@@ -145,7 +159,9 @@ class aou_t1_attr_chk extends uvm_component;
     if (near_q[p].exists(k)) begin
       foreach (near_q[p][k][i]) begin
         if (inside_of(near_q[p][k][i], f.addr, p == 1)) begin
+          aou_axi_txn one[$] = '{f};
           matched(p, near_q[p][k][i], f, 1'b1);
+          check_flex(p, near_q[p][k][i], one);
           near_q[p][k].delete(i);
           return;
         end
@@ -161,22 +177,46 @@ class aou_t1_attr_chk extends uvm_component;
            longint'(t.addr & (64'(t.beat_bytes()) - 64'd1));
   endfunction
 
+  // One past the last byte of an INCR burst's last beat.
+  static function bit [63:0] end_of(aou_axi_txn t);
+    return (t.addr & ~(64'(t.beat_bytes()) - 64'd1)) + 64'(t.beats()) * t.beat_bytes();
+  endfunction
+
   // A later same-ID request can start inside an earlier one's bytes and reach
   // the far side before the earlier response gets back, so pieces (queued in
   // far-side order) are taken oldest first only until they cover n.
+  //
+  // The pieces of an unaligned INCR request can overlap: when the splitter cuts
+  // it, each sub-burst starts at the next unserved narrow beat, which lies
+  // inside the previous sub-burst's last wide beat (AXI4 A3.4.1: only a burst's
+  // first beat is partial). The spans then add up to more than n's, and the
+  // address a piece reaches overstates what it served. So an INCR request
+  // counts as covered when a piece reaches its end, and a further same-ID
+  // piece that starts inside the last taken piece's final beat is still its
+  // continuation and is taken too. Other bursts go by the span sum.
   function void take_near(int p, aou_axi_txn n);
     string k = key(n, p == 1);
     aou_axi_txn got[$];
     aou_axi_txn rest[$];
+    aou_axi_txn last;
     longint unsigned have = 0;
+    bit [63:0] reached = n.addr;
+    bit covered = 1'b0;
+    bit incr = (n.burst == AOU_AXI_INCR);
     if (n.aborted || n.reset_outstanding) return;
     if (p == 0 && n.dir == AOU_AXI_WR) take_aw(n);
     if (far_q[p].exists(k)) begin
       foreach (far_q[p][k][i]) begin
-        if (have < span(n) && inside_of(n, far_q[p][k][i].addr, p == 1)) begin
-          got.push_back(far_q[p][k][i]);
-          have += span(far_q[p][k][i]);
-        end else rest.push_back(far_q[p][k][i]);
+        aou_axi_txn f = far_q[p][k][i];
+        bit continues = incr && covered && last != null && f.addr > last.addr &&
+                        f.addr >= end_of(last) - 64'(last.beat_bytes()) && f.addr < end_of(last);
+        if ((!covered || continues) && inside_of(n, f.addr, p == 1)) begin
+          got.push_back(f);
+          have += span(f);
+          last = f;
+          if (end_of(f) > reached) reached = end_of(f);
+          covered = incr ? (reached >= end_of(n)) : (have >= span(n));
+        end else rest.push_back(f);
       end
       far_q[p][k] = rest;
     end
@@ -185,6 +225,114 @@ class aou_t1_attr_chk extends uvm_component;
       return;
     end
     foreach (got[i]) matched(p, n, got[i], got.size() == 1);
+    check_flex(p, n, got);
+  endfunction
+
+  // Reports one DP-R08 mismatch.
+  protected function void flex_err(int p, aou_axi_txn n, string msg, string beat, bit [15:0] got,
+                                   string sig, bit [15:0] exp);
+    aou_rule_log::fire("DP-R08", get_type_name());
+    `uvm_error(get_type_name(), $sformatf(
+               "DP-R08: %s: DUT %s%s on RP%0d carries FLEX %04h, the %s port got %s %04h: %s",
+               path_name(p), msg, beat, n.rp, got, (p == 0) ? "S" : "M", sig, exp,
+               n.convert2string()))
+  endfunction
+
+  // FLEX of the DUT's messages for n against the USER its AXI port got (the
+  // header's DP-R08). got holds n's far pieces; on p == 1 they are the M-port
+  // bursts the DUT made of the remote request, in the order their responses
+  // completed (same ID, so the order the DUT issued them).
+  function void check_flex(int p, aou_axi_txn n, aou_axi_txn got[$]);
+    aou_axi_txn f;
+    int bad;
+    if (got.size() == 0) return;
+    f = got[0];
+    aou_rule_log::check("DP-R08", get_type_name());
+    if (p == 0) begin
+      // The DUT's request: every far piece carries the one WriteReq/ReadReq FLEX.
+      n_flex_chk++;
+      foreach (got[i]) begin
+        if (got[i].user != n.user) begin
+          flex_err(p, n, (n.dir == AOU_AXI_WR) ? "WriteReq" : "ReadReq", "", got[i].user,
+                   (n.dir == AOU_AXI_WR) ? "AWUSER" : "ARUSER", n.user);
+          break;
+        end
+      end
+      // One WriteData per W beat (AoU 5.2: USER passes through beat by beat).
+      if (n.dir == AOU_AXI_WR) begin
+        n_flex_chk += f.wuser.size();
+        if (f.wuser.size() != n.wuser.size())
+          `uvm_info(get_type_name(), $sformatf(
+                    "DP-R08: %s: %0d WriteData beats for %0d W beats, comparing the first %0d: %s",
+                    path_name(p), f.wuser.size(), n.wuser.size(),
+                    (f.wuser.size() < n.wuser.size()) ? f.wuser.size() : n.wuser.size(),
+                    n.convert2string()), UVM_MEDIUM)
+        bad = -1;
+        foreach (f.wuser[i]) begin
+          if (i < n.wuser.size() && f.wuser[i] != n.wuser[i] && bad < 0) bad = i;
+        end
+        if (bad >= 0)
+          flex_err(p, n, "WriteData", $sformatf(" beat %0d", bad), f.wuser[bad], "WUSER",
+                   n.wuser[bad]);
+      end
+      return;
+    end
+    if (n.dir == AOU_AXI_WR) begin
+      // WriteResp: the B of the first sub-burst (the only one when unsplit).
+      n_flex_chk++;
+      if (n.buser != first_piece(got).buser)
+        flex_err(p, n, "WriteResp", "", n.buser,
+                 (got.size() > 1) ? "BUSER of the first sub-burst" : "BUSER",
+                 first_piece(got).buser);
+      return;
+    end
+    // ReadData: merged by the downsizer (the M port narrower than the remote
+    // request's size) every beat carries the transaction's first RUSER;
+    // otherwise each beat carries the RUSER of the M-port beat holding its bytes.
+    if (n.ruser.size() != n.beats()) return;
+    n_flex_chk += n.beats();
+    bad = -1;
+    if (f.beat_bytes() < n.beat_bytes()) begin
+      aou_axi_txn first = first_piece(got);
+      if (first.ruser.size() == 0) return;
+      foreach (n.ruser[i]) if (n.ruser[i] != first.ruser[0] && bad < 0) bad = i;
+      if (bad >= 0)
+        flex_err(p, n, "ReadData", $sformatf(" beat %0d", bad), n.ruser[bad],
+                 "RUSER of the transaction's first R beat", first.ruser[0]);
+      return;
+    end
+    foreach (n.ruser[i]) begin
+      bit [63:0] a = n.beat_addr(i);
+      int j;
+      int sel = -1;
+      // The piece that supplied the bytes at a. When the splitter cuts an
+      // unaligned request into sub-bursts, each starts at the next unserved
+      // narrow beat and its last wide beat covers the start of the next piece
+      // (AXI4 A3.4.1: a burst's first beat may be unaligned, the rest are
+      // full width), so the pieces' byte ranges overlap. The piece issued for
+      // the highest address at or below a is the one whose beat was read.
+      foreach (got[g]) begin
+        j = got[g].beat_index_of(a);
+        if (j >= 0 && j < got[g].ruser.size() && got[g].addr <= a &&
+            (sel < 0 || got[g].addr > got[sel].addr)) sel = g;
+      end
+      if (sel < 0) continue;
+      j = got[sel].beat_index_of(a);
+      if (n.ruser[i] != got[sel].ruser[j]) begin
+        bad = i;
+        flex_err(p, n, "ReadData", $sformatf(" beat %0d", i), n.ruser[i],
+                 $sformatf("RUSER on beat %0d of its burst at %0h", j, got[sel].addr),
+                 got[sel].ruser[j]);
+        break;
+      end
+    end
+  endfunction
+
+  // The piece whose request the DUT issued first (same ID: the lowest address).
+  static function aou_axi_txn first_piece(aou_axi_txn got[$]);
+    aou_axi_txn f = got[0];
+    foreach (got[i]) if (got[i].addr < f.addr) f = got[i];
+    return f;
   endfunction
 
   function void matched(int p, aou_axi_txn n, aou_axi_txn f, bit one);
@@ -226,19 +374,10 @@ class aou_t1_attr_chk extends uvm_component;
     end
   endfunction
 
+  // DUT WriteReqs feed the size check; FLEX is checked on the matched pair.
   function void take_dut(aou_msg m);
     aou_msg_wreq w;
     if (m.msg_type == AOU_MT_WREQ && $cast(w, m)) take_wreq(w);
-    if (!(m.msg_type inside {AOU_MT_WREQ, AOU_MT_RREQ, AOU_MT_WDATA, AOU_MT_RDATA, AOU_MT_WRESP,
-                             AOU_MT_WDATAF}))
-      return;
-    n_flex_chk++;
-    aou_rule_log::check("DP-R08", get_type_name());
-    if (m.flex != 16'h0) begin
-      aou_rule_log::fire("DP-R08", get_type_name());
-      `uvm_error(get_type_name(), $sformatf("DP-R08: DUT %s on RP%0d carries FLEX %04h, expected 0",
-                                            aou_msg_type_e'(m.msg_type), m.rp, m.flex))
-    end
   endfunction
 
   function void flush();
@@ -289,7 +428,7 @@ class aou_t1_attr_chk extends uvm_component;
     foreach (aw_q[k]) w_left[1] += aw_q[k].size();
     `uvm_info(get_type_name(), $sformatf(
               {"matched L2R/R2L %0d/%0d, exclusive responses compared %0d/%0d, unmatched far ",
-               "%0d/%0d requester %0d/%0d; DUT AXI messages with FLEX checked %0d; WriteReq ",
+               "%0d/%0d requester %0d/%0d; DUT message FLEX values checked %0d; WriteReq ",
                "sizes checked %0d, unmatched WriteReq %0d S-port write %0d"}, n_match[0],
               n_match[1], n_excl_cmp[0], n_excl_cmp[1], left[0][0], left[1][0], left[0][1],
               left[1][1], n_flex_chk, n_wsize_chk, w_left[0], w_left[1]), UVM_LOW)

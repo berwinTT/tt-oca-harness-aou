@@ -1150,12 +1150,25 @@ Class `aou_attr_test` extends `aou_dp_base_test` (`uvm/tests/datapath/aou_attr_t
 *Purpose.* Stimulus for AXI request attributes across the link, both directions (plan
 4.26-4.28, 5.24-5.26, 4.30): every transfer steps AxQOS 0-15, AxPROT 0-7 and
 the legal AxCACHE encodings, separately for writes and reads
-(+dp_attr_sweep), and the remote die puts a random PROF (FLEX[11:0]) in half
-its AXI messages. The env's aou_t1_attr_chk checks the attributes on both
-ends of the link and FLEX 0 from the DUT, the scoreboard the data (FLEX the
-DUT receives must be ignored; it has no USER ports), and xfer_cov.attr_cg
-shows every value was carried. FLEX[15:12] (v0.7 PROFEXTLEN) stays 0: the
-Base Profile ignores it and v0.8 removes it.
+(+dp_attr_sweep), the local agents give every transaction a random 16-bit
+AXI USER (the env default, +user_mode=const_per_txn), and the remote die puts
+a random FLEX in half its AXI messages. The env's aou_t1_attr_chk checks the
+attributes on both ends of the link and that the FLEX of every message the
+DUT sends is the USER its AXI port got (AoU v0.8 5.2 / 11.1: FLEX =
+USER[15:0] in the Basic Profile), the scoreboard the data (the DUT has no
+USER outputs, so the FLEX it receives goes nowhere), and xfer_cov.attr_cg
+shows every value was carried.
+
+----
++attr_user=1 (plan 4.30) sets USER per beat (+user_mode=per_beat) and lowers
+----
+
+MAX_AxBURSTLEN to 4 beats on every RP, then runs the USER rounds of
+aou_attr_vseq first: all ones, a walking bit, random values and 0 on every
+channel, in an unsplit one-beat write, split 16-beat bursts (several B
+merged into one WriteResp) and, with +remote_bytes wider than the RP, reads
+the DUT downsizes (several local R beats merged into one ReadData, which
+carries the first beat's RUSER). l3.cg_flex counts the FLEX values seen.
 
 ----
 +attr_excl=1 (plan 4.25, 5.23) adds the exclusive rounds of aou_attr_vseq
@@ -1189,8 +1202,19 @@ exclusive write C with no exclusive read                -> OKAY
 aou_t1_attr_chk checks that the requester gets the subordinate's answer
 (DP-R07) and xfer_cov counts both outcomes; the scoreboard checks that only
 the EXOKAY write changed memory.
+With `user` set (aou_attr_test +attr_user=1), every RP first runs, from each
+side, the AXI USER rounds: with the agents' USER pattern set to all ones,
+then a walking bit, then random (per beat, cfg.user_mode), then USER held
+at 0, a one-beat write at the bus width (no split, one WriteData, one B), a
+16-beat write and read at the bus width (split into MAX_AxBURSTLEN
+sub-bursts on the M port when the test lowered it, so the DUT merges
+several B into one WriteResp, and
+downsized when the DUT's port is narrower than the remote's, so several
+local R beats merge into one ReadData whose FLEX is the first beat's), eight
+4-byte beats, and a one-beat read. aou_t1_attr_chk compares the FLEX of
+every DUT message with the USER value (DP-R08).
 
-*Rules named.* `DP-R07`
+*Rules named.* `DP-R07`, `DP-R08`
 
 *Pass criteria.* The base test's end-of-test checks: scoreboard drained, every declared expectation met, no unexpected `UVM_ERROR`/`UVM_FATAL`, the FDI checker clean; `scripts/check_run.py` judges the log against `expected_fail.yaml`.
 
@@ -1202,6 +1226,7 @@ the EXOKAY write changed memory.
 | `aou_attr_test` |  | 1-3 |  | 4.26,4.27,4.28,5.24,5.25,5.26,4.30
 | `aou_attr_test.attr_excl-1` | `+attr_excl=1` | 1-3 |  | 4.25,5.23,4.26,4.27,4.28,5.24,5.25,5.26,4.30
 | `aou_attr_test.attr_excl-1.attr_early-1` | `+attr_excl=1 +attr_early=1` | 1-2 | `1x512-sp64` | 4.25
+| `aou_attr_test.attr_user-1.remote_bytes-128` | `+attr_user=1 +remote_bytes=128` | 1-2 |  | 4.30
 | `aou_attr_test.attr_excl-1.remote_max_burst-1.4xmix4211-sp128` | `+attr_excl=1 +remote_max_burst=1 +remote_bytes=32` | 1-2 | `4xmix4211-sp128` | 4.25,5.23
 |===
 
@@ -1211,7 +1236,7 @@ the EXOKAY write changed memory.
 * 4.26: Various cache attributes (bufferable, cacheable)
 * 4.27: Various protection levels
 * 4.28: Quality of service values 0-15
-* 4.30: AxUSER/FLEX carriage: the DUT has no USER ports, sends FLEX as 0 and ignores it on receive
+* 4.30: AxUSER/FLEX carriage: FLEX in every message the DUT sends is the AXI USER[15:0] its port got (first beat of a merged response); the DUT has no USER outputs, so the FLEX it receives goes nowhere
 * 5.23: Exclusive access read transaction
 * 5.24: Various cache attributes
 * 5.25: Various protection levels

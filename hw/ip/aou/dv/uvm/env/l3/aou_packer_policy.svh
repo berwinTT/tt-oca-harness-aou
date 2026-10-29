@@ -54,8 +54,11 @@ class aou_packer_policy extends uvm_object;
   // batch queues up and leaves in densely packed flits; the caller kicks the
   // model when it clears the hold.
   bit               hold_credited;
-  // Percent chance that an AXI message gets a random PROF (FLEX[11:0]);
-  // PROFEXTLEN (FLEX[15:12]) stays 0, the only length the TB models.
+  // Percent chance that an AXI message to the DUT gets a random FLEX. v0.8
+  // makes FLEX the AXI USER[15:0] (5.2 / 11.1); the DUT has no USER outputs,
+  // so what it receives goes nowhere and any value is legal. The model
+  // randomises FLEX[11:0] (v0.7's PROF) and keeps FLEX[15:12] 0, the only
+  // PROFEXTLEN a v0.7 receiver takes; the name predates v0.8.
   int unsigned      prof_pct;
   // A message that would not end in this flit is swapped for the largest
   // eligible queue head that does (reorders across queues only), so flits

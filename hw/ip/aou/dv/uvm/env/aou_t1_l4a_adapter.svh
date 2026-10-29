@@ -65,6 +65,7 @@ class aou_t1_l4a_adapter extends aou_l4a_if_c;
     t.cache = req.cache;
     t.prot = req.prot;
     t.qos = req.qos;
+    t.user = req.flex;  // FLEX = USER[15:0] (AoU v0.8 Basic Profile)
     t.data_bytes = bus;
     return t;
   endfunction
@@ -134,6 +135,8 @@ class aou_t1_l4a_adapter extends aou_l4a_if_c;
       n.size = sz;
       n.len = 8'(k - 1);
       n.data_bytes = nb;
+      // Every piece keeps the request's user and the whole wuser list (one
+      // FLEX per WriteData beat, in message order) for aou_t1_attr_chk.
       n.data.delete();
       n.strb.delete();
       if (t.dir == AOU_AXI_WR) begin
@@ -170,6 +173,7 @@ class aou_t1_l4a_adapter extends aou_l4a_if_c;
     t = mk(req, AOU_AXI_WR, bus);
     t.data = new[data.size()];
     t.strb = new[data.size()];
+    t.wuser = new[data.size()];
     foreach (data[i]) begin
       if (aou_dl_bits(data[i].dlength) / 8 != bus)
         `uvm_error(get_type_name(), $sformatf(
@@ -177,6 +181,7 @@ class aou_t1_l4a_adapter extends aou_l4a_if_c;
                    aou_dl_bits(data[i].dlength)))
       t.data[i] = data[i].data;
       t.strb[i] = data[i].strb & ({128{1'b1}} >> (128 - bus));
+      t.wuser[i] = data[i].flex;
     end
     if (t.beat_bytes() > bus) begin
       `uvm_error(get_type_name(), $sformatf(

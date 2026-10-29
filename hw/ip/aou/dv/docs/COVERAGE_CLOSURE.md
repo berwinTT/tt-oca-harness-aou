@@ -502,7 +502,8 @@ can't mean what it says. They are listed for owner review because the denominato
 | `cg_act_fsm activate_error/enabled_error/deactivate_error/error_disabled` (4) | ERROR state (v0.8 §8.3.3) | model under `spec_rev=V08` with an illegal op received |
 | `cg_flit_layout cp_size g4` and every `g*,g4` start cell, `x_size_span g4,*` (51) | 4-granule ActivateReq with ProfileID/Rev/Opt (v0.8 Table 27/§5.6) | a v0.8 DUT, or a model that sends it |
 | `cg_flit_occ cp_misc_half1 over` (1) | half-flit Misc limit (v0.8 §4.4) | negative test |
-| **to add:** `l3.cg_flex cp_flex {zero, nonzero} × dir`, `cg_act_req_profile {basic, other}`, `cg_rdata_variant {matches_arsize, wider}`, `cg_deact_credit {credit_after_deact_req, after_deact_ack}` | FLEX = USER[15:0]; ActivateReq profile; ReadData-variant rule; DEACTIVATE credit rules | as above |
+| `l3.cg_flex cp_flex {zero, nonzero, all_ones} × cp_kind {wreq, rreq, wdata, wdataf, rdata, wresp} × dir` (36) | FLEX = USER[15:0] (v0.8 §5.2 / §11.1); added with the DUT's USER input ports | tx: the AXI USER the local agents drive (`+user_mode`, default one random value per transaction; `aou_attr_test +attr_user=1` adds all ones and a walking bit per beat), checked against FLEX by `aou_t1_attr_chk`; rx: the model's random FLEX |
+| **to add:** `cg_act_req_profile {basic, other}`, `cg_rdata_variant {matches_arsize, wider}`, `cg_deact_credit {credit_after_deact_req, after_deact_ack}` | ActivateReq profile; ReadData-variant rule; DEACTIVATE credit rules | as above |
 
 **Problem.** No T1 test sets `spec_rev=V08`, and there is no plusarg for it. A v0.8 model can't
 interoperate with the v0.7 DUT, because ActivateReq sizes differ (4 granules against 1). So T1

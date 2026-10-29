@@ -124,3 +124,17 @@
 `define AOU_L3_FC_X_WF(B) \
   `B``_XIGN("none,whole,*") \
   `B``_XIGN("none,*,one|more")
+// FLEX of an AXI message (cg_flex): zero, some other value, or all ones. In
+// the Basic Profile FLEX is USER[15:0] (AoU v0.8 5.2 / 11.1): on rx (the DUT's
+// messages) the DUT forwards the USER its AXI port got, on tx the model's FLEX
+// to the DUT.
+`define AOU_L3_FC_FLEX(B) `B``_BIN(zero, 0, 0) `B``_BIN(nonzero, 1, 1) `B``_BIN(all_ones, 2, 2)
+// The AXI messages that carry FLEX, in msg_kind() order.
+`define AOU_L3_FC_FLEX_KIND(B) \
+  `B``_BIN(wreq, 0, 0) `B``_BIN(rreq, 1, 1) `B``_BIN(wdata, 2, 4) `B``_BIN(wdataf, 5, 7) \
+  `B``_BIN(rdata, 8, 10) `B``_BIN(wresp, 11, 11)
+// The model never sends all ones: it keeps FLEX[15:12] at 0 toward the DUT
+// (v0.7's PROFEXTLEN, the only length the DUT's receiver takes;
+// aou_packer_policy::prof_pct).
+`define AOU_L3_FC_X_FLEX(B) \
+  `B``_XIGN("all_ones,*,tx")

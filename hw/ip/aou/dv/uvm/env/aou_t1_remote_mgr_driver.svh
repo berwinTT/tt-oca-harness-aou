@@ -91,6 +91,7 @@ class aou_t1_remote_mgr_driver extends uvm_driver #(aou_axi_txn);
       while (n_rd_os >= cfg.max_rd_outstanding) done_ev.wait_trigger();
       t.data = new[t.beats()];
       t.rresp = new[t.beats()];
+      t.ruser = new[t.beats()];
       send_read(t);
       rd_q[t.id].push_back(t);
       rd_beat[t.id].push_back(0);
@@ -213,6 +214,7 @@ class aou_t1_remote_mgr_driver extends uvm_driver #(aou_axi_txn);
       end
       t = wr_q[b.id].pop_front();
       t.bresp = b.resp;
+      t.buser = b.flex;  // FLEX = BUSER[15:0] (AoU v0.8 Basic Profile)
       n_wr_os--;
       n_wr++;
       complete(t);
@@ -247,6 +249,7 @@ class aou_t1_remote_mgr_driver extends uvm_driver #(aou_axi_txn);
         t.data[i][8*l +: 8] = d.data[8*int'(a % 64'(bus)) +: 8];
       end
       t.rresp[i] = d.resp;
+      t.ruser[i] = d.flex;  // FLEX = RUSER[15:0] (AoU v0.8 Basic Profile)
       rd_beat[d.id][0] = i + 1;
       if (d.last != (i + 1 == t.beats()))
         `uvm_error(get_type_name(), $sformatf("T1-RM04: RLAST=%0d on beat %0d of %0d: %s", d.last,

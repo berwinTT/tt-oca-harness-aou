@@ -653,7 +653,7 @@
 - id: '4.30'
   section: '2.4'
   section_title: Write Transaction Tests
-  title: 'AxUSER/FLEX carriage: the DUT has no USER ports, sends FLEX as 0 and ignores it on receive'
+  title: 'AxUSER/FLEX carriage: FLEX in every message the DUT sends is the AXI USER[15:0] its port got (first beat of a merged response); the DUT has no USER outputs, so the FLEX it receives goes nowhere'
   priority: P2
   added: AoU 5.2
   note: Coverage-closure gap analysis 4.3 (decision D9); priority to be reviewed.

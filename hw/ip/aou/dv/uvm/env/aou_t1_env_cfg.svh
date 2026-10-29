@@ -32,6 +32,12 @@ class aou_t1_env_cfg extends uvm_object;
   aou_axi_timing_e local_timing = AOU_AXI_TIMING_RANDOM;
   int unsigned     remote_lat_max = 20;
 
+  // AXI USER on the DUT's local ports (S-port AWUSER/ARUSER/WUSER from the
+  // managers, M-port BUSER/RUSER from the subordinates), which the DUT sends
+  // as FLEX (AoU v0.8 5.2 / 11.1). finalize() pushes it into every local
+  // agent; +user_mode=zero|const_per_txn|per_beat sets it (aou_base_test).
+  aou_axi_user_mode_e user_mode = AOU_AXI_USER_CONST;
+
   // L1 stimulus of the flits L3 sends to the DUT
   int unsigned   l1_cancel_pct = 10;
   int unsigned   l1_bubble_pct = 10;
@@ -170,8 +176,10 @@ class aou_t1_env_cfg extends uvm_object;
     remote_cfg.timing.r_lat.set_range(0, remote_lat_max);
     for (int unsigned r = 0; r < n_rp; r++) begin
       s_mgr_cfg[r].data_bytes = rp_bytes[r];
+      s_mgr_cfg[r].user_mode = user_mode;
       m_sub_cfg[r].data_bytes = rp_bytes[r];
       m_sub_cfg[r].mem = local_mem;
+      m_sub_cfg[r].user_mode = user_mode;
       r_mgr_cfg[r].data_bytes = remote_bytes_of(r);
     end
   endfunction

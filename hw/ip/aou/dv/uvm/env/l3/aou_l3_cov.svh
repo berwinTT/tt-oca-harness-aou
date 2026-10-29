@@ -28,7 +28,7 @@ class aou_l3_cov extends uvm_object;
   // Sampled values; each covergroup samples the members it names.
   int unsigned s_prev, s_cur, s_op, s_dir, s_kind, s_rp, s_start, s_size, s_nmsgs;
   int unsigned s_misc0, s_misc1, s_carry, s_ev, s_cls, s_nwresp, s_wf_ahead, s_wf_others;
-  int unsigned s_act_layout;
+  int unsigned s_act_layout, s_flex;
   bit          s_legal, s_span, s_credit_only, s_wf_whole;
   // cg_wr_order, from the messages the model sends: per RP, the WriteData
   // messages sent and the ones the sent WriteReqs account for.
@@ -184,6 +184,22 @@ class aou_l3_cov extends uvm_object;
     x_ahead_rp: cross cp_ahead, cp_rp;
   endgroup
 
+  // FLEX of each AXI message, by message kind and direction: rx is the DUT
+  // forwarding the AXI USER its port got (aou_t1_attr_chk DP-R08 checks the
+  // value), tx the model's FLEX to the DUT (random, never all ones).
+  covergroup cg_flex;
+    cp_flex: coverpoint s_flex {
+      `AOU_L3_FC_FLEX(AOU_FC_CG)
+    }
+    cp_kind: coverpoint s_kind {
+      `AOU_L3_FC_FLEX_KIND(AOU_FC_CG)
+    }
+    cp_dir: coverpoint s_dir {
+      `AOU_FC_DIR_BINS(AOU_FC_CG)
+    }
+    x_flex_kind_dir: cross cp_flex, cp_kind, cp_dir;
+  endgroup
+
   // The service's copies of the covergroups above.
   aou_fc_group fc_act_fsm;
   aou_fc_group fc_act_op;
@@ -195,6 +211,7 @@ class aou_l3_cov extends uvm_object;
   aou_fc_group fc_act_flit;
   aou_fc_group fc_credit;
   aou_fc_group fc_wr_order;
+  aou_fc_group fc_flex;
 
   function new(string name = "aou_l3_cov");
     super.new(name);
@@ -208,6 +225,7 @@ class aou_l3_cov extends uvm_object;
     cg_act_flit = new();
     cg_credit = new();
     cg_wr_order = new();
+    cg_flex = new();
     fc_declare();
   endfunction
 
@@ -293,6 +311,14 @@ class aou_l3_cov extends uvm_object;
       `AOU_L3_FC_X_WF(AOU_FC_REG)
       void'(fc_wr_order.add_cross("x_ahead_rp", "cp_ahead cp_rp"));
     end
+    fc_flex = db.group("l3.cg_flex", fresh);
+    if (fresh) begin
+      p = fc_flex.cp("cp_flex"); `AOU_L3_FC_FLEX(AOU_FC_REG)
+      p = fc_flex.cp("cp_kind"); `AOU_L3_FC_FLEX_KIND(AOU_FC_REG)
+      p = fc_flex.cp("cp_dir"); `AOU_FC_DIR_BINS(AOU_FC_REG)
+      p = fc_flex.add_cross("x_flex_kind_dir", "cp_flex cp_kind cp_dir");
+      `AOU_L3_FC_X_FLEX(AOU_FC_REG)
+    end
   endfunction
 
   static function int unsigned msg_kind(aou_msg m);
@@ -362,6 +388,11 @@ class aou_l3_cov extends uvm_object;
     s_dir = int'(m.dir);
     cg_msg.sample();
     fc_msg.sample(int'(s_kind), int'(s_rp), int'(s_dir));
+    if (s_kind <= 11) begin
+      s_flex = (m.flex == 16'h0) ? 0 : ((m.flex == 16'hFFFF) ? 2 : 1);
+      cg_flex.sample();
+      fc_flex.sample(int'(s_flex), int'(s_kind), int'(s_dir));
+    end
     if (m.start_granule >= 0) begin
       s_start = m.start_granule;
       s_size = m.num_granules();

@@ -299,7 +299,7 @@
 - id: '4.30'
   added: 'AoU 5.2'
   priority: P2
-  title: 'AxUSER/FLEX carriage: the DUT has no USER ports, sends FLEX as 0 and ignores it on receive'
+  title: 'AxUSER/FLEX carriage: FLEX in every message the DUT sends is the AXI USER[15:0] its port got (first beat of a merged response); the DUT has no USER outputs, so the FLEX it receives goes nowhere'
   note: Coverage-closure gap analysis 4.3 (decision D9); priority to be reviewed.
 - id: '4.31'
   added: 'AXI4 A3.3.1'

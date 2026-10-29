@@ -88,7 +88,7 @@ tests = [
 # Functional areas (no stress, matrix, perf or assertion builds)
 [[groups]]
 name = "functional"
-expected_count = 265
+expected_count = 266
 tests = [
   "aou_t1_slice_test",
   "aou_t1_deact_test",
@@ -160,6 +160,7 @@ tests = [
   "aou_attr_test",
   "aou_attr_test.attr_excl-1",
   "aou_attr_test.attr_excl-1.attr_early-1",
+  "aou_attr_test.attr_user-1.remote_bytes-128",
   "aou_chan_test.chan-wfirst",
   "aou_chan_test.chan-ilv",
   "aou_split_test.split_aw-15.split_ar-15.dp_len-0_1_3_7_15",
@@ -360,7 +361,7 @@ tests = [
 # Every runnable T1 scenario; run_list.py skips entries whose target differs
 [[groups]]
 name = "all"
-expected_count = 481
+expected_count = 482
 tests = [
   "aou_attr_test.attr_excl-1.remote_max_burst-1.4xmix4211-sp128",
   "aou_small_size_test",
@@ -442,6 +443,7 @@ tests = [
   "aou_attr_test",
   "aou_attr_test.attr_excl-1",
   "aou_attr_test.attr_excl-1.attr_early-1",
+  "aou_attr_test.attr_user-1.remote_bytes-128",
   "aou_chan_test.chan-wfirst",
   "aou_chan_test.chan-ilv",
   "aou_split_test.split_aw-15.split_ar-15.dp_len-0_1_3_7_15",
