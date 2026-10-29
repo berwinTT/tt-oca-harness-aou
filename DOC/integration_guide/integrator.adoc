@@ -511,6 +511,26 @@ die issues only AXI4-compliant requests; see the MAS,
 xref:../MAS/overview.adoc#aou-22-assumptions[Section 2.2].
 ____________________________________________________________________________________________________________________________________________________________________________________________________________________________________
 
+____________________________________________________________________________________________________________________________________________________________________________________________________________________________________
+*Note:* AXI USER signals and the AoU FLEX field. Every AXI-equivalent AoU
+message carries a 16-bit FLEX field, which in the Basic Profile is the
+USER signal of the matching AXI channel (AoU v0.8 Sections 5.2 and 11.1,
+Table 31). AOU_CORE_TOP implements the transmit direction only: the five
+USER inputs on the ports that feed the link ([.monospaced]#++I_AOU_TX_AXI_S_AWUSER++#,
+[.monospaced]#++I_AOU_TX_AXI_S_ARUSER++#, [.monospaced]#++I_AOU_TX_AXI_S_WUSER++#,
+[.monospaced]#++I_AOU_TX_AXI_M_BUSER++#, [.monospaced]#++I_AOU_TX_AXI_M_RUSER++#; Sections 3.4, 3.6,
+3.7 and 3.9) are sent as the FLEX field of the WriteReq, ReadReq,
+WriteData, WriteResp and ReadData messages. The receive direction is not
+implemented: the FLEX field of received messages is ignored, and the AXI
+ports driven from received messages ([.monospaced]#++O_AOU_RX_AXI_M_*++# in Sections
+3.3, 3.5 and 3.6, [.monospaced]#++O_AOU_RX_AXI_S_*++# in Sections 3.8 and 3.9) have no
+USER outputs. Where the design merges several local transfers into one
+message, the FLEX value is defined in
+xref:../MAS/architecture.adoc#aou-354-user-signals-and-the-flex-field[MAS Section 3.5.4].
+An integrator without USER signals ties the five inputs to 0; the
+messages then carry FLEX = 0.
+____________________________________________________________________________________________________________________________________________________________________________________________________________________________________
+
 [cols="<,<,<,<",options="header",]
 |=======================================================================
 |Signal |Direction |Width |Description
@@ -552,6 +572,14 @@ length.
 |Read data.
 
 |I_AOU_TX_AXI_M_RRESP |input |[RP_COUNT-1:0][1:0] |Read response.
+
+|I_AOU_TX_AXI_M_RUSER |input |[RP_COUNT-1:0][15:0] |Read data USER, per
+beat. Sent as the AoU FLEX field of the ReadData message built from the
+beat (AoU v0.8 Basic Profile: FLEX = USER[15:0]; v0.8 Sections 5.2 and
+11.1, Table 31). When the downsizer merges several R beats into one
+ReadData, FLEX is the RUSER of the transaction's first R beat
+(xref:../MAS/architecture.adoc#aou-354-user-signals-and-the-flex-field[MAS Section 3.5.4]).
+Tie to 0 when unused.
 
 |I_AOU_TX_AXI_M_RLAST |input |[RP_COUNT-1:0] |Read last.
 
@@ -615,6 +643,14 @@ response ID.
 
 |I_AOU_TX_AXI_M_BRESP |input |[RP_COUNT-1:0][1:0] |Write response.
 
+|I_AOU_TX_AXI_M_BUSER |input |[RP_COUNT-1:0][15:0] |Write response USER.
+Sent as the AoU FLEX field of the WriteResp message (AoU v0.8 Basic
+Profile: FLEX = USER[15:0]; v0.8 Sections 5.2 and 11.1, Table 31). When
+the transaction splitter merges the B responses of several sub-bursts into
+one WriteResp, FLEX is the BUSER of the first sub-burst's B
+(xref:../MAS/architecture.adoc#aou-354-user-signals-and-the-flex-field[MAS Section 3.5.4]).
+Tie to 0 when unused.
+
 |I_AOU_TX_AXI_M_BVALID |input |[RP_COUNT-1:0] |B valid.
 
 |O_AOU_TX_AXI_M_BREADY |output |[RP_COUNT-1:0] |B ready.
@@ -646,6 +682,11 @@ length.
 |I_AOU_TX_AXI_S_ARPROT |input |[RP_COUNT-1:0][2:0] |Protection.
 
 |I_AOU_TX_AXI_S_ARQOS |input |[RP_COUNT-1:0][3:0] |QoS.
+
+|I_AOU_TX_AXI_S_ARUSER |input |[RP_COUNT-1:0][15:0] |Read address USER.
+Sent unmodified as the AoU FLEX field of the ReadReq message (AoU v0.8
+Basic Profile: FLEX = USER[15:0]; v0.8 Sections 5.2 and 11.1, Table 31).
+Tie to 0 when unused.
 
 |I_AOU_TX_AXI_S_ARVALID |input |[RP_COUNT-1:0] |AR valid.
 
@@ -700,6 +741,11 @@ length.
 
 |I_AOU_TX_AXI_S_AWQOS |input |[RP_COUNT-1:0][3:0] |QoS.
 
+|I_AOU_TX_AXI_S_AWUSER |input |[RP_COUNT-1:0][15:0] |Write address USER.
+Sent unmodified as the AoU FLEX field of the WriteReq message (AoU v0.8
+Basic Profile: FLEX = USER[15:0]; v0.8 Sections 5.2 and 11.1, Table 31).
+Tie to 0 when unused.
+
 |I_AOU_TX_AXI_S_AWVALID |input |[RP_COUNT-1:0] |AW valid.
 
 |O_AOU_TX_AXI_S_AWREADY |output |[RP_COUNT-1:0] |AW ready.
@@ -711,6 +757,11 @@ length.
 |Write strobe.
 
 |I_AOU_TX_AXI_S_WLAST |input |[RP_COUNT-1:0] |Write last.
+
+|I_AOU_TX_AXI_S_WUSER |input |[RP_COUNT-1:0][15:0] |Write data USER, per
+beat. Sent unmodified as the AoU FLEX field of the WriteData or
+WriteDataFull message built from the beat (AoU v0.8 Basic Profile: FLEX =
+USER[15:0]; v0.8 Sections 5.2 and 11.1, Table 31). Tie to 0 when unused.
 
 |I_AOU_TX_AXI_S_WVALID |input |[RP_COUNT-1:0] |W valid.
 

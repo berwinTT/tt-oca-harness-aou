@@ -191,6 +191,31 @@ The module uses [.monospaced]#++I_S_WDLENGTH++# (derived from the [.monospaced]#
 
 In addition to [.monospaced]#++AOU_AXI_WLAST_GEN++#, the upsizer and downsizer modules ([.monospaced]#++AOU_AXI_UP++# and [.monospaced]#++AOU_AXI_DOWN++#) each contain their own WLAST generation logic to account for the changed burst length after width conversion.
 
+[[aou-354-user-signals-and-the-flex-field]]
+==== 3.5.4. USER signals and the FLEX field
+
+Every AXI-equivalent AoU message (WriteReq, ReadReq, WriteData and WriteDataFull, ReadData, WriteResp) carries a 16-bit FLEX field. In the Basic Profile, FLEX is the USER signal of the matching AXI channel, passed unmodified, and the USER widths are fixed at 16 bits (AoU v0.8 Sections 5.2 and 11.1, Table 31). AXI itself leaves the meaning of the USER signals to the system: it defines them as optional per channel, does not define their function, and recommends that an interconnect pass them from manager to subordinate (AMBA AXI, IHI 0022, "User-defined signaling").
+
+AOU_CORE implements the transmit direction. The five USER inputs on its AXI ports (xref:{aou-integration-xref}#aou-ig-interface-signals[integration guide, Section 3]) are sent as the FLEX field of the messages it transmits:
+
+[width="100%",cols="<20%,<25%,<20%,<35%",options="header",]
+|=======================================================================
+|AXI channel |USER input |Message |FLEX value
+|AW (subordinate port) |[.monospaced]#++I_AOU_TX_AXI_S_AWUSER++# |WriteReq |AWUSER of the request
+|AR (subordinate port) |[.monospaced]#++I_AOU_TX_AXI_S_ARUSER++# |ReadReq |ARUSER of the request
+|W (subordinate port) |[.monospaced]#++I_AOU_TX_AXI_S_WUSER++# |WriteData / WriteDataFull |WUSER of the W beat the message is built from, beat by beat
+|B (manager port) |[.monospaced]#++I_AOU_TX_AXI_M_BUSER++# |WriteResp |BUSER of the B response; when the splitter merged the B responses of several sub-bursts into one WriteResp, BUSER of the first sub-burst's B
+|R (manager port) |[.monospaced]#++I_AOU_TX_AXI_M_RUSER++# |ReadData |RUSER of the R beat; when the downsizer merged several R beats into one ReadData, RUSER of the transaction's first R beat
+|=======================================================================
+
+On the subordinate port nothing is converted before the link, so every AW, AR and W transfer becomes one message and carries its own USER value. On the manager port the B and R responses pass through [.monospaced]#++AOU_AXI4MUX_3X1_TOP++#, which can change the number of beats or bursts between the local bus and the message (xref:aou-352-width-adaptation-paths[Section 3.5.2], xref:aou-363-response-reassembly[Section 3.6.3], xref:aou-383-read-aggregation[Section 3.8.3]). AXI defines no rule for combining the USER values of several transfers, and width conversion is outside the AoU specification, so this design defines one:
+
+* *Several local transfers become one message:* FLEX is the USER value of the first beat of the transaction. The downsizer ([.monospaced]#++AOU_AXI_DOWN++#) merges N narrow R beats into one ReadData; every ReadData of that read carries the RUSER of the read's first R beat. The splitter ([.monospaced]#++AOU_AXI_SPLIT_TR++#) merges the B responses of the sub-bursts of a write into one WriteResp, which carries the BUSER of the first sub-burst's B; a burst that was not split returns the BUSER of its only B. The value is captured into the entry that the reorder table or the pending-ID table already holds for the outstanding transaction, so every merged response of a transaction carries the same FLEX, and that value is the one the subordinate presented first.
+* *One local beat becomes several messages:* nothing is merged, and each message carries that beat's USER value. The upsizer ([.monospaced]#++AOU_AXI_UP++#) and the read aggregator ([.monospaced]#++AOU_AGGREGATOR++#) present one wide R beat as several ReadData messages, each with that beat's RUSER, as they already do with RRESP.
+* *Responses AOU_CORE generates itself* (the [.monospaced]#++AOU_ERROR_INFO++# module answering a remote access to the R/B response error debug address, xref:software-operation.adoc#aou-724-rb-response-error-debug-fifo[Section 7.2.4]) carry FLEX = 0.
+
+The receive direction is not implemented: the FLEX field of a received message is decoded and discarded, and the AXI ports driven from received messages ([.monospaced]#++O_AOU_RX_AXI_M_*++#, [.monospaced]#++O_AOU_RX_AXI_S_*++#) have no USER outputs. Carrying received FLEX onto those ports is future work. An integrator without USER signals ties the five inputs to 0; the transmitted messages then carry FLEX = 0.
+
 [[aou-36-axi-transaction-splitter]]
 === 3.6. AXI Transaction Splitter
 
@@ -239,7 +264,7 @@ The [.monospaced]#++MAX_AxBURSTLEN++# value must be of the form 2^n - 1. Legal v
 
 *Read path:* The [.monospaced]#++aou_split_tr_arch++# reorder buffer tracks the sub-burst sequence for each outstanding read. Slave-side [.monospaced]#++RLAST++# is asserted only when the final beat of the last sub-burst is received, reconstructing the original burst boundary. Intermediate [.monospaced]#++RLAST++# signals from the master side are consumed internally.
 
-*Write path:* B responses from sub-bursts are merged. The request's pending-ID table entry ([.monospaced]#++AOU_SPLIT_WR_PENDING_INFO++#) counts the sub-bursts still to be answered, and the splitter returns a single B response to the slave side once all sub-bursts have completed. If any sub-burst returns an error ([.monospaced]#++|I_M_BRESP_RS++#), the merged [.monospaced]#++BRESP_ERR++# flag is set, propagating the error to the slave-side response.
+*Write path:* B responses from sub-bursts are merged. The request's pending-ID table entry ([.monospaced]#++AOU_SPLIT_WR_PENDING_INFO++#) counts the sub-bursts still to be answered, and the splitter returns a single B response to the slave side once all sub-bursts have completed. If any sub-burst returns an error ([.monospaced]#++|I_M_BRESP_RS++#), the merged [.monospaced]#++BRESP_ERR++# flag is set, propagating the error to the slave-side response. The merged response carries the BUSER of the first sub-burst's B as its FLEX value (xref:aou-354-user-signals-and-the-flex-field[Section 3.5.4]).
 
 *ID mismatch detection:* The splitter exports [.monospaced]#++DEST_TABLE_RID_ERR++# and [.monospaced]#++DEST_TABLE_BID_ERR++# signals that flag responses with IDs not matching any outstanding transaction. These feed the xref:aou-4-interrupt[INT_MI0_ID_MISMATCH] interrupt source via [.monospaced]#++AOU_AXI4MUX_3X1_TOP++#.
 
