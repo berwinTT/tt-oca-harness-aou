@@ -59,9 +59,10 @@ module tb_top;
   endfunction
   localparam int FDI_CFG    = `AOU_FDI_CONFIG;
   localparam int NXT_PACK   = `AOU_TX_NXT_PACKING;
-  localparam int BUS_W      = 1024;
+  localparam int BUS_W      = aou_fdi_pkg::BUS_W;   // widest FDI beat (256 B)
   localparam int AXI_W      = 1024;
-  localparam int WD0 = (FDI_CFG == 0 || FDI_CFG == 3) ? 256 : (FDI_CFG == 2) ? 1024 : 512;
+  localparam int WD0 = (FDI_CFG == 0 || FDI_CFG == 3) ? 256 : (FDI_CFG == 2) ? 1024 :
+                       (FDI_CFG == 5) ? 2048 : 512;
 `ifdef TWO_PHY
   localparam int WD1 = (FDI_CFG == 4) ? 1024 : 512;
   localparam bit TWO_PHY_BUILD = 1'b1;
@@ -71,7 +72,7 @@ module tb_top;
 
   // The RTL does not cross-check FDI_CONFIG against TWO_PHY.
   initial begin
-    if (TWO_PHY_BUILD != (FDI_CFG >= 3))
+    if (TWO_PHY_BUILD != (FDI_CFG == 3 || FDI_CFG == 4))
       $fatal(1, "FDI_CONFIG=%0d does not match TWO_PHY=%0b", FDI_CFG, TWO_PHY_BUILD);
   end
 
@@ -581,22 +582,44 @@ module tb_top;
   // reset, and fdi_chk shows the adapter the selected one's reports.
   // ---------------------------------------------------------------------------
 `ifndef TWO_PHY
-  aou_fdi_chk_phy #(.WD(WD0), .RP_COUNT(RP_COUNT)) u_fdi_chk0 (
-      .clk            (clk),
-      .rst_n          (rst_n),
-      .link_reset     (fdi_mb0.pl_state_sts == 4'h0),
-      .lp_valid       (fdi_mb0.lp_valid),
-      .lp_irdy        (fdi_mb0.lp_irdy),
-      .lp_data        (lp0_data),
-      .pl_trdy        (fdi_mb0.pl_trdy),
-      .pl_valid       (fdi_mb0.pl_valid),
-      .pl_data        (fdi_mb0.pl_data[WD0-1:0]),
-      .pl_flit_cancel (fdi_mb0.pl_flit_cancel),
-      .act_st_disabled(status.activate_st_disabled),
-      .act_st_enabled (status.activate_st_enabled),
-      .err_clear      (fdi_chk.err_clear),
-      .chk            (fdi_chk)
-  );
+  if (WD0 <= 1024) begin : g_fdi_chk
+    aou_fdi_chk_phy #(.WD(WD0), .RP_COUNT(RP_COUNT)) u_fdi_chk0 (
+        .clk            (clk),
+        .rst_n          (rst_n),
+        .link_reset     (fdi_mb0.pl_state_sts == 4'h0),
+        .lp_valid       (fdi_mb0.lp_valid),
+        .lp_irdy        (fdi_mb0.lp_irdy),
+        .lp_data        (lp0_data),
+        .pl_trdy        (fdi_mb0.pl_trdy),
+        .pl_valid       (fdi_mb0.pl_valid),
+        .pl_data        (fdi_mb0.pl_data[WD0-1:0]),
+        .pl_flit_cancel (fdi_mb0.pl_flit_cancel),
+        .act_st_disabled(status.activate_st_disabled),
+        .act_st_enabled (status.activate_st_enabled),
+        .err_clear      (fdi_chk.err_clear),
+        .chk            (fdi_chk)
+    );
+  end else begin : g_no_fdi_chk
+    // AOU_FDI_CHECKER supports 32/64/128 B beats only; a 256 B build has no
+    // checker (aou_t1_env_cfg.fdi_chk_en is off) and the interface idles.
+    assign fdi_chk.rst_n               = rst_n;
+    assign fdi_chk.violation           = '0;
+    assign fdi_chk.trigger             = 1'b0;
+    assign fdi_chk.viol_cnt            = '0;
+    assign fdi_chk.capture_valid       = 1'b0;
+    assign fdi_chk.capture_code        = '0;
+    assign fdi_chk.capture_dir         = 1'b0;
+    assign fdi_chk.capture_flit_seq    = '0;
+    assign fdi_chk.capture_granule_idx = '0;
+    assign fdi_chk.capture_granule     = '0;
+    assign fdi_chk.check_enabled       = '0;
+    assign fdi_chk.lp_flit_seq         = '0;
+    assign fdi_chk.pl_flit_seq         = '0;
+    assign fdi_chk.xchk_violation      = '0;
+    assign fdi_chk.dir_violation       = '0;
+    assign fdi_chk.dir_flit_seq        = '0;
+    assign fdi_chk.late_adv            = '0;
+  end
 `else
   aou_fdi_checker_if fdi_chk_p0 (.clk(clk));
   aou_fdi_checker_if fdi_chk_p1 (.clk(clk));

@@ -59,12 +59,14 @@ import packet_def_pkg::*;
                                 (FDI_CONFIG == FDI_CFG_SP_64B     ) ? 512  :
                                 (FDI_CONFIG == FDI_CFG_SP_128B    ) ? 1024 :
                                 (FDI_CONFIG == FDI_CFG_TP_32B_64B ) ? 256  :
-                                (FDI_CONFIG == FDI_CFG_TP_64B_128B) ? 512  : 256,
+                                (FDI_CONFIG == FDI_CFG_TP_64B_128B) ? 512  :
+                                (FDI_CONFIG == FDI_CFG_SP_256B    ) ? 2048 : 256,
     localparam int FDI_IF_WD1 = (FDI_CONFIG == FDI_CFG_SP_32B     ) ? 512  :
                                 (FDI_CONFIG == FDI_CFG_SP_64B     ) ? 512  :
                                 (FDI_CONFIG == FDI_CFG_SP_128B    ) ? 1024 :
                                 (FDI_CONFIG == FDI_CFG_TP_32B_64B ) ? 512  :
-                                (FDI_CONFIG == FDI_CFG_TP_64B_128B) ? 1024 : 512,
+                                (FDI_CONFIG == FDI_CFG_TP_64B_128B) ? 1024 :
+                                (FDI_CONFIG == FDI_CFG_SP_256B    ) ? 2048 : 512,
 
     // FIFO depths default to 140 for 1024b (128B) FDI data paths, 88 otherwise.
     // Matches the original +define+FDI_128B branch which applied to both

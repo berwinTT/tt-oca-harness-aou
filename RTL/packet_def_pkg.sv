@@ -66,6 +66,9 @@ parameter R1024b_G          = 27;
 //   FDI_CFG_SP_128B     -> WD0=1024, WD1=1024  (single PHY)
 //   FDI_CFG_TP_32B_64B  -> WD0=256,  WD1=512   (two PHY)
 //   FDI_CFG_TP_64B_128B -> WD0=512,  WD1=1024  (two PHY)
+//   FDI_CFG_SP_256B     -> WD0=2048, WD1=2048  (single PHY, one 256 B flit per
+//                                                beat; pl_flit_cancel cancels the
+//                                                whole flit)
 //
 // Note: SP_32B and TP_32B_64B produce identical width pairs; only
 // `+define+TWO_PHY` distinguishes them. Consistency between FDI_CONFIG and
@@ -77,6 +80,7 @@ parameter int FDI_CFG_SP_64B      = 1;
 parameter int FDI_CFG_SP_128B     = 2;
 parameter int FDI_CFG_TP_32B_64B  = 3;
 parameter int FDI_CFG_TP_64B_128B = 4;
+parameter int FDI_CFG_SP_256B     = 5;
 
 parameter logic [7:0] CREDIT_TABLE [7:0] = '{
     8'd128,

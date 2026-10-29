@@ -69,10 +69,14 @@ all configurations and the naming legend are in README "Build configurations"
 | 2x512-tp32_64 | 2 | 512 | TP_32B_64B (TWO_PHY) | two-PHY FDI with a 256-bit PHY0, 2 RPs at one width |
 | 1x512-sp64-nxt | 1 | 512 | SP_64B | TX_NXT_PACKING_EN 1 (registered TX packer output stage) |
 | 2xmix-sp64-rxf | 2 | 1024, 256 | SP_64B | non-default RX FIFO depths, RX FIFO register slices off |
+| 1x1024-sp128 | 1 | 1024 | SP_128B | one 1024-bit RP on a 128-byte FDI (RX latency reference) |
+| 1x1024-sp256 | 1 | 1024 | SP_256B | 256-byte FDI: one flit per cycle, whole-flit cancel |
+| 4xmix-sp256 | 4 | 1024, 512, 256, 512 | SP_256B | mixed widths, every local width, 256-byte FDI |
+| 4xmix-sp256-rxf | 4 | 1024, 512, 256, 512 | SP_256B | 4xmix-sp256 with non-default RX FIFO depths |
 
 The configurations are a pairwise set rather than a cross product: every pair
 of RP count (1, 2, 3, 4), local width (256, 512, 1024, mixed) and FDI width
-(256, 512, 1024, both two-PHY pairs) that matters appears in some build, and
+(256, 512, 1024, 2048, both two-PHY pairs) that matters appears in some build, and
 every RP is built at every local width. The remote die's width is a
 run-time choice (`+remote_bytes=N` or `N0,N1,..` per RP), so one build covers
 every upsize, downsize and bypass pairing. The remote model converts like a

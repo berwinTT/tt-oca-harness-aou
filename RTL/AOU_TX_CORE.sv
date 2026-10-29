@@ -254,12 +254,19 @@ import packet_def_pkg::*;
 //   "Active" width for packing = max(FDI_IF_WD0, FDI_IF_WD1) so both
 //   single-PHY (WD1 defaults to 512) and two-PHY configurations select the
 //   same packing pipeline depth as the original FDI_*B defines:
+//     FDI_PACK_WD == 2048 -> 1-step pack (whole flit per cycle, 48 granules;
+//                            the minimal 256 B packer: the same ring and
+//                            arbitration, so at most the per-cycle pops of the
+//                            narrower builds fill a flit)
 //     FDI_PACK_WD == 1024 -> 2-step pack (half-flit at a time, 24 granules)
 //     FDI_PACK_WD <= 512  -> 4-step pack (quarter-flit at a time, 12 granules)
+// The packing state counts the chunks of the flit sent so far and wraps at
+// FLIT_LAST_PACK_STATE (0 for the one-step packer, where it never moves).
 localparam int FDI_PACK_WD           = (FDI_IF_WD0 > FDI_IF_WD1) ? FDI_IF_WD0 : FDI_IF_WD1;
-localparam int FLIT_PACK_STATE_W     = (FDI_PACK_WD == 1024) ? 1 : 2;
-localparam int FLIT_PACK_GRANULE_CNT = (FDI_PACK_WD == 1024) ? 24 : 12;
-localparam logic [FLIT_PACK_STATE_W-1:0] FLIT_LAST_PACK_STATE = {FLIT_PACK_STATE_W{1'b1}};
+localparam int FLIT_PACK_STATE_W     = (FDI_PACK_WD >= 1024) ? 1 : 2;
+localparam int FLIT_PACK_GRANULE_CNT = (FDI_PACK_WD == 2048) ? 48 : (FDI_PACK_WD == 1024) ? 24 : 12;
+localparam logic [FLIT_PACK_STATE_W-1:0] FLIT_LAST_PACK_STATE =
+    (FDI_PACK_WD == 2048) ? '0 : {FLIT_PACK_STATE_W{1'b1}};
 
 localparam RP0_NO_STRB_W_G_SIZE  = (RP0_AXI_DATA_WD == 256) ? WF256b_G  :
                                     (RP0_AXI_DATA_WD == 512) ? WF512b_G  :
@@ -941,13 +948,15 @@ end
 
 always_ff @ (posedge I_CLK or negedge I_RESETN) begin
     if (!I_RESETN) begin
-        r_flit_packing_state <= 2'b00;
-    end else if (w_flit_fifo_valid && w_flit_fifo_ready) begin
-        r_flit_packing_state <= r_flit_packing_state + 1;
+        r_flit_packing_state <= '0;
+    end else begin
+        r_flit_packing_state <= nxt_flit_packing_state;
     end
 end
 
-assign nxt_flit_packing_state = (w_flit_fifo_valid && w_flit_fifo_ready) ? (r_flit_packing_state + 1) : r_flit_packing_state;
+assign nxt_flit_packing_state = (w_flit_fifo_valid && w_flit_fifo_ready) ?
+                                ((r_flit_packing_state == FLIT_LAST_PACK_STATE) ? '0 : (r_flit_packing_state + 1'b1)) :
+                                r_flit_packing_state;
 
 always_ff @ (posedge I_CLK or negedge I_RESETN) begin
     if (!I_RESETN) begin
@@ -1093,10 +1102,11 @@ assign O_AOU_TX_AXI_TR_PENDING = w_aou_fifo_awvalid || w_aou_fifo_wvalid || w_ao
                                 || |I_AOU_TX_AXI_AWVALID || |I_AOU_TX_AXI_WVALID || |I_AOU_TX_AXI_ARVALID || |w_aou_tx_b_fifo_svalid || |I_AOU_TX_AXI_RVALID;
 
 
-// Two parallel packing pipelines. Exactly one elaborates per config:
+// Three packing pipelines. Exactly one elaborates per config:
+//   FDI_PACK_WD <= 512  -> g_pack_4step (quarter-flit per cycle, 12 granules)
+//   FDI_PACK_WD == 2048 -> g_pack_1step (whole flit per cycle, 48 granules)
 //   FDI_PACK_WD == 1024 -> g_pack_2step (half-flit per cycle, 24 granules)
-//   otherwise           -> g_pack_4step (quarter-flit per cycle, 12 granules)
-generate if (FDI_PACK_WD != 1024) begin : g_pack_4step
+generate if (FDI_PACK_WD < 1024) begin : g_pack_4step
     logic [64*8-1:0]    w_flit_fifo_data;
     logic [64*8-1:0]    w_flit_chunk;
     logic [16-1:0]      w_a_half_header;
@@ -1363,6 +1373,94 @@ generate if (FDI_PACK_WD != 1024) begin : g_pack_4step
         end
     `endif
 
+
+end else if (FDI_PACK_WD == 2048) begin : g_pack_1step
+    // Whole 256 B flit per cycle: both half flits from one 48-granule window
+    // of the ring. Half 0 carries the flit header, half 1 the MsgCredit; each
+    // half carries the MsgStart bits of its own 24 granules.
+    logic [64*8*4-1:0]    w_flit_fifo_data;
+    logic [64*8*4-1:0]    w_flit_chunk;
+    logic [16-1:0]        w_msgstart_q [4];       // MsgStart of granules 12q .. 12q+11
+
+    logic [RING_CNT-1:0]         w_pack_granule_start;
+    logic [RING_CNT-1:0]         w_pack_fifo_start;
+    logic [40-1:0]               w_pack_granule  [RING_DEPTH-1:0];
+    logic                        w_pack_msgstart [RING_DEPTH-1:0];
+
+    if (TX_NXT_PACKING_EN != 0) begin : g_src_nxt
+        assign w_pack_granule_start = nxt_granule_start;
+        assign w_pack_fifo_start    = nxt_flit_for_fifo_start;
+        assign w_pack_granule       = nxt_granule_buffer;
+        assign w_pack_msgstart      = nxt_msgstart_buffer;
+    end else begin : g_src_cur
+        assign w_pack_granule_start = r_cur_granule_start;
+        assign w_pack_fifo_start    = r_cur_flit_for_fifo_start;
+        assign w_pack_granule       = r_granule_buffer;
+        assign w_pack_msgstart      = r_msgstart_buffer;
+    end
+
+    if (TX_NXT_PACKING_EN != 0) begin : g_out_reg
+        logic [64*8*4-1:0]    r_flit_fifo_data;
+        always_ff @ (posedge I_CLK or negedge I_RESETN) begin
+            if (!I_RESETN) begin
+                r_flit_fifo_data <= 'd0;
+            end else if (w_misc_activation_valid || w_flit_fifo_valid || O_AOU_TX_AXI_TR_PENDING) begin
+                r_flit_fifo_data <= w_flit_fifo_data;
+            end
+        end
+        assign w_flit_chunk = r_flit_fifo_data;
+    end else begin : g_out_comb
+        assign w_flit_chunk = w_flit_fifo_data;
+    end
+
+    always_comb begin
+        w_flit_fifo_data = '0;
+        for (int unsigned q = 0; q < 4; q++) begin
+            w_msgstart_q[q] = 16'b0;
+            for (int unsigned n = 0; n < 12; n++) begin
+                if (n + 12*q < ((w_pack_granule_start - w_pack_fifo_start) & 8'b1111_1111)) begin
+                    w_msgstart_q[q][4 + n] = w_pack_msgstart[(w_pack_fifo_start + n + 12*q) & (8'b0111_1111)];
+                    w_flit_fifo_data[1024*(q/2) + 512*(q%2) + 16 + 40*n +: 40] =
+                        w_pack_granule[(w_pack_fifo_start + n + 12*q) & (8'b0111_1111)];
+                end
+            end
+        end
+        // half flit 0: flit header, G0-11, MsgStart[11:0], MsgStart[23:12], G12-23, CRC
+        w_flit_fifo_data[0 +: 16]           = 16'b0000_0000_1100_0000;
+        w_flit_fifo_data[62*8 +: 16]        = w_msgstart_q[0];
+        w_flit_fifo_data[64*8 +: 16]        = w_msgstart_q[1];
+        // half flit 1: MsgCredit, G24-35, MsgStart[35:24], MsgStart[47:36], G36-47, CRC
+        w_flit_fifo_data[128*8 +: 16]       = w_aou_msgcredit_valid ?
+            {w_aou_rs_msgcredit_rp, w_aou_rs_msgcredit_wrespcred, w_aou_rs_msgcredit_rdatacred,
+             w_aou_rs_msgcredit_wdatacred, w_aou_rs_msgcredit_rreqcred, w_aou_rs_msgcredit_wreqcred} : 16'b0;
+        w_flit_fifo_data[(128+62)*8 +: 16]  = w_msgstart_q[2];
+        w_flit_fifo_data[(128+64)*8 +: 16]  = w_msgstart_q[3];
+    end
+
+    assign w_aou_msgcredit_ready = w_flit_fifo_valid && w_flit_fifo_ready;
+    assign w_flit_fifo_chunk_partial = 1'b0;
+
+    AOU_REV_RS #(
+        .DATA_WIDTH         (FDI_IF_WD0)
+    ) u_aou_tx_core_phy0_rs
+    (
+        .I_CLK              ( I_CLK                 ),
+        .I_RESETN           ( I_RESETN              ),
+
+        .I_SVALID           ( w_flit_fifo_valid     ),
+        .O_SREADY           ( w_flit_fifo_ready     ),
+        .I_SDATA            ( w_flit_chunk          ),
+
+        .O_MVALID           ( O_FDI_LP_VALID_0      ),
+        .I_MREADY           ( I_FDI_PL_TRDY_0       ),
+        .O_MDATA            ( O_FDI_LP_DATA_0       )
+    );
+
+`ifdef TWO_PHY
+    // No two-PHY 256 B configuration: PHY1 idle.
+    assign O_FDI_LP_VALID_1 = 1'b0;
+    assign O_FDI_LP_DATA_1  = '0;
+`endif
 
 end else begin : g_pack_2step
     logic [64*8*2-1:0]    w_flit_fifo_data;

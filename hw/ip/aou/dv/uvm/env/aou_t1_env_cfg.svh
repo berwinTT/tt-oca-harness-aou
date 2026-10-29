@@ -60,8 +60,9 @@ class aou_t1_env_cfg extends uvm_object;
   bit            sb_en = 1'b1;
   // aou_t1_attr_chk: request attributes, exclusive responses and FLEX across the link.
   bit            attr_chk_en = 1'b1;
-  // AOU_FDI_CHECKER on the PHY the test selects (tb_top).
-  bit            fdi_chk_en = 1'b1;
+  // AOU_FDI_CHECKER on the PHY the test selects (tb_top). The checker supports
+  // 32/64/128 B beats only, so a 256 B build (FDI_CONFIG 5) has none.
+  bit            fdi_chk_en = AOU_T1_BEAT0 <= 128;
   bit            status_en = 1'b1;
   // Local software answers INT_ACTIVATE_START / INT_DEACTIVATE_START.
   bit            sw_isr_en = 1'b1;

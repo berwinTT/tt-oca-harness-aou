@@ -118,7 +118,8 @@ package aou_t1_env_pkg;
 
   // FDI beat bytes per PHY for each FDI_CONFIG (integrator guide §3.10)
   localparam int AOU_T1_BEAT0 = (AOU_T1_FDI_CONFIG == 0 || AOU_T1_FDI_CONFIG == 3) ? 32 :
-                                (AOU_T1_FDI_CONFIG == 2) ? 128 : 64;
+                                (AOU_T1_FDI_CONFIG == 2) ? 128 :
+                                (AOU_T1_FDI_CONFIG == 5) ? 256 : 64;
   localparam int AOU_T1_BEAT1 = (AOU_T1_FDI_CONFIG == 4) ? 128 : 64;
 
   // The most credit the DUT may advertise for RP r and class c (MAS 3.9, all

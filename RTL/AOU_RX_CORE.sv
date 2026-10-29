@@ -280,8 +280,10 @@ import packet_def_pkg::*;
         w_carry_rem_nxt  = '0;
         w_carry_is_w_nxt = r_carry_is_w;
         w_carry_rp_nxt   = r_carry_rp;
-        if (r_carry_rem > LEN_WD'(G_CNT)) begin
-            w_carry_rem_nxt = r_carry_rem - LEN_WD'(G_CNT);
+        // (compared at full width: G_CNT = 48 does not fit LEN_WD, and a
+        // remainder never exceeds it there)
+        if (7'(r_carry_rem) > 7'(G_CNT)) begin
+            w_carry_rem_nxt = LEN_WD'(7'(r_carry_rem) - 7'(G_CNT));
         end
         for (int p = 0; p < G_CNT; p++) begin
             if (a_start[p] && (a_is_w[p] | a_is_r[p]) &&
