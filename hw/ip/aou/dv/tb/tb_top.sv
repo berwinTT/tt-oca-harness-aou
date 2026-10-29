@@ -204,9 +204,9 @@ module tb_top;
   logic [RP_COUNT-1:0][RP_DATA_W-1:0] s_wdata, s_rdata;
   logic [RP_COUNT-1:0][SW-1:0]        s_wstrb;
   // AXI USER, 16 bits (AoU v0.8 Table 31): the DUT takes AWUSER/ARUSER/WUSER
-  // on the S port and BUSER/RUSER on the M port and sends them as FLEX. It
-  // has no USER outputs, so s_buser/s_ruser and m_awuser/m_aruser/m_wuser are
-  // constant 0.
+  // on the S port and BUSER/RUSER on the M port and sends them as FLEX; the
+  // FLEX of the messages it receives comes out as M-port AWUSER/ARUSER/WUSER
+  // and S-port BUSER/RUSER. s_ruser stays 0 until the R granule store lands.
   logic [RP_COUNT-1:0][15:0]          s_awuser, s_aruser, s_wuser, s_buser, s_ruser;
   logic [RP_COUNT-1:0][15:0]          m_awuser, m_aruser, m_wuser, m_buser, m_ruser;
 
@@ -243,7 +243,6 @@ module tb_top;
     assign s_wuser[r]   = s_axi[r].wuser;
     assign s_wvalid[r]  = s_axi[r].wvalid;
     assign s_axi[r].wready = s_wready[r];
-    assign s_buser[r]   = '0;
     assign s_axi[r].bid    = s_bid[r];
     assign s_axi[r].bresp  = s_bresp[r];
     assign s_axi[r].buser  = s_buser[r];
@@ -280,14 +279,12 @@ module tb_top;
     assign m_axi[r].awcache = m_awcache[r];
     assign m_axi[r].awprot  = m_awprot[r];
     assign m_axi[r].awqos   = m_awqos[r];
-    assign m_awuser[r]  = '0;
     assign m_axi[r].awuser  = m_awuser[r];
     assign m_axi[r].awvalid = m_awvalid[r];
     assign m_awready[r] = m_axi[r].awready;
     assign m_axi[r].wdata   = AXI_W'(m_wdata[r][W-1:0]);
     assign m_axi[r].wstrb   = (AXI_W / 8)'(m_wstrb[r][W/8-1:0]);
     assign m_axi[r].wlast   = m_wlast[r];
-    assign m_wuser[r]   = '0;
     assign m_axi[r].wuser   = m_wuser[r];
     assign m_axi[r].wvalid  = m_wvalid[r];
     assign m_wready[r]  = m_axi[r].wready;
@@ -305,7 +302,6 @@ module tb_top;
     assign m_axi[r].arcache = m_arcache[r];
     assign m_axi[r].arprot  = m_arprot[r];
     assign m_axi[r].arqos   = m_arqos[r];
-    assign m_aruser[r]  = '0;
     assign m_axi[r].aruser  = m_aruser[r];
     assign m_axi[r].arvalid = m_arvalid[r];
     assign m_arready[r] = m_axi[r].arready;
@@ -478,7 +474,8 @@ module tb_top;
       .O_AOU_RX_AXI_M_ARLEN  (m_arlen),   .O_AOU_RX_AXI_M_ARSIZE (m_arsize),
       .O_AOU_RX_AXI_M_ARBURST(m_arburst), .O_AOU_RX_AXI_M_ARLOCK (m_arlock),
       .O_AOU_RX_AXI_M_ARCACHE(m_arcache), .O_AOU_RX_AXI_M_ARPROT (m_arprot),
-      .O_AOU_RX_AXI_M_ARQOS  (m_arqos),   .O_AOU_RX_AXI_M_ARVALID(m_arvalid),
+      .O_AOU_RX_AXI_M_ARQOS  (m_arqos),   .O_AOU_RX_AXI_M_ARUSER (m_aruser),
+      .O_AOU_RX_AXI_M_ARVALID(m_arvalid),
       .I_AOU_RX_AXI_M_ARREADY(m_arready),
       .I_AOU_TX_AXI_M_RID    (m_rid),     .I_AOU_TX_AXI_M_RDATA  (m_rdata),
       .I_AOU_TX_AXI_M_RRESP  (m_rresp),   .I_AOU_TX_AXI_M_RLAST  (m_rlast),
@@ -488,10 +485,12 @@ module tb_top;
       .O_AOU_RX_AXI_M_AWLEN  (m_awlen),   .O_AOU_RX_AXI_M_AWSIZE (m_awsize),
       .O_AOU_RX_AXI_M_AWBURST(m_awburst), .O_AOU_RX_AXI_M_AWLOCK (m_awlock),
       .O_AOU_RX_AXI_M_AWCACHE(m_awcache), .O_AOU_RX_AXI_M_AWPROT (m_awprot),
-      .O_AOU_RX_AXI_M_AWQOS  (m_awqos),   .O_AOU_RX_AXI_M_AWVALID(m_awvalid),
+      .O_AOU_RX_AXI_M_AWQOS  (m_awqos),   .O_AOU_RX_AXI_M_AWUSER (m_awuser),
+      .O_AOU_RX_AXI_M_AWVALID(m_awvalid),
       .I_AOU_RX_AXI_M_AWREADY(m_awready),
       .O_AOU_RX_AXI_M_WDATA  (m_wdata),   .O_AOU_RX_AXI_M_WSTRB  (m_wstrb),
-      .O_AOU_RX_AXI_M_WLAST  (m_wlast),   .O_AOU_RX_AXI_M_WVALID (m_wvalid),
+      .O_AOU_RX_AXI_M_WLAST  (m_wlast),   .O_AOU_RX_AXI_M_WUSER  (m_wuser),
+      .O_AOU_RX_AXI_M_WVALID (m_wvalid),
       .I_AOU_RX_AXI_M_WREADY (m_wready),
       .I_AOU_TX_AXI_M_BID    (m_bid),     .I_AOU_TX_AXI_M_BRESP  (m_bresp),
       .I_AOU_TX_AXI_M_BUSER  (m_buser),
@@ -519,6 +518,7 @@ module tb_top;
       .I_AOU_TX_AXI_S_WUSER  (s_wuser),
       .O_AOU_TX_AXI_S_WREADY (s_wready),
       .O_AOU_RX_AXI_S_BID    (s_bid),     .O_AOU_RX_AXI_S_BRESP  (s_bresp),
+      .O_AOU_RX_AXI_S_BUSER  (s_buser),
       .O_AOU_RX_AXI_S_BVALID (s_bvalid),  .I_AOU_RX_AXI_S_BREADY (s_bready),
 
 `ifdef TWO_PHY

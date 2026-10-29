@@ -49,6 +49,7 @@ module AOU_AXI4MUX_3X1_256 #(
     input       [ LEN_WD-1: 0]          I_S_ARLEN_0,
     input                               I_S_ARLOCK_0,
     input       [ 3: 0]                 I_S_ARQOS_0,
+    input       [15: 0]                 I_S_ARUSER_0,
     input                               I_S_ARVALID_0,
     output wire                         O_S_ARREADY_0,
 
@@ -69,12 +70,14 @@ module AOU_AXI4MUX_3X1_256 #(
     input       [ 3: 0]                 I_S_AWCACHE_0,
     input       [ 2: 0]                 I_S_AWPROT_0,
     input       [ 3: 0]                 I_S_AWQOS_0,
+    input       [15: 0]                 I_S_AWUSER_0,
     input                               I_S_AWVALID_0,
     output wire                         O_S_AWREADY_0,
 
     input       [ 255 : 0]              I_S_WDATA_0,
     input       [ 31  : 0]              I_S_WSTRB_0,
     input                               I_S_WLAST_0,
+    input       [15: 0]                 I_S_WUSER_0,
     input                               I_S_WVALID_0,
     output                              O_S_WREADY_0,
 
@@ -94,6 +97,7 @@ module AOU_AXI4MUX_3X1_256 #(
     input       [ LEN_WD-1: 0]          I_S_ARLEN_1,
     input                               I_S_ARLOCK_1,
     input       [ 3: 0]                 I_S_ARQOS_1,
+    input       [15: 0]                 I_S_ARUSER_1,
     input                               I_S_ARVALID_1,
     output wire                         O_S_ARREADY_1,
 
@@ -114,12 +118,14 @@ module AOU_AXI4MUX_3X1_256 #(
     input       [ 3: 0]                 I_S_AWCACHE_1,
     input       [ 2: 0]                 I_S_AWPROT_1,
     input       [ 3: 0]                 I_S_AWQOS_1,
+    input       [15: 0]                 I_S_AWUSER_1,
     input                               I_S_AWVALID_1,
     output wire                         O_S_AWREADY_1,
 
     input       [ 511: 0]               I_S_WDATA_1,
     input       [ 63: 0]                I_S_WSTRB_1,  //WSTRB width = wdata width / 8
     input                               I_S_WLAST_1,
+    input       [15: 0]                 I_S_WUSER_1,
     input                               I_S_WVALID_1,
     output wire                         O_S_WREADY_1,
 
@@ -139,6 +145,7 @@ module AOU_AXI4MUX_3X1_256 #(
     input       [ LEN_WD-1: 0]          I_S_ARLEN_2,
     input                               I_S_ARLOCK_2,
     input       [ 3: 0]                 I_S_ARQOS_2,
+    input       [15: 0]                 I_S_ARUSER_2,
     input                               I_S_ARVALID_2,
     output wire                         O_S_ARREADY_2,
 
@@ -159,12 +166,14 @@ module AOU_AXI4MUX_3X1_256 #(
     input       [ 3: 0]                 I_S_AWCACHE_2,
     input       [ 2: 0]                 I_S_AWPROT_2,
     input       [ 3: 0]                 I_S_AWQOS_2,
+    input       [15: 0]                 I_S_AWUSER_2,
     input                               I_S_AWVALID_2,
     output wire                         O_S_AWREADY_2,
 
     input       [ 1023: 0]              I_S_WDATA_2,
     input       [ 127: 0]               I_S_WSTRB_2,
     input                               I_S_WLAST_2,
+    input       [15: 0]                 I_S_WUSER_2,
     input                               I_S_WVALID_2,
     output wire                         O_S_WREADY_2,
 
@@ -184,6 +193,7 @@ module AOU_AXI4MUX_3X1_256 #(
     output wire [ LEN_WD-1: 0]          O_M_ARLEN,
     output wire                         O_M_ARLOCK,
     output wire [ 3: 0]                 O_M_ARQOS,
+    output wire [15: 0]                 O_M_ARUSER,
     output wire                         O_M_ARVALID,
     input                               I_M_ARREADY,
 
@@ -204,12 +214,14 @@ module AOU_AXI4MUX_3X1_256 #(
     output wire [ 3: 0]                 O_M_AWCACHE,
     output wire [ 2: 0]                 O_M_AWPROT,
     output wire [ 3: 0]                 O_M_AWQOS,
+    output wire [15: 0]                 O_M_AWUSER,
     output wire                         O_M_AWVALID,
     input                               I_M_AWREADY,      
 
     output wire [ DATA_WD-1: 0]         O_M_WDATA,
     output wire [ STRB_WD-1: 0]         O_M_WSTRB,
     output wire                         O_M_WLAST,
+    output wire [15: 0]                 O_M_WUSER,
     output wire                         O_M_WVALID,
     input                               I_M_WREADY,
 
@@ -227,8 +239,8 @@ module AOU_AXI4MUX_3X1_256 #(
 
 );
 
-localparam W_WD = DATA_WD + STRB_WD + 1; // WLAST
-localparam AXI_AWCH_PAYLOAD_WD = ID_WD+2 + ADDR_WD + LEN_WD + 3 + 2 + 1 + 4+ 3 + 4;
+localparam W_WD = DATA_WD + STRB_WD + 1 + 16; // WLAST + WUSER
+localparam AXI_AWCH_PAYLOAD_WD = ID_WD+2 + ADDR_WD + LEN_WD + 3 + 2 + 1 + 4+ 3 + 4 + 16; // + AWUSER
 
 wire [ ID_WD-1: 0]           dn_s_awid_1;
 wire [ ADDR_WD-1: 0]         dn_s_awaddr_1;
@@ -239,12 +251,14 @@ wire                         dn_s_awlock_1;
 wire [ 3: 0]                 dn_s_awcache_1;
 wire [ 2: 0]                 dn_s_awprot_1;
 wire [ 4-1: 0]               dn_s_awqos_1;
+wire [15: 0]                 dn_s_awuser_1;
 wire                         dn_s_awvalid_1;
 wire                         dn_s_awready_1;
 
 wire [ DATA_WD-1: 0]         dn_s_wdata_1;
 wire [ STRB_WD-1: 0]         dn_s_wstrb_1;
 wire                         dn_s_wlast_1;
+wire [15: 0]                 dn_s_wuser_1;
 wire                         dn_s_wvalid_1;
 wire                         dn_s_wready_1;
 
@@ -263,6 +277,7 @@ wire [ 2: 0]                 dn_s_arprot_1;
 wire [ LEN_WD-1: 0]          dn_s_arlen_1;
 wire                         dn_s_arlock_1;
 wire [ 4-1: 0]               dn_s_arqos_1;
+wire [15: 0]                 dn_s_aruser_1;
 wire                         dn_s_arvalid_1;
 wire                         dn_s_arready_1;
 
@@ -283,12 +298,14 @@ wire                         dn_s_awlock_2;
 wire [ 3: 0]                 dn_s_awcache_2;
 wire [ 2: 0]                 dn_s_awprot_2;
 wire [ 4-1: 0]               dn_s_awqos_2;
+wire [15: 0]                 dn_s_awuser_2;
 wire                         dn_s_awvalid_2;
 wire                         dn_s_awready_2;
 
 wire [ DATA_WD-1: 0]         dn_s_wdata_2;
 wire [ STRB_WD-1: 0]         dn_s_wstrb_2;
 wire                         dn_s_wlast_2;
+wire [15: 0]                 dn_s_wuser_2;
 wire                         dn_s_wvalid_2;
 wire                         dn_s_wready_2;
 
@@ -307,6 +324,7 @@ wire [ 2: 0]                 dn_s_arprot_2;
 wire [ LEN_WD-1: 0]          dn_s_arlen_2;
 wire                         dn_s_arlock_2;
 wire [ 3:0]                  dn_s_arqos_2;
+wire [15: 0]                 dn_s_aruser_2;
 wire                         dn_s_arvalid_2;
 wire                         dn_s_arready_2;
 
@@ -341,6 +359,7 @@ AOU_AXI_DOWN #(
     .I_S_ARLEN     ( I_S_ARLEN_1     ),
     .I_S_ARLOCK    ( I_S_ARLOCK_1    ),
     .I_S_ARQOS     ( I_S_ARQOS_1     ),
+    .I_S_ARUSER    ( I_S_ARUSER_1    ),
     .I_S_ARVALID   ( I_S_ARVALID_1   ),
     .O_S_ARREADY   ( O_S_ARREADY_1   ),
 
@@ -361,12 +380,14 @@ AOU_AXI_DOWN #(
     .I_S_AWCACHE   ( I_S_AWCACHE_1   ),
     .I_S_AWPROT    ( I_S_AWPROT_1    ),
     .I_S_AWQOS     ( I_S_AWQOS_1     ),
+    .I_S_AWUSER    ( I_S_AWUSER_1    ),
     .I_S_AWVALID   ( I_S_AWVALID_1   ),
     .O_S_AWREADY   ( O_S_AWREADY_1   ),
 
     .I_S_WDATA     ( I_S_WDATA_1     ),
     .I_S_WSTRB     ( I_S_WSTRB_1     ),  
     .I_S_WLAST     ( I_S_WLAST_1     ),
+    .I_S_WUSER     ( I_S_WUSER_1     ),
     .I_S_WVALID    ( I_S_WVALID_1    ),
     .O_S_WREADY    ( O_S_WREADY_1    ),
 
@@ -385,6 +406,7 @@ AOU_AXI_DOWN #(
     .O_M_ARLEN     ( dn_s_arlen_1    ),
     .O_M_ARLOCK    ( dn_s_arlock_1   ),
     .O_M_ARQOS     ( dn_s_arqos_1    ),
+    .O_M_ARUSER    ( dn_s_aruser_1   ),
     .O_M_ARVALID   ( dn_s_arvalid_1  ),
     .I_M_ARREADY   ( dn_s_arready_1  ),
 
@@ -405,12 +427,14 @@ AOU_AXI_DOWN #(
     .O_M_AWCACHE   ( dn_s_awcache_1  ),
     .O_M_AWPROT    ( dn_s_awprot_1   ),
     .O_M_AWQOS     ( dn_s_awqos_1    ),
+    .O_M_AWUSER    ( dn_s_awuser_1   ),
     .O_M_AWVALID   ( dn_s_awvalid_1  ),
     .I_M_AWREADY   ( dn_s_awready_1  ),
 
     .O_M_WDATA     ( dn_s_wdata_1    ),
     .O_M_WSTRB     ( dn_s_wstrb_1    ),
     .O_M_WLAST     ( dn_s_wlast_1    ),
+    .O_M_WUSER     ( dn_s_wuser_1    ),
     .O_M_WVALID    ( dn_s_wvalid_1   ),
     .I_M_WREADY    ( dn_s_wready_1   ),
 
@@ -447,6 +471,7 @@ AOU_AXI_DOWN #(
     .I_S_ARLEN     ( I_S_ARLEN_2     ),
     .I_S_ARLOCK    ( I_S_ARLOCK_2    ),
     .I_S_ARQOS     ( I_S_ARQOS_2     ),
+    .I_S_ARUSER    ( I_S_ARUSER_2    ),
     .I_S_ARVALID   ( I_S_ARVALID_2   ),
     .O_S_ARREADY   ( O_S_ARREADY_2   ),
 
@@ -467,12 +492,14 @@ AOU_AXI_DOWN #(
     .I_S_AWCACHE   ( I_S_AWCACHE_2   ),
     .I_S_AWPROT    ( I_S_AWPROT_2    ),
     .I_S_AWQOS     ( I_S_AWQOS_2     ),
+    .I_S_AWUSER    ( I_S_AWUSER_2    ),
     .I_S_AWVALID   ( I_S_AWVALID_2   ),
     .O_S_AWREADY   ( O_S_AWREADY_2   ),
 
     .I_S_WDATA     ( I_S_WDATA_2     ),
     .I_S_WSTRB     ( I_S_WSTRB_2     ),  
     .I_S_WLAST     ( I_S_WLAST_2     ),
+    .I_S_WUSER     ( I_S_WUSER_2     ),
     .I_S_WVALID    ( I_S_WVALID_2    ),
     .O_S_WREADY    ( O_S_WREADY_2    ),
 
@@ -491,6 +518,7 @@ AOU_AXI_DOWN #(
     .O_M_ARCACHE   ( dn_s_arcache_2  ),
     .O_M_ARPROT    ( dn_s_arprot_2   ),
     .O_M_ARQOS     ( dn_s_arqos_2    ),
+    .O_M_ARUSER    ( dn_s_aruser_2   ),
     .O_M_ARVALID   ( dn_s_arvalid_2  ),
     .I_M_ARREADY   ( dn_s_arready_2  ),
 
@@ -511,12 +539,14 @@ AOU_AXI_DOWN #(
     .O_M_AWCACHE   ( dn_s_awcache_2  ),
     .O_M_AWPROT    ( dn_s_awprot_2   ),
     .O_M_AWQOS     ( dn_s_awqos_2    ),
+    .O_M_AWUSER    ( dn_s_awuser_2   ),
     .O_M_AWVALID   ( dn_s_awvalid_2  ),
     .I_M_AWREADY   ( dn_s_awready_2  ),
 
     .O_M_WDATA     ( dn_s_wdata_2    ),
     .O_M_WSTRB     ( dn_s_wstrb_2    ),
     .O_M_WLAST     ( dn_s_wlast_2    ),
+    .O_M_WUSER     ( dn_s_wuser_2    ),
     .O_M_WVALID    ( dn_s_wvalid_2   ),
     .I_M_WREADY    ( dn_s_wready_2   ),
 
@@ -544,6 +574,7 @@ wire                         O_M_AWLOCK_tmp;
 wire [ 3: 0]                 O_M_AWCACHE_tmp;
 wire [ 2: 0]                 O_M_AWPROT_tmp;
 wire [ 3: 0]                 O_M_AWQOS_tmp;
+wire [15: 0]                 O_M_AWUSER_tmp;
 wire                         O_M_AWVALID_tmp;
 
 
@@ -553,6 +584,7 @@ wire                         O_SS_WREADY_0  ;
 wire [ DATA_WD-1: 0]         I_SS_WDATA_0   ;
 wire [ STRB_WD-1: 0]         I_SS_WSTRB_0   ;
 wire                         I_SS_WLAST_0   ;
+wire [15: 0]                 I_SS_WUSER_0   ;
 
 wire [W_WD - 1:0]     w_s_w_payload_0;
 wire [W_WD - 1:0]     w_m_w_payload_0;
@@ -564,6 +596,7 @@ wire                         O_SS_WREADY_1  ;
 wire [ DATA_WD-1: 0]         I_SS_WDATA_1   ;
 wire [ STRB_WD-1: 0]         I_SS_WSTRB_1   ;
 wire                         I_SS_WLAST_1   ;
+wire [15: 0]                 I_SS_WUSER_1   ;
 
 wire [W_WD - 1:0]     w_s_w_payload_1;
 wire [W_WD - 1:0]     w_m_w_payload_1;
@@ -575,6 +608,7 @@ wire                         O_SS_WREADY_2  ;
 wire [ DATA_WD-1: 0]         I_SS_WDATA_2   ;
 wire [ STRB_WD-1: 0]         I_SS_WSTRB_2   ;
 wire                         I_SS_WLAST_2   ;
+wire [15: 0]                 I_SS_WUSER_2   ;
 
 wire [W_WD - 1:0]     w_s_w_payload_2;
 wire [W_WD - 1:0]     w_m_w_payload_2;
@@ -615,6 +649,7 @@ assign  O_M_ARPROT  = (ar_grant[0])? I_S_ARPROT_0       : (ar_grant[1])? dn_s_ar
 assign  O_M_ARLEN   = (ar_grant[0])? I_S_ARLEN_0        : (ar_grant[1])? dn_s_arlen_1        :(ar_grant[2])? dn_s_arlen_2         : 'd0;
 assign  O_M_ARLOCK  = (ar_grant[0])? I_S_ARLOCK_0       : (ar_grant[1])? dn_s_arlock_1       :(ar_grant[2])? dn_s_arlock_2        : 'd0;
 assign  O_M_ARQOS   = (ar_grant[0])? I_S_ARQOS_0        : (ar_grant[1])? dn_s_arqos_1        :(ar_grant[2])? dn_s_arqos_2         : 'd0;
+assign  O_M_ARUSER  = (ar_grant[0])? I_S_ARUSER_0        : (ar_grant[1])? dn_s_aruser_1        :(ar_grant[2])? dn_s_aruser_2         : 'd0;
 
 assign  O_S_ARREADY_0   =  (ar_grant[0])? I_M_ARREADY   : 1'b0;
 assign  dn_s_arready_1   = (ar_grant[1])? I_M_ARREADY   : 1'b0;
@@ -690,6 +725,7 @@ assign  O_M_AWLOCK_tmp      = (aw_grant[0]) ? I_S_AWLOCK_0       : (aw_grant[1])
 assign  O_M_AWCACHE_tmp     = (aw_grant[0]) ? I_S_AWCACHE_0      : (aw_grant[1]) ? dn_s_awcache_1      : (aw_grant[2]) ? dn_s_awcache_2       : 'd0;
 assign  O_M_AWPROT_tmp      = (aw_grant[0]) ? I_S_AWPROT_0       : (aw_grant[1]) ? dn_s_awprot_1       : (aw_grant[2]) ? dn_s_awprot_2        : 'd0;
 assign  O_M_AWQOS_tmp       = (aw_grant[0]) ? I_S_AWQOS_0        : (aw_grant[1]) ? dn_s_awqos_1        : (aw_grant[2]) ? dn_s_awqos_2         : 'd0;
+assign  O_M_AWUSER_tmp      = (aw_grant[0]) ? I_S_AWUSER_0        : (aw_grant[1]) ? dn_s_awuser_1        : (aw_grant[2]) ? dn_s_awuser_2         : 'd0;
 assign  O_M_AWVALID_tmp     = (aw_grant[0]) ? (I_S_AWVALID_0 & w_awfifo_sready) : 
                               (aw_grant[1]) ? (dn_s_awvalid_1 & w_awfifo_sready) : 
                                               (dn_s_awvalid_2 & w_awfifo_sready) ;
@@ -703,7 +739,8 @@ assign w_awch_fwd_rs_sdata = {
     O_M_AWLOCK_tmp,
     O_M_AWCACHE_tmp,
     O_M_AWPROT_tmp,
-    O_M_AWQOS_tmp };
+    O_M_AWQOS_tmp,
+    O_M_AWUSER_tmp };
 
 AOU_FWD_RS #(
     .DATA_WIDTH ( AXI_AWCH_PAYLOAD_WD  )
@@ -732,7 +769,8 @@ assign {O_M_AWID,
         O_M_AWLOCK,
         O_M_AWCACHE,
         O_M_AWPROT,
-        O_M_AWQOS } = w_awch_fwd_rs_mdata;
+        O_M_AWQOS,
+        O_M_AWUSER } = w_awch_fwd_rs_mdata;
 
 AOU_SYNC_FIFO_REG  #
 (
@@ -759,8 +797,8 @@ AOU_SYNC_FIFO_REG  #
 //                          W
 //==============================================================
 
-assign w_s_w_payload_0 = {I_S_WDATA_0, I_S_WSTRB_0, I_S_WLAST_0};
-assign {I_SS_WDATA_0, I_SS_WSTRB_0, I_SS_WLAST_0} = w_m_w_payload_0;
+assign w_s_w_payload_0 = {I_S_WDATA_0, I_S_WSTRB_0, I_S_WLAST_0, I_S_WUSER_0};
+assign {I_SS_WDATA_0, I_SS_WSTRB_0, I_SS_WLAST_0, I_SS_WUSER_0} = w_m_w_payload_0;
 
 
 // W channel
@@ -788,8 +826,8 @@ u_wch_aximux_4x1_sync_fifo_0
 
 //==============================================================
 
-assign w_s_w_payload_1 = {dn_s_wdata_1, dn_s_wstrb_1, dn_s_wlast_1};
-assign {I_SS_WDATA_1, I_SS_WSTRB_1, I_SS_WLAST_1} = w_m_w_payload_1;
+assign w_s_w_payload_1 = {dn_s_wdata_1, dn_s_wstrb_1, dn_s_wlast_1, dn_s_wuser_1};
+assign {I_SS_WDATA_1, I_SS_WSTRB_1, I_SS_WLAST_1, I_SS_WUSER_1} = w_m_w_payload_1;
 
 
 // W channel
@@ -817,8 +855,8 @@ u_wch_aximux_4x1_sync_fifo_1
 
 //==============================================================
 
-assign w_s_w_payload_2 = {dn_s_wdata_2, dn_s_wstrb_2, dn_s_wlast_2};
-assign {I_SS_WDATA_2, I_SS_WSTRB_2, I_SS_WLAST_2} = w_m_w_payload_2;
+assign w_s_w_payload_2 = {dn_s_wdata_2, dn_s_wstrb_2, dn_s_wlast_2, dn_s_wuser_2};
+assign {I_SS_WDATA_2, I_SS_WSTRB_2, I_SS_WLAST_2, I_SS_WUSER_2} = w_m_w_payload_2;
 
 
 // W channel
@@ -855,6 +893,7 @@ assign  O_SS_WREADY_2    = ((w_granted_wch2)? I_M_WREADY   : 1'b0) | w_no_wvalid
 assign  O_M_WDATA        = (w_granted_wch0)? I_SS_WDATA_0  : (w_granted_wch1)? I_SS_WDATA_1  : (w_granted_wch2)? I_SS_WDATA_2  : 'd0;
 assign  O_M_WSTRB        = (w_granted_wch0)? I_SS_WSTRB_0  : (w_granted_wch1)? I_SS_WSTRB_1  : (w_granted_wch2)? I_SS_WSTRB_2  : 'd0;
 assign  O_M_WLAST        = (w_granted_wch0)? I_SS_WLAST_0  : (w_granted_wch1)? I_SS_WLAST_1  : (w_granted_wch2)? I_SS_WLAST_2  : 'd0;
+assign  O_M_WUSER        = (w_granted_wch0)? I_SS_WUSER_0  : (w_granted_wch1)? I_SS_WUSER_1  : (w_granted_wch2)? I_SS_WUSER_2  : 'd0;
 assign  O_M_WVALID       = ((w_granted_wch0)? (I_SS_WVALID_0) : 
                             (w_granted_wch1)? (I_SS_WVALID_1) : 
                             (w_granted_wch2)? (I_SS_WVALID_2) : 'b0) & w_awfifo_mvalid;

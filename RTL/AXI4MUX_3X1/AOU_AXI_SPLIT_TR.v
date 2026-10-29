@@ -59,12 +59,14 @@ module AOU_AXI_SPLIT_TR #(
     input       [ 3: 0]                 I_S_AWCACHE,
     input       [ 2: 0]                 I_S_AWPROT,
     input       [ QOS_WD-1: 0]          I_S_AWQOS,
+    input       [15: 0]                 I_S_AWUSER,
     input                               I_S_AWVALID,
     output wire                         O_S_AWREADY,
 
     input       [ DATA_WD-1 : 0]        I_S_WDATA,
     input       [ STRB_WD-1 : 0]        I_S_WSTRB,
     input                               I_S_WLAST,
+    input       [15: 0]                 I_S_WUSER,
     input                               I_S_WVALID,
     output                              O_S_WREADY,
 
@@ -83,6 +85,7 @@ module AOU_AXI_SPLIT_TR #(
     input       [ LEN_WD-1: 0]          I_S_ARLEN,
     input                               I_S_ARLOCK,
     input       [ QOS_WD-1: 0]          I_S_ARQOS,
+    input       [15: 0]                 I_S_ARUSER,
     input                               I_S_ARVALID,
     output wire                         O_S_ARREADY,
 
@@ -104,12 +107,14 @@ module AOU_AXI_SPLIT_TR #(
     output wire [ 3: 0]                 O_M_AWCACHE,
     output wire [ 2: 0]                 O_M_AWPROT,
     output wire [ 3: 0]                 O_M_AWQOS,
+    output wire [15: 0]                 O_M_AWUSER,
     output wire                         O_M_AWVALID,
     input                               I_M_AWREADY,      
 
     output wire [ DATA_WD-1: 0]         O_M_WDATA,
     output wire [ STRB_WD-1: 0]         O_M_WSTRB,
     output wire                         O_M_WLAST,
+    output wire [15: 0]                 O_M_WUSER,
     output wire                         O_M_WVALID,
     input                               I_M_WREADY,
 
@@ -128,6 +133,7 @@ module AOU_AXI_SPLIT_TR #(
     output wire [ LEN_WD-1: 0]          O_M_ARLEN,
     output wire                         O_M_ARLOCK,
     output      [ QOS_WD-1: 0]          O_M_ARQOS,
+    output wire [15: 0]                 O_M_ARUSER,
     output wire                         O_M_ARVALID,
     input                               I_M_ARREADY,
 
@@ -164,12 +170,12 @@ module AOU_AXI_SPLIT_TR #(
 );
 
 //----------------------------------------------------
-localparam AXI_ARCH_PAYLOAD_WD = ID_WD + ADDR_WD + LEN_WD + 3 + 2 + 1 + 4 + 3 + QOS_WD;
-localparam AXI_AWCH_PAYLOAD_WD = ID_WD + ADDR_WD + LEN_WD + 3 + 2 + 1 + 4 + 3 + QOS_WD;
-localparam AXI_WCH_PAYLOAD_WD  = DATA_WD + STRB_WD + 1;
+localparam AXI_ARCH_PAYLOAD_WD = ID_WD + ADDR_WD + LEN_WD + 3 + 2 + 1 + 4 + 3 + QOS_WD + 16; // + ARUSER
+localparam AXI_AWCH_PAYLOAD_WD = ID_WD + ADDR_WD + LEN_WD + 3 + 2 + 1 + 4 + 3 + QOS_WD + 16; // + AWUSER
+localparam AXI_WCH_PAYLOAD_WD  = DATA_WD + STRB_WD + 1 + 16; // + WUSER
 
-localparam AXI_M_ARCH_PAYLOAD_WD = ID_WD -2 + ADDR_WD + LEN_WD + 3 + 2 + 1 + 4 + 3 + QOS_WD;
-localparam AXI_M_AWCH_PAYLOAD_WD = 1 + ID_WD -2 + ADDR_WD + LEN_WD + 3 + 2 + 1 + 4 + 3 + QOS_WD; // + O_M_AW_DBG_HIT
+localparam AXI_M_ARCH_PAYLOAD_WD = ID_WD -2 + ADDR_WD + LEN_WD + 3 + 2 + 1 + 4 + 3 + QOS_WD + 16; // + ARUSER
+localparam AXI_M_AWCH_PAYLOAD_WD = 1 + ID_WD -2 + ADDR_WD + LEN_WD + 3 + 2 + 1 + 4 + 3 + QOS_WD + 16; // + O_M_AW_DBG_HIT + AWUSER
 
 //----------------------------------------------------
 localparam PENDING_CNT_WD = $clog2(WR_MO_CNT+1);
@@ -308,6 +314,7 @@ wire                             O_M_AWLOCK_RS;
 wire [ 3: 0]                     O_M_AWCACHE_RS;
 wire [ 2: 0]                     O_M_AWPROT_RS;
 wire [ 3: 0]                     O_M_AWQOS_RS;
+wire [15: 0]                     O_M_AWUSER_RS;
 wire                             O_M_AWVALID_RS;
 wire                             I_M_AWREADY_RS;      
 wire                             O_M_AW_DBG_HIT_RS;
@@ -321,7 +328,8 @@ assign w_aou_split_tr_m_awch_rs_sdata = {O_M_AW_DBG_HIT_RS,
                                        O_M_AWLOCK_RS,
                                        O_M_AWCACHE_RS,
                                        O_M_AWPROT_RS,
-                                       O_M_AWQOS_RS};
+                                       O_M_AWQOS_RS,
+                                       O_M_AWUSER_RS};
 
 assign {O_M_AW_DBG_HIT,
        O_M_AWID,
@@ -332,7 +340,8 @@ assign {O_M_AW_DBG_HIT,
        O_M_AWLOCK,
        O_M_AWCACHE,
        O_M_AWPROT,
-       O_M_AWQOS} = w_aou_split_tr_m_awch_rs_mdata;
+       O_M_AWQOS,
+       O_M_AWUSER} = w_aou_split_tr_m_awch_rs_mdata;
 
 generate
 if (AOU_AXI_SPLIT_TR_MST_AWCH_RS_EN == 1) begin
@@ -367,16 +376,19 @@ wire                            w_aou_split_tr_m_wch_rs_mready;
 wire [ DATA_WD-1: 0]         O_M_WDATA_RS;
 wire [ STRB_WD-1: 0]         O_M_WSTRB_RS;
 wire                         O_M_WLAST_RS;
+wire [15: 0]                 O_M_WUSER_RS;
 wire                         O_M_WVALID_RS;
 wire                         I_M_WREADY_RS;
 
 assign w_aou_split_tr_m_wch_rs_sdata = {O_M_WDATA_RS, 
                                         O_M_WSTRB_RS, 
-                                        O_M_WLAST_RS};
+                                        O_M_WLAST_RS,
+                                        O_M_WUSER_RS};
 
 assign {O_M_WDATA, 
         O_M_WSTRB, 
-        O_M_WLAST} = w_aou_split_tr_m_wch_rs_mdata;
+        O_M_WLAST,
+        O_M_WUSER} = w_aou_split_tr_m_wch_rs_mdata;
 
 if (AOU_AXI_SPLIT_TR_MST_WCH_RS_EN == 1) begin
     AOU_ISO_RS #(
@@ -462,6 +474,7 @@ wire                             O_M_ARLOCK_RS;
 wire [ 3: 0]                     O_M_ARCACHE_RS;
 wire [ 2: 0]                     O_M_ARPROT_RS;
 wire [ 3: 0]                     O_M_ARQOS_RS;
+wire [15: 0]                     O_M_ARUSER_RS;
 wire                             O_M_ARVALID_RS;
 wire                             I_M_ARREADY_RS;      
 
@@ -473,7 +486,8 @@ assign w_aou_split_tr_m_arch_rs_sdata = {O_M_ARID_RS[ ID_WD-1: 2],
                                          O_M_ARLOCK_RS,
                                          O_M_ARCACHE_RS,
                                          O_M_ARPROT_RS,
-                                         O_M_ARQOS_RS};
+                                         O_M_ARQOS_RS,
+                                         O_M_ARUSER_RS};
 
 assign {O_M_ARID,
        O_M_ARADDR,
@@ -483,7 +497,8 @@ assign {O_M_ARID,
        O_M_ARLOCK,
        O_M_ARCACHE,
        O_M_ARPROT,
-       O_M_ARQOS} = w_aou_split_tr_m_arch_rs_mdata;
+       O_M_ARQOS,
+       O_M_ARUSER} = w_aou_split_tr_m_arch_rs_mdata;
 
 generate
 if (AOU_AXI_SPLIT_TR_MST_ARCH_RS_EN == 1) begin
@@ -648,9 +663,12 @@ assign w_aou_split_tr_s_arch_rs_sdata = {
     I_S_ARLOCK,
     I_S_ARCACHE,
     I_S_ARPROT,
-    I_S_ARQOS
+    I_S_ARQOS,
+    I_S_ARUSER
 };
 
+// The slice holds the request until its last sub-burst has gone out, so every
+// sub-burst of a split request carries the request's ARUSER.
 assign {O_M_ARID_RS,
         w_aou_split_tr_s_arch_rs_mdata_araddr,
         w_aou_split_tr_s_arch_rs_mdata_arlen,
@@ -659,7 +677,8 @@ assign {O_M_ARID_RS,
         O_M_ARLOCK_RS, 
         O_M_ARCACHE_RS,
         O_M_ARPROT_RS, 
-        O_M_ARQOS_RS} = w_aou_split_tr_s_arch_rs_mdata;
+        O_M_ARQOS_RS,
+        O_M_ARUSER_RS} = w_aou_split_tr_s_arch_rs_mdata;
 
 generate
 if (AOU_AXI_SPLIT_TR_SLV_ARCH_RS_EN == 1) begin
@@ -810,7 +829,8 @@ assign w_awch_fwd_rs_sdata = {
     I_S_AWLOCK,
     I_S_AWCACHE,
     I_S_AWPROT,
-    I_S_AWQOS
+    I_S_AWQOS,
+    I_S_AWUSER
 };
 
 assign  O_S_AWREADY = w_s_awready;
@@ -842,13 +862,15 @@ assign {O_M_AWID_RS,
         O_M_AWLOCK_RS, 
         O_M_AWCACHE_RS,
         O_M_AWPROT_RS, 
-        O_M_AWQOS_RS} = w_awch_fwd_rs_mdata;
+        O_M_AWQOS_RS,
+        O_M_AWUSER_RS} = w_awch_fwd_rs_mdata;  // every sub-burst carries the request's AWUSER
 
 //----------------------------------------------------
 assign w_wch_fwd_rs_sdata = {
     I_S_WDATA,
     I_S_WSTRB,
-    I_S_WLAST
+    I_S_WLAST,
+    I_S_WUSER
 };
 
 AOU_ISO_RS #(
@@ -872,7 +894,8 @@ AOU_ISO_RS #(
 
 assign {O_M_WDATA_RS,
         O_M_WSTRB_RS,
-        w_wch_fwd_rs_mdata_wlast
+        w_wch_fwd_rs_mdata_wlast,
+        O_M_WUSER_RS
 } = w_wch_fwd_rs_mdata;
 
 //----------------------------------------------------

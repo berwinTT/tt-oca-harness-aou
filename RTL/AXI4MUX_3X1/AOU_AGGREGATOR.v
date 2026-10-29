@@ -50,6 +50,7 @@ module AOU_AGGREGATOR #(
     input [3:0]                     I_S_AWCACHE,//[1]: Modifiable, [0]: Bufferable
     input [2:0]                     I_S_AWPROT,
     input [3:0]                     I_S_AWQOS,
+    input [15:0]                    I_S_AWUSER,
     input                           I_S_AWVALID,
     output reg                      O_S_AWREADY,
     input                           I_S_AW_NO_AGG, // pass this write through unmerged (a debug-address access)
@@ -58,6 +59,7 @@ module AOU_AGGREGATOR #(
     input [ DATA_WD-1: 0]           I_S_WDATA,
     input [ STRB_WD-1: 0]           I_S_WSTRB,
     input                           I_S_WLAST,
+    input [15:0]                    I_S_WUSER,
     input                           I_S_WVALID,
     output reg                      O_S_WREADY,
 
@@ -70,12 +72,14 @@ module AOU_AGGREGATOR #(
     output reg [3:0]                O_M_AWCACHE,
     output reg [2:0]                O_M_AWPROT,
     output reg [3:0]                O_M_AWQOS,
+    output reg [15:0]               O_M_AWUSER,
     output reg                      O_M_AWVALID,
     input                           I_M_AWREADY,
 
     output     [ DATA_WD-1: 0]      O_M_WDATA,
     output     [ STRB_WD-1: 0]      O_M_WSTRB,
     output                          O_M_WLAST,
+    output     [15:0]               O_M_WUSER,
     output                          O_M_WVALID,
     input                           I_M_WREADY,
     
@@ -89,6 +93,7 @@ module AOU_AGGREGATOR #(
     input [2:0]                     I_S_ARPROT,
     input                           I_S_ARLOCK,
     input [3:0]                     I_S_ARQOS,
+    input [15:0]                    I_S_ARUSER,
     input                           I_S_ARVALID,
     output reg                      O_S_ARREADY,
     
@@ -109,6 +114,7 @@ module AOU_AGGREGATOR #(
     output [2:0]                    O_M_ARPROT,
     output                          O_M_ARLOCK,
     output [3:0]                    O_M_ARQOS,
+    output [15:0]                   O_M_ARUSER,
     output                          O_M_ARVALID,
     input                           I_M_ARREADY,
     
@@ -175,6 +181,12 @@ wire [DATA_WD-1:0]                  w_cur_mem_wdata;
 reg  [STRB_WD-1:0]                  r_prev_mem_wstrb;
 wire [STRB_WD-1:0]                  w_cur_mem_wstrb;
 
+// Several local W beats merge into one: the merged beat carries the WUSER of
+// the first beat that went into it.
+reg                                 r_prev_mem_wuser_vld;
+reg  [15:0]                         r_prev_mem_wuser;
+wire [15:0]                         w_cur_mem_wuser;
+
 wire [DATA_WD-1:0]                  nxt_masked_wdata;
 
 //----------------------------------------------------
@@ -187,6 +199,7 @@ reg                                 O_M_AWLOCK_RS;
 reg  [3:0]                          O_M_AWCACHE_RS;
 reg  [2:0]                          O_M_AWPROT_RS;
 reg  [3:0]                          O_M_AWQOS_RS;
+reg  [15:0]                         O_M_AWUSER_RS;
 reg                                 O_M_AWVALID_RS;
 wire                                I_M_AWREADY_RS;
 
@@ -194,6 +207,7 @@ wire                                I_M_AWREADY_RS;
 reg  [ DATA_WD-1: 0]                O_M_WDATA_FIFO_IN;
 reg  [ STRB_WD-1: 0]                O_M_WSTRB_FIFO_IN;
 reg                                 O_M_WLAST_FIFO_IN;
+reg  [15:0]                         O_M_WUSER_FIFO_IN;
 reg                                 O_M_WVALID_FIFO_IN;
 wire                                I_M_WREADY_FIFO_IN;
     
@@ -202,6 +216,7 @@ assign w_en_aggregator_w_mux = ~r_s_wbusy_tt ? w_en_aggregator_w : r_en_aggregat
 assign w_s_awsize_mux = ~r_s_wbusy_tt ? I_S_AWSIZE : r_s_awsize; 
 assign w_cur_mem_wdata = r_prev_mem_wdata | nxt_masked_wdata;
 assign w_cur_mem_wstrb = r_prev_mem_wstrb | I_S_WSTRB;
+assign w_cur_mem_wuser = r_prev_mem_wuser_vld ? r_prev_mem_wuser : I_S_WUSER;
 
 always @(posedge I_CLK or negedge I_RESETN) begin
     if (!I_RESETN) begin
@@ -212,6 +227,8 @@ always @(posedge I_CLK or negedge I_RESETN) begin
         r_s_awaddr <= 'd0;
         r_prev_mem_wdata <= 'd0;
         r_prev_mem_wstrb <= 'd0;
+        r_prev_mem_wuser_vld <= 1'b0;
+        r_prev_mem_wuser <= 'd0;
     end else begin
         if ((I_S_AWVALID & O_S_AWREADY)) begin
             if (I_S_WVALID & O_S_WREADY & I_S_WLAST)
@@ -248,10 +265,15 @@ always @(posedge I_CLK or negedge I_RESETN) begin
         if (O_M_WVALID_FIFO_IN & I_M_WREADY_FIFO_IN) begin
             r_prev_mem_wdata <= 'd0;
             r_prev_mem_wstrb <= 'd0;
+            r_prev_mem_wuser_vld <= 1'b0;
         end 
         else if (I_S_WVALID & O_S_WREADY) begin
             r_prev_mem_wdata <= r_prev_mem_wdata | nxt_masked_wdata;
             r_prev_mem_wstrb <= r_prev_mem_wstrb | I_S_WSTRB;
+            if (~r_prev_mem_wuser_vld) begin
+                r_prev_mem_wuser_vld <= 1'b1;
+                r_prev_mem_wuser <= I_S_WUSER;
+            end
         end 
 
     end
@@ -401,6 +423,7 @@ always @ (*) begin
     O_M_AWCACHE_RS = I_S_AWCACHE;
     O_M_AWPROT_RS  = I_S_AWPROT;
     O_M_AWQOS_RS   = I_S_AWQOS;
+    O_M_AWUSER_RS  = I_S_AWUSER;
     O_M_AWVALID_RS = I_S_AWVALID & ~r_s_wbusy_tt;
     O_S_AWREADY = I_M_AWREADY_RS & ~r_s_wbusy_tt;
 
@@ -417,10 +440,12 @@ always @ (*) begin
     if(w_en_aggregator_w_mux) begin
         O_M_WDATA_FIFO_IN    = w_cur_mem_wdata;
         O_M_WSTRB_FIFO_IN    = w_cur_mem_wstrb;
+        O_M_WUSER_FIFO_IN    = w_cur_mem_wuser;
         O_M_WVALID_FIFO_IN   = w_agg_wr_en & ((~r_s_wbusy_tt & I_S_AWVALID & O_S_AWREADY) | r_s_wbusy_tt) & I_S_WVALID;
     end else begin
         O_M_WDATA_FIFO_IN  = I_S_WDATA;
         O_M_WSTRB_FIFO_IN  = I_S_WSTRB;
+        O_M_WUSER_FIFO_IN  = I_S_WUSER;
         O_M_WVALID_FIFO_IN = ((~r_s_wbusy_tt & I_S_AWVALID & O_S_AWREADY) | r_s_wbusy_tt) & I_S_WVALID;
     end
 end
@@ -615,6 +640,7 @@ assign  O_M_ARCACHE = I_S_ARCACHE;
 assign  O_M_ARPROT = I_S_ARPROT;
 assign  O_M_ARLOCK = I_S_ARLOCK;
 assign  O_M_ARQOS = I_S_ARQOS;
+assign  O_M_ARUSER = I_S_ARUSER;
 assign  O_M_ARVALID = I_S_ARVALID & w_rob_ar_slot_avail_flag;
 assign  O_S_ARREADY = I_M_ARREADY & w_rob_ar_slot_avail_flag;
 
@@ -636,7 +662,7 @@ assign  O_M_RREADY = (|r_rob_cur_burst_len) ? 1'b0      : I_S_RREADY;
 //   AW_FWD_RS, and WFIFO for WDATA aggregation
 //=====================================================================================
 
-localparam AOU_AGG_AWCH_PAYLOAD_WD = ID_WD + ADDR_WD + LEN_WD + 3 + 2 + 1 + 4 + 3 + 4 + 1;  // + 1 for w_en_aggregator_w_mux_rs_out
+localparam AOU_AGG_AWCH_PAYLOAD_WD = ID_WD + ADDR_WD + LEN_WD + 3 + 2 + 1 + 4 + 3 + 4 + 1 + 16;  // + 1 for w_en_aggregator_w_mux_rs_out, + AWUSER
 wire [AOU_AGG_AWCH_PAYLOAD_WD - 1:0] w_aou_agg_awch_rs_sdata;
 wire [AOU_AGG_AWCH_PAYLOAD_WD - 1:0] w_aou_agg_awch_rs_mdata;
 wire                                 w_aou_agg_awch_rs_mvalid;
@@ -658,7 +684,8 @@ assign w_aou_agg_awch_rs_sdata = {w_en_aggregator_w_mux,
                                   O_M_AWLOCK_RS,
                                   O_M_AWCACHE_RS,
                                   O_M_AWPROT_RS,
-                                  O_M_AWQOS_RS};
+                                  O_M_AWQOS_RS,
+                                  O_M_AWUSER_RS};
  
 assign {w_en_aggregator_w_mux_rs_out,
         O_M_AWID,
@@ -669,7 +696,8 @@ assign {w_en_aggregator_w_mux_rs_out,
         O_M_AWLOCK,
         O_M_AWCACHE,
         O_M_AWPROT,
-        O_M_AWQOS} = w_aou_agg_awch_rs_mdata;
+        O_M_AWQOS,
+        O_M_AWUSER} = w_aou_agg_awch_rs_mdata;
 
 AOU_FWD_RS #(
     .DATA_WIDTH         (AOU_AGG_AWCH_PAYLOAD_WD)
@@ -688,7 +716,7 @@ AOU_FWD_RS #(
 );
 
 //----------------------------------------------------
-localparam AOU_AGG_WCH_PAYLOAD_WD = DATA_WD + STRB_WD + 1; 
+localparam AOU_AGG_WCH_PAYLOAD_WD = DATA_WD + STRB_WD + 1 + 16; // + WUSER
 localparam WCH_FIFO_FULL_CNT_WD   = $clog2(AOU_AGG_WCH_FIFO_DEPTH + 1); 
 
 wire [AOU_AGG_WCH_PAYLOAD_WD - 1:0] w_aou_agg_wch_fifo_sdata;
@@ -698,11 +726,13 @@ wire                                w_aou_agg_wch_fifo_mready;
 
 assign w_aou_agg_wch_fifo_sdata = {O_M_WDATA_FIFO_IN, 
                                    O_M_WSTRB_FIFO_IN, 
-                                   O_M_WLAST_FIFO_IN};
+                                   O_M_WLAST_FIFO_IN,
+                                   O_M_WUSER_FIFO_IN};
 
 assign {O_M_WDATA, 
         O_M_WSTRB, 
-        O_M_WLAST} = w_aou_agg_wch_fifo_mdata;
+        O_M_WLAST,
+        O_M_WUSER} = w_aou_agg_wch_fifo_mdata;
 
 wire [WCH_FIFO_FULL_CNT_WD-1:0] w_wch_fifo_full_cnt;
 

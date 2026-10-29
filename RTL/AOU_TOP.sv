@@ -161,6 +161,7 @@ import packet_def_pkg::*;
     output logic [RP_COUNT-1:0][3:0]                    O_AOU_RX_AXI_M_ARCACHE,
     output logic [RP_COUNT-1:0][2:0]                    O_AOU_RX_AXI_M_ARPROT,
     output logic [RP_COUNT-1:0][3:0]                    O_AOU_RX_AXI_M_ARQOS,
+    output logic [RP_COUNT-1:0][15:0]                   O_AOU_RX_AXI_M_ARUSER,
     output logic [RP_COUNT-1:0]                         O_AOU_RX_AXI_M_ARVALID,
     input  logic [RP_COUNT-1:0]                         I_AOU_RX_AXI_M_ARREADY,
 
@@ -181,12 +182,14 @@ import packet_def_pkg::*;
     output logic [RP_COUNT-1:0][3:0]                    O_AOU_RX_AXI_M_AWCACHE,
     output logic [RP_COUNT-1:0][2:0]                    O_AOU_RX_AXI_M_AWPROT,
     output logic [RP_COUNT-1:0][3:0]                    O_AOU_RX_AXI_M_AWQOS,
+    output logic [RP_COUNT-1:0][15:0]                   O_AOU_RX_AXI_M_AWUSER,
     output logic [RP_COUNT-1:0]                         O_AOU_RX_AXI_M_AWVALID,
     input  logic [RP_COUNT-1:0]                         I_AOU_RX_AXI_M_AWREADY,
 
     output logic [RP_COUNT-1:0][RP_AXI_DATA_WD_MAX-1:0] O_AOU_RX_AXI_M_WDATA,
     output logic [RP_COUNT-1:0][RP_AXI_STRB_WD_MAX-1:0] O_AOU_RX_AXI_M_WSTRB,
     output logic [RP_COUNT-1:0]                         O_AOU_RX_AXI_M_WLAST,
+    output logic [RP_COUNT-1:0][15:0]                   O_AOU_RX_AXI_M_WUSER,
     output logic [RP_COUNT-1:0]                         O_AOU_RX_AXI_M_WVALID,
     input  logic [RP_COUNT-1:0]                         I_AOU_RX_AXI_M_WREADY,
 
@@ -241,6 +244,7 @@ import packet_def_pkg::*;
 
     output logic [RP_COUNT-1:0][AXI_ID_WD-1:0]          O_AOU_RX_AXI_S_BID,
     output logic [RP_COUNT-1:0][1:0]                    O_AOU_RX_AXI_S_BRESP,
+    output logic [RP_COUNT-1:0][15:0]                   O_AOU_RX_AXI_S_BUSER,
     output logic [RP_COUNT-1:0]                         O_AOU_RX_AXI_S_BVALID,
     input  logic [RP_COUNT-1:0]                         I_AOU_RX_AXI_S_BREADY,
 
@@ -468,6 +472,7 @@ import packet_def_pkg::*;
         .O_AOU_RX_AXI_M_ARCACHE     ( O_AOU_RX_AXI_M_ARCACHE        ),
         .O_AOU_RX_AXI_M_ARPROT      ( O_AOU_RX_AXI_M_ARPROT         ),
         .O_AOU_RX_AXI_M_ARQOS       ( O_AOU_RX_AXI_M_ARQOS          ),
+        .O_AOU_RX_AXI_M_ARUSER      ( O_AOU_RX_AXI_M_ARUSER         ),
         .O_AOU_RX_AXI_M_ARVALID     ( O_AOU_RX_AXI_M_ARVALID        ),
         .I_AOU_RX_AXI_M_ARREADY     ( I_AOU_RX_AXI_M_ARREADY        ),
 
@@ -488,12 +493,14 @@ import packet_def_pkg::*;
         .O_AOU_RX_AXI_M_AWCACHE     ( O_AOU_RX_AXI_M_AWCACHE        ),
         .O_AOU_RX_AXI_M_AWPROT      ( O_AOU_RX_AXI_M_AWPROT         ),
         .O_AOU_RX_AXI_M_AWQOS       ( O_AOU_RX_AXI_M_AWQOS          ),
+        .O_AOU_RX_AXI_M_AWUSER      ( O_AOU_RX_AXI_M_AWUSER         ),
         .O_AOU_RX_AXI_M_AWVALID     ( O_AOU_RX_AXI_M_AWVALID        ),
         .I_AOU_RX_AXI_M_AWREADY     ( I_AOU_RX_AXI_M_AWREADY        ),
 
         .O_AOU_RX_AXI_M_WDATA       ( O_AOU_RX_AXI_M_WDATA          ),
         .O_AOU_RX_AXI_M_WSTRB       ( O_AOU_RX_AXI_M_WSTRB          ),
         .O_AOU_RX_AXI_M_WLAST       ( O_AOU_RX_AXI_M_WLAST          ),
+        .O_AOU_RX_AXI_M_WUSER       ( O_AOU_RX_AXI_M_WUSER          ),
         .O_AOU_RX_AXI_M_WVALID      ( O_AOU_RX_AXI_M_WVALID         ),
         .I_AOU_RX_AXI_M_WREADY      ( I_AOU_RX_AXI_M_WREADY         ),
 
@@ -545,6 +552,7 @@ import packet_def_pkg::*;
 
         .O_AOU_RX_AXI_S_BID         ( O_AOU_RX_AXI_S_BID            ),
         .O_AOU_RX_AXI_S_BRESP       ( O_AOU_RX_AXI_S_BRESP          ),
+        .O_AOU_RX_AXI_S_BUSER       ( O_AOU_RX_AXI_S_BUSER          ),
         .O_AOU_RX_AXI_S_BVALID      ( O_AOU_RX_AXI_S_BVALID         ),
         .I_AOU_RX_AXI_S_BREADY      ( I_AOU_RX_AXI_S_BREADY         ),
 

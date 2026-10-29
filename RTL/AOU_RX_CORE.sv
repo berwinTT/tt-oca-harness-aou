@@ -57,9 +57,9 @@ import packet_def_pkg::*;
 
     parameter   DATA_DEC_CNT                = 4,
     parameter   RP_COUNT                    = 2,
-    parameter   AW_AR_FIFO_DATA_WIDTH       = 97,
+    parameter   AW_AR_FIFO_DATA_WIDTH       = 97 + 16,   // {id, addr, len, size, lock, cache, prot, qos, flex}
     parameter   R_FIFO_EXT_DATA_WIDTH       = 15,
-    parameter   B_FIFO_DATA_WIDTH           = 12
+    parameter   B_FIFO_DATA_WIDTH           = 12 + 16    // {id, resp, flex}
 )
 (
     input                                                                                       I_CLK,
@@ -1037,8 +1037,7 @@ import packet_def_pkg::*;
                 w_write_req_packet[idx_dec_sel_tmp][idx_msg_sel_tmp].awcache        = w_write_req_packet_tmp[idx_dec_sel_tmp][idx_msg_sel_tmp].awcache;
                 w_write_req_packet[idx_dec_sel_tmp][idx_msg_sel_tmp].awprot         = w_write_req_packet_tmp[idx_dec_sel_tmp][idx_msg_sel_tmp].awprot;
                 w_write_req_packet[idx_dec_sel_tmp][idx_msg_sel_tmp].awqos          = w_write_req_packet_tmp[idx_dec_sel_tmp][idx_msg_sel_tmp].awqos;
-                w_write_req_packet[idx_dec_sel_tmp][idx_msg_sel_tmp].prof           = {w_write_req_packet_tmp[idx_dec_sel_tmp][idx_msg_sel_tmp].prof_1, w_write_req_packet_tmp[idx_dec_sel_tmp][idx_msg_sel_tmp].prof_0};
-                w_write_req_packet[idx_dec_sel_tmp][idx_msg_sel_tmp].profextlen     = w_write_req_packet_tmp[idx_dec_sel_tmp][idx_msg_sel_tmp].profextlen;
+                w_write_req_packet[idx_dec_sel_tmp][idx_msg_sel_tmp].flex           = {w_write_req_packet_tmp[idx_dec_sel_tmp][idx_msg_sel_tmp].flex_hi, w_write_req_packet_tmp[idx_dec_sel_tmp][idx_msg_sel_tmp].flex_lo};
                 w_write_req_packet[idx_dec_sel_tmp][idx_msg_sel_tmp].msg_type       = w_write_req_packet_tmp[idx_dec_sel_tmp][idx_msg_sel_tmp].msg_type;
                 w_write_req_packet[idx_dec_sel_tmp][idx_msg_sel_tmp].rp             = w_write_req_packet_tmp[idx_dec_sel_tmp][idx_msg_sel_tmp].rp;
                 w_write_req_packet[idx_dec_sel_tmp][idx_msg_sel_tmp].rsvd           = 'd0;
@@ -1051,8 +1050,7 @@ import packet_def_pkg::*;
                 w_read_req_packet[idx_dec_sel_tmp][idx_msg_sel_tmp].arcache         = w_read_req_packet_tmp[idx_dec_sel_tmp][idx_msg_sel_tmp].arcache;
                 w_read_req_packet[idx_dec_sel_tmp][idx_msg_sel_tmp].arprot          = w_read_req_packet_tmp[idx_dec_sel_tmp][idx_msg_sel_tmp].arprot;
                 w_read_req_packet[idx_dec_sel_tmp][idx_msg_sel_tmp].arqos           = w_read_req_packet_tmp[idx_dec_sel_tmp][idx_msg_sel_tmp].arqos;
-                w_read_req_packet[idx_dec_sel_tmp][idx_msg_sel_tmp].prof            = {w_read_req_packet_tmp[idx_dec_sel_tmp][idx_msg_sel_tmp].prof_1, w_read_req_packet_tmp[idx_dec_sel_tmp][idx_msg_sel_tmp].prof_0};
-                w_read_req_packet[idx_dec_sel_tmp][idx_msg_sel_tmp].profextlen      = w_read_req_packet_tmp[idx_dec_sel_tmp][idx_msg_sel_tmp].profextlen;
+                w_read_req_packet[idx_dec_sel_tmp][idx_msg_sel_tmp].flex            = {w_read_req_packet_tmp[idx_dec_sel_tmp][idx_msg_sel_tmp].flex_hi, w_read_req_packet_tmp[idx_dec_sel_tmp][idx_msg_sel_tmp].flex_lo};
                 w_read_req_packet[idx_dec_sel_tmp][idx_msg_sel_tmp].msg_type        = w_read_req_packet_tmp[idx_dec_sel_tmp][idx_msg_sel_tmp].msg_type;
                 w_read_req_packet[idx_dec_sel_tmp][idx_msg_sel_tmp].rp              = w_read_req_packet_tmp[idx_dec_sel_tmp][idx_msg_sel_tmp].rp;
                 w_read_req_packet[idx_dec_sel_tmp][idx_msg_sel_tmp].rsvd            = 'd0;
@@ -1061,8 +1059,7 @@ import packet_def_pkg::*;
             for(idx_msg_sel_tmp = 0; idx_msg_sel_tmp < MAX_DATA_COUNT_CHUNK; idx_msg_sel_tmp = idx_msg_sel_tmp + 1) begin
                 w_write_data256_packet[idx_dec_sel_tmp][idx_msg_sel_tmp].wdata      = wdata_256_flat[idx_dec_sel_tmp][idx_msg_sel_tmp];
                 w_write_data256_packet[idx_dec_sel_tmp][idx_msg_sel_tmp].wstrb      = wstrb_256_flat[idx_dec_sel_tmp][idx_msg_sel_tmp];
-                w_write_data256_packet[idx_dec_sel_tmp][idx_msg_sel_tmp].prof       = {w_write_data256_packet_tmp[idx_dec_sel_tmp][idx_msg_sel_tmp].prof_1, w_write_data256_packet_tmp[idx_dec_sel_tmp][idx_msg_sel_tmp].prof_0};
-                w_write_data256_packet[idx_dec_sel_tmp][idx_msg_sel_tmp].profextlen = w_write_data256_packet_tmp[idx_dec_sel_tmp][idx_msg_sel_tmp].profextlen;
+                w_write_data256_packet[idx_dec_sel_tmp][idx_msg_sel_tmp].flex       = {w_write_data256_packet_tmp[idx_dec_sel_tmp][idx_msg_sel_tmp].flex_hi, w_write_data256_packet_tmp[idx_dec_sel_tmp][idx_msg_sel_tmp].flex_lo};
                 w_write_data256_packet[idx_dec_sel_tmp][idx_msg_sel_tmp].msg_type   = w_write_data256_packet_tmp[idx_dec_sel_tmp][idx_msg_sel_tmp].msg_type;
                 w_write_data256_packet[idx_dec_sel_tmp][idx_msg_sel_tmp].rp         = w_write_data256_packet_tmp[idx_dec_sel_tmp][idx_msg_sel_tmp].rp;
                 w_write_data256_packet[idx_dec_sel_tmp][idx_msg_sel_tmp].dlength    = w_write_data256_packet_tmp[idx_dec_sel_tmp][idx_msg_sel_tmp].dlength;
@@ -1072,8 +1069,7 @@ import packet_def_pkg::*;
                 w_read_data256_packet[idx_dec_sel_tmp][idx_msg_sel_tmp].rid         = {w_read_data256_packet_tmp[idx_dec_sel_tmp][idx_msg_sel_tmp].rid_1, w_read_data256_packet_tmp[idx_dec_sel_tmp][idx_msg_sel_tmp].rid_0};
                 w_read_data256_packet[idx_dec_sel_tmp][idx_msg_sel_tmp].rresp       = w_read_data256_packet_tmp[idx_dec_sel_tmp][idx_msg_sel_tmp].rresp;
                 w_read_data256_packet[idx_dec_sel_tmp][idx_msg_sel_tmp].rlast       = w_read_data256_packet_tmp[idx_dec_sel_tmp][idx_msg_sel_tmp].rlast;
-                w_read_data256_packet[idx_dec_sel_tmp][idx_msg_sel_tmp].prof        = {w_read_data256_packet_tmp[idx_dec_sel_tmp][idx_msg_sel_tmp].prof_1, w_read_data256_packet_tmp[idx_dec_sel_tmp][idx_msg_sel_tmp].prof_0};
-                w_read_data256_packet[idx_dec_sel_tmp][idx_msg_sel_tmp].profextlen  = w_read_data256_packet_tmp[idx_dec_sel_tmp][idx_msg_sel_tmp].profextlen;
+                w_read_data256_packet[idx_dec_sel_tmp][idx_msg_sel_tmp].flex        = {w_read_data256_packet_tmp[idx_dec_sel_tmp][idx_msg_sel_tmp].flex_hi, w_read_data256_packet_tmp[idx_dec_sel_tmp][idx_msg_sel_tmp].flex_lo};
                 w_read_data256_packet[idx_dec_sel_tmp][idx_msg_sel_tmp].msg_type    = w_read_data256_packet_tmp[idx_dec_sel_tmp][idx_msg_sel_tmp].msg_type;
                 w_read_data256_packet[idx_dec_sel_tmp][idx_msg_sel_tmp].rp          = w_read_data256_packet_tmp[idx_dec_sel_tmp][idx_msg_sel_tmp].rp;
                 w_read_data256_packet[idx_dec_sel_tmp][idx_msg_sel_tmp].dlength     = w_read_data256_packet_tmp[idx_dec_sel_tmp][idx_msg_sel_tmp].dlength;
@@ -1082,16 +1078,14 @@ import packet_def_pkg::*;
 
             w_write_data512_packet[idx_dec_sel_tmp].wdata                       = wdata_512_flat[idx_dec_sel_tmp];
             w_write_data512_packet[idx_dec_sel_tmp].wstrb                       = wstrb_512_flat[idx_dec_sel_tmp];
-            w_write_data512_packet[idx_dec_sel_tmp].prof                        = {w_write_data512_packet_tmp[idx_dec_sel_tmp].prof_1, w_write_data512_packet_tmp[idx_dec_sel_tmp].prof_0};
-            w_write_data512_packet[idx_dec_sel_tmp].profextlen                  = w_write_data512_packet_tmp[idx_dec_sel_tmp].profextlen;
+            w_write_data512_packet[idx_dec_sel_tmp].flex                        = {w_write_data512_packet_tmp[idx_dec_sel_tmp].flex_hi, w_write_data512_packet_tmp[idx_dec_sel_tmp].flex_lo};
             w_write_data512_packet[idx_dec_sel_tmp].msg_type                    = w_write_data512_packet_tmp[idx_dec_sel_tmp].msg_type;
             w_write_data512_packet[idx_dec_sel_tmp].rp                          = w_write_data512_packet_tmp[idx_dec_sel_tmp].rp;
             w_write_data512_packet[idx_dec_sel_tmp].dlength                     = w_write_data512_packet_tmp[idx_dec_sel_tmp].dlength;
 
             w_write_data1024_packet[idx_dec_sel_tmp].wdata                      = wdata_1024_flat[idx_dec_sel_tmp];
             w_write_data1024_packet[idx_dec_sel_tmp].wstrb                      = wstrb_1024_flat[idx_dec_sel_tmp];
-            w_write_data1024_packet[idx_dec_sel_tmp].prof                       = {w_write_data1024_packet_tmp[idx_dec_sel_tmp].prof_1, w_write_data1024_packet_tmp[idx_dec_sel_tmp].prof_0};
-            w_write_data1024_packet[idx_dec_sel_tmp].profextlen                 = w_write_data1024_packet_tmp[idx_dec_sel_tmp].profextlen;
+            w_write_data1024_packet[idx_dec_sel_tmp].flex                       = {w_write_data1024_packet_tmp[idx_dec_sel_tmp].flex_hi, w_write_data1024_packet_tmp[idx_dec_sel_tmp].flex_lo};
             w_write_data1024_packet[idx_dec_sel_tmp].msg_type                   = w_write_data1024_packet_tmp[idx_dec_sel_tmp].msg_type;
             w_write_data1024_packet[idx_dec_sel_tmp].rp                         = w_write_data1024_packet_tmp[idx_dec_sel_tmp].rp;
             w_write_data1024_packet[idx_dec_sel_tmp].dlength                    = w_write_data1024_packet_tmp[idx_dec_sel_tmp].dlength;
@@ -1101,8 +1095,7 @@ import packet_def_pkg::*;
             w_read_data512_packet[idx_dec_sel_tmp].rid                          = {w_read_data512_packet_tmp[idx_dec_sel_tmp].rid_1, w_read_data512_packet_tmp[idx_dec_sel_tmp].rid_0} ;
             w_read_data512_packet[idx_dec_sel_tmp].rresp                        = w_read_data512_packet_tmp[idx_dec_sel_tmp].rresp;
             w_read_data512_packet[idx_dec_sel_tmp].rlast                        = w_read_data512_packet_tmp[idx_dec_sel_tmp].rlast;
-            w_read_data512_packet[idx_dec_sel_tmp].prof                         = {w_read_data512_packet_tmp[idx_dec_sel_tmp].prof_1, w_read_data512_packet_tmp[idx_dec_sel_tmp].prof_0};
-            w_read_data512_packet[idx_dec_sel_tmp].profextlen                   = w_read_data512_packet_tmp[idx_dec_sel_tmp].profextlen;
+            w_read_data512_packet[idx_dec_sel_tmp].flex                         = {w_read_data512_packet_tmp[idx_dec_sel_tmp].flex_hi, w_read_data512_packet_tmp[idx_dec_sel_tmp].flex_lo};
             w_read_data512_packet[idx_dec_sel_tmp].msg_type                     = w_read_data512_packet_tmp[idx_dec_sel_tmp].msg_type;
             w_read_data512_packet[idx_dec_sel_tmp].rp                           = w_read_data512_packet_tmp[idx_dec_sel_tmp].rp;
             w_read_data512_packet[idx_dec_sel_tmp].dlength                      = w_read_data512_packet_tmp[idx_dec_sel_tmp].dlength;
@@ -1112,8 +1105,7 @@ import packet_def_pkg::*;
             w_read_data1024_packet[idx_dec_sel_tmp].rid                         = {w_read_data1024_packet_tmp[idx_dec_sel_tmp].rid_1, w_read_data1024_packet_tmp[idx_dec_sel_tmp].rid_0};
             w_read_data1024_packet[idx_dec_sel_tmp].rresp                       = w_read_data1024_packet_tmp[idx_dec_sel_tmp].rresp;
             w_read_data1024_packet[idx_dec_sel_tmp].rlast                       = w_read_data1024_packet_tmp[idx_dec_sel_tmp].rlast;
-            w_read_data1024_packet[idx_dec_sel_tmp].prof                        = {w_read_data1024_packet_tmp[idx_dec_sel_tmp].prof_1, w_read_data1024_packet_tmp[idx_dec_sel_tmp].prof_0};
-            w_read_data1024_packet[idx_dec_sel_tmp].profextlen                  = w_read_data1024_packet_tmp[idx_dec_sel_tmp].profextlen;
+            w_read_data1024_packet[idx_dec_sel_tmp].flex                        = {w_read_data1024_packet_tmp[idx_dec_sel_tmp].flex_hi, w_read_data1024_packet_tmp[idx_dec_sel_tmp].flex_lo};
             w_read_data1024_packet[idx_dec_sel_tmp].msg_type                    = w_read_data1024_packet_tmp[idx_dec_sel_tmp].msg_type;
             w_read_data1024_packet[idx_dec_sel_tmp].rp                          = w_read_data1024_packet_tmp[idx_dec_sel_tmp].rp;
             w_read_data1024_packet[idx_dec_sel_tmp].dlength                     = w_read_data1024_packet_tmp[idx_dec_sel_tmp].dlength;
@@ -1122,8 +1114,7 @@ import packet_def_pkg::*;
             for(idx_msg_sel_tmp = 0; idx_msg_sel_tmp < MAX_WR_RESP_COUNT_CHUNK; idx_msg_sel_tmp = idx_msg_sel_tmp + 1) begin
                 w_write_resp_packet[idx_dec_sel_tmp][idx_msg_sel_tmp].bid           = {w_write_resp_packet_tmp[idx_dec_sel_tmp][idx_msg_sel_tmp].bid_1, w_write_resp_packet_tmp[idx_dec_sel_tmp][idx_msg_sel_tmp].bid_0};
                 w_write_resp_packet[idx_dec_sel_tmp][idx_msg_sel_tmp].bresp         = w_write_resp_packet_tmp[idx_dec_sel_tmp][idx_msg_sel_tmp].bresp;
-                w_write_resp_packet[idx_dec_sel_tmp][idx_msg_sel_tmp].prof          = {w_write_resp_packet_tmp[idx_dec_sel_tmp][idx_msg_sel_tmp].prof_1, w_write_resp_packet_tmp[idx_dec_sel_tmp][idx_msg_sel_tmp].prof_0};
-                w_write_resp_packet[idx_dec_sel_tmp][idx_msg_sel_tmp].profextlen    = w_write_resp_packet_tmp[idx_dec_sel_tmp][idx_msg_sel_tmp].profextlen;
+                w_write_resp_packet[idx_dec_sel_tmp][idx_msg_sel_tmp].flex          = {w_write_resp_packet_tmp[idx_dec_sel_tmp][idx_msg_sel_tmp].flex_hi, w_write_resp_packet_tmp[idx_dec_sel_tmp][idx_msg_sel_tmp].flex_lo};
                 w_write_resp_packet[idx_dec_sel_tmp][idx_msg_sel_tmp].msg_type      = w_write_resp_packet_tmp[idx_dec_sel_tmp][idx_msg_sel_tmp].msg_type;
                 w_write_resp_packet[idx_dec_sel_tmp][idx_msg_sel_tmp].rp            = w_write_resp_packet_tmp[idx_dec_sel_tmp][idx_msg_sel_tmp].rp;
                 w_write_resp_packet[idx_dec_sel_tmp][idx_msg_sel_tmp].rsvd          = 'd0;
@@ -1145,7 +1136,8 @@ import packet_def_pkg::*;
                                                                                                  w_write_req_packet[y][x].awlock     ,
                                                                                                  w_write_req_packet[y][x].awcache    ,
                                                                                                  w_write_req_packet[y][x].awprot     ,
-                                                                                                 w_write_req_packet[y][x].awqos      } : {(AW_AR_FIFO_DATA_WIDTH){1'b0}};
+                                                                                                 w_write_req_packet[y][x].awqos      ,
+                                                                                                 w_write_req_packet[y][x].flex       } : {(AW_AR_FIFO_DATA_WIDTH){1'b0}};
                     assign O_WR_REQ_FIFO_SVALID[z][y][x] = (z == w_write_req_packet[y][x].rp) ? (|wait_valid_chunk) ? (w_write_req_valid[y][x] && w_rx_chunk_data_valid) : w_write_req_valid[y][x] : 1'b0;
                 end
 
@@ -1172,7 +1164,8 @@ import packet_def_pkg::*;
 
                 for (x = 0; x < MAX_WR_RESP_COUNT_CHUNK; x = x + 1) begin
                     assign O_WR_RESP_FIFO_SDATA[z][y][x] = (z == w_write_resp_packet[y][x].rp) ? { w_write_resp_packet[y][x].bid       ,
-                                                                                                   w_write_resp_packet[y][x].bresp      } : {(B_FIFO_DATA_WIDTH){1'b0}};
+                                                                                                   w_write_resp_packet[y][x].bresp     ,
+                                                                                                   w_write_resp_packet[y][x].flex      } : {(B_FIFO_DATA_WIDTH){1'b0}};
                     assign O_WR_RESP_FIFO_SVALID[z][y][x] = (z == w_write_resp_packet[y][x].rp) ? (i_write_resp_valid[y][x] && w_rx_chunk_data_valid) : 1'b0;
                 end
 
@@ -1184,7 +1177,8 @@ import packet_def_pkg::*;
                                                                                                 w_read_req_packet[y][x].arlock     ,
                                                                                                 w_read_req_packet[y][x].arcache    ,
                                                                                                 w_read_req_packet[y][x].arprot     ,
-                                                                                                w_read_req_packet[y][x].arqos      } : {(AW_AR_FIFO_DATA_WIDTH){1'b0}};
+                                                                                                w_read_req_packet[y][x].arqos      ,
+                                                                                                w_read_req_packet[y][x].flex       } : {(AW_AR_FIFO_DATA_WIDTH){1'b0}};
                     assign O_RD_REQ_FIFO_SVALID[z][y][x] = (z == w_read_req_packet[y][x].rp) ? (|wait_valid_chunk) ? (w_read_req_valid[y][x] && w_rx_chunk_data_valid) : w_read_req_valid[y][x] : 1'b0;
                 end
 

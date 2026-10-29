@@ -31,8 +31,8 @@ module AOU_FIFO_RP
     localparam  AXI_MAX_STRB_WD             = AXI_PEER_DIE_MAX_DATA_WD/8,
     parameter   AXI_ID_WD                   = 10,
 
-    parameter   AW_AR_FIFO_WIDTH            = 10 + 64 + 8 + 3 + 1 + 4 + 3 + 4,
-    parameter   B_FIFO_WIDTH                = AXI_ID_WD + 2,
+    parameter   AW_AR_FIFO_WIDTH            = 10 + 64 + 8 + 3 + 1 + 4 + 3 + 4 + 16, // + FLEX
+    parameter   B_FIFO_WIDTH                = AXI_ID_WD + 2 + 16,                   // + FLEX
     parameter   R_FIFO_EXT_DATA_WIDTH       = AXI_ID_WD + 2 + 1,
                 
     parameter   AW_FIFO_DEPTH               = 44,

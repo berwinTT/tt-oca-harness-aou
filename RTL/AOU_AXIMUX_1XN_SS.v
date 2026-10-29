@@ -58,6 +58,7 @@ module AOU_AXIMUX_1XN_SS #(
     input         [2:0]                       I_S_ARPROT    ,
     input                                     I_S_ARLOCK    ,
     input         [AXI_QOS_WD-1:0]            I_S_ARQOS     ,
+    input         [15:0]                      I_S_ARUSER    ,
     input                                     I_S_ARVALID   ,
     output                                    O_S_ARREADY   ,
 
@@ -78,12 +79,14 @@ module AOU_AXIMUX_1XN_SS #(
     input         [3:0]                       I_S_AWCACHE   ,
     input         [2:0]                       I_S_AWPROT    ,
     input         [AXI_QOS_WD-1:0]            I_S_AWQOS     ,
+    input         [15:0]                      I_S_AWUSER    ,
     input                                     I_S_AWVALID   ,
     output                                    O_S_AWREADY   ,
 
     input         [AXI_DATA_WD-1:0]           I_S_WDATA     ,
     input         [AXI_WSTRB_WD-1:0]          I_S_WSTRB     ,
     input                                     I_S_WLAST     ,
+    input         [15:0]                      I_S_WUSER     ,
     input                                     I_S_WVALID    ,
     output                                    O_S_WREADY    ,
 
@@ -102,12 +105,14 @@ module AOU_AXIMUX_1XN_SS #(
     output        [SN-1:0][3:0]               O_M_AWCACHE   ,
     output        [SN-1:0][2:0]               O_M_AWPROT    ,
     output        [SN-1:0][AXI_QOS_WD-1:0]    O_M_AWQOS     ,
+    output        [SN-1:0][15:0]              O_M_AWUSER    ,
     output        [SN-1:0]                    O_M_AWVALID   ,
     input         [SN-1:0]                    I_M_AWREADY   ,
 
     output        [SN-1:0][AXI_DATA_WD-1:0]   O_M_WDATA     ,
     output        [SN-1:0][AXI_WSTRB_WD-1:0]  O_M_WSTRB     ,
     output        [SN-1:0]                    O_M_WLAST     ,
+    output        [SN-1:0][15:0]              O_M_WUSER     ,
     output        [SN-1:0]                    O_M_WVALID    ,
     input         [SN-1:0]                    I_M_WREADY    ,
 
@@ -126,6 +131,7 @@ module AOU_AXIMUX_1XN_SS #(
     output        [SN-1:0][2:0]               O_M_ARPROT    ,
     output        [SN-1:0]                    O_M_ARLOCK    ,
     output        [SN-1:0][AXI_QOS_WD-1:0]    O_M_ARQOS     ,
+    output        [SN-1:0][15:0]              O_M_ARUSER    ,
     output        [SN-1:0]                    O_M_ARVALID   ,
     input         [SN-1:0]                    I_M_ARREADY   ,
 
@@ -147,7 +153,7 @@ module AOU_AXIMUX_1XN_SS #(
 reg                                 r_s_wbusy_tt     ;
 
 //--------------------------------------------------------------
-localparam AOU_AXIMUX_1XN_AWCH_PAYLOAD_WD = AXI_ID_WD + AXI_ADDR_WD + AXI_LEN_WD + 3 + 2 + 1 + 4 + 3 + 4; 
+localparam AOU_AXIMUX_1XN_AWCH_PAYLOAD_WD = AXI_ID_WD + AXI_ADDR_WD + AXI_LEN_WD + 3 + 2 + 1 + 4 + 3 + 4 + 16; // + AWUSER
 wire [AOU_AXIMUX_1XN_AWCH_PAYLOAD_WD - 1:0] w_aou_aximux_1xn_awch_rs_sdata;
 wire [AOU_AXIMUX_1XN_AWCH_PAYLOAD_WD - 1:0] w_aou_aximux_1xn_awch_rs_mdata;
 
@@ -160,6 +166,7 @@ wire                             I_S_AWLOCK_RS;
 wire [3:0]                       I_S_AWCACHE_RS;
 wire [2:0]                       I_S_AWPROT_RS;
 wire [3:0]                       I_S_AWQOS_RS;
+wire [15:0]                      I_S_AWUSER_RS;
 wire                             I_S_AWVALID_RS;
 reg                              O_S_AWREADY_RS;
 
@@ -171,7 +178,8 @@ assign w_aou_aximux_1xn_awch_rs_sdata = {I_S_AWID,
                                       I_S_AWLOCK,
                                       I_S_AWCACHE,
                                       I_S_AWPROT,
-                                      I_S_AWQOS};
+                                      I_S_AWQOS,
+                                      I_S_AWUSER};
 
 assign {I_S_AWID_RS,
        I_S_AWADDR_RS,
@@ -181,7 +189,8 @@ assign {I_S_AWID_RS,
        I_S_AWLOCK_RS,
        I_S_AWCACHE_RS,
        I_S_AWPROT_RS,
-       I_S_AWQOS_RS} = w_aou_aximux_1xn_awch_rs_mdata;
+       I_S_AWQOS_RS,
+       I_S_AWUSER_RS} = w_aou_aximux_1xn_awch_rs_mdata;
 
 generate
 if (AOU_AXIMUX_1XN_AWCH_RS_EN == 1) begin
@@ -212,23 +221,26 @@ endgenerate
 
 //--------------------------------------------------------------
 
-localparam AOU_AXIMUX_1XN_WCH_PAYLOAD_WD = AXI_DATA_WD + AXI_WSTRB_WD + 1; 
+localparam AOU_AXIMUX_1XN_WCH_PAYLOAD_WD = AXI_DATA_WD + AXI_WSTRB_WD + 1 + 16; // + WUSER
 wire [AOU_AXIMUX_1XN_WCH_PAYLOAD_WD - 1:0] w_aou_aximux_1xn_wch_rs_sdata;
 wire [AOU_AXIMUX_1XN_WCH_PAYLOAD_WD - 1:0] w_aou_aximux_1xn_wch_rs_mdata;
 
 wire [ AXI_DATA_WD-1: 0]            I_S_WDATA_RS;
 wire [ AXI_WSTRB_WD-1: 0]           I_S_WSTRB_RS;
 wire                                I_S_WLAST_RS;
+wire [15:0]                         I_S_WUSER_RS;
 wire                                I_S_WVALID_RS;
 reg                                 O_S_WREADY_RS;
 
 assign w_aou_aximux_1xn_wch_rs_sdata = {I_S_WDATA, 
                                  I_S_WSTRB, 
-                                 I_S_WLAST};
+                                 I_S_WLAST,
+                                 I_S_WUSER};
 
 assign {I_S_WDATA_RS, 
         I_S_WSTRB_RS, 
-        I_S_WLAST_RS} = w_aou_aximux_1xn_wch_rs_mdata;
+        I_S_WLAST_RS,
+        I_S_WUSER_RS} = w_aou_aximux_1xn_wch_rs_mdata;
 
 generate
 if (AOU_AXIMUX_1XN_WCH_RS_EN == 1) begin
@@ -258,7 +270,7 @@ end
 endgenerate
 
 //--------------------------------------------------------------
-localparam AOU_AXIMUX_1XN_ARCH_PAYLOAD_WD = AXI_ID_WD + AXI_ADDR_WD + AXI_LEN_WD + 3 + 2 + 1 + 4 + 3 + 4; 
+localparam AOU_AXIMUX_1XN_ARCH_PAYLOAD_WD = AXI_ID_WD + AXI_ADDR_WD + AXI_LEN_WD + 3 + 2 + 1 + 4 + 3 + 4 + 16; // + ARUSER
 wire [AOU_AXIMUX_1XN_ARCH_PAYLOAD_WD - 1:0] w_aou_aximux_1xn_arch_rs_sdata;
 wire [AOU_AXIMUX_1XN_ARCH_PAYLOAD_WD - 1:0] w_aou_aximux_1xn_arch_rs_mdata;
 
@@ -271,6 +283,7 @@ wire                             I_S_ARLOCK_RS;
 wire [3:0]                       I_S_ARCACHE_RS;
 wire [2:0]                       I_S_ARPROT_RS;
 wire [3:0]                       I_S_ARQOS_RS;
+wire [15:0]                      I_S_ARUSER_RS;
 wire                             I_S_ARVALID_RS;
 reg                              O_S_ARREADY_RS;
 
@@ -282,7 +295,8 @@ assign w_aou_aximux_1xn_arch_rs_sdata = {I_S_ARID,
                                       I_S_ARLOCK,
                                       I_S_ARCACHE,
                                       I_S_ARPROT,
-                                      I_S_ARQOS};
+                                      I_S_ARQOS,
+                                      I_S_ARUSER};
 
 assign {I_S_ARID_RS,
        I_S_ARADDR_RS,
@@ -292,7 +306,8 @@ assign {I_S_ARID_RS,
        I_S_ARLOCK_RS,
        I_S_ARCACHE_RS,
        I_S_ARPROT_RS,
-       I_S_ARQOS_RS} = w_aou_aximux_1xn_arch_rs_mdata;
+       I_S_ARQOS_RS,
+       I_S_ARUSER_RS} = w_aou_aximux_1xn_arch_rs_mdata;
 
 generate
 if (AOU_AXIMUX_1XN_ARCH_RS_EN == 1) begin
@@ -452,8 +467,8 @@ assign O_S_ARREADY_RS = I_M_ARREADY[w_ar_sel_err_info] & (~r_cur_ar_valid | (r_c
 assign O_S_AWREADY_RS = ~r_s_wbusy_tt & I_M_AWREADY_RS[w_aw_tt_sel_err_info] & (~r_cur_aw_valid | (r_cur_aw_valid & (w_aw_tt_sel_err_info == r_selected_aw_ch)));
 assign O_S_WREADY_RS  = ((~r_s_wbusy_tt & I_S_AWVALID_RS & O_S_AWREADY_RS) | r_s_wbusy_tt) & (r_cur_aw_valid ? I_M_WREADY_RS[r_selected_aw_ch] : I_M_WREADY_RS[w_aw_tt_sel_err_info]);
 
-parameter AOU_AXIMUX_1XN_M_AWCH_PAYLOAD_WD = AXI_ID_WD + AXI_ADDR_WD + AXI_LEN_WD + 3 + 2 + 1 + 4 + 3 + 4; 
-parameter AOU_AXIMUX_1XN_M_WCH_PAYLOAD_WD = AXI_DATA_WD + AXI_WSTRB_WD + 1; 
+parameter AOU_AXIMUX_1XN_M_AWCH_PAYLOAD_WD = AXI_ID_WD + AXI_ADDR_WD + AXI_LEN_WD + 3 + 2 + 1 + 4 + 3 + 4 + 16; // + AWUSER
+parameter AOU_AXIMUX_1XN_M_WCH_PAYLOAD_WD = AXI_DATA_WD + AXI_WSTRB_WD + 1 + 16; // + WUSER
 
 genvar p;
 generate
@@ -475,6 +490,7 @@ generate
         assign O_M_ARPROT[p]   = I_S_ARPROT_RS    ;
         assign O_M_ARLOCK[p]   = I_S_ARLOCK_RS    ;
         assign O_M_ARQOS[p]    = I_S_ARQOS_RS     ;
+        assign O_M_ARUSER[p]   = I_S_ARUSER_RS    ;
 
         //--------------------------------------------------------------
         wire [AOU_AXIMUX_1XN_M_AWCH_PAYLOAD_WD - 1:0] w_aou_aximux_1xn_m_awch_rs_sdata;
@@ -489,6 +505,7 @@ generate
         wire [3:0]                       O_M_AWCACHE_RS;
         wire [2:0]                       O_M_AWPROT_RS;
         wire [3:0]                       O_M_AWQOS_RS;
+        wire [15:0]                      O_M_AWUSER_RS;
         
         assign w_aou_aximux_1xn_m_awch_rs_sdata = {O_M_AWID_RS,
                                               O_M_AWADDR_RS,
@@ -498,7 +515,8 @@ generate
                                               O_M_AWLOCK_RS,
                                               O_M_AWCACHE_RS,
                                               O_M_AWPROT_RS,
-                                              O_M_AWQOS_RS};
+                                              O_M_AWQOS_RS,
+                                              O_M_AWUSER_RS};
         
         assign {O_M_AWID[p],
                O_M_AWADDR[p],
@@ -508,7 +526,8 @@ generate
                O_M_AWLOCK[p],
                O_M_AWCACHE[p],
                O_M_AWPROT[p],
-               O_M_AWQOS[p]} = w_aou_aximux_1xn_m_awch_rs_mdata;
+               O_M_AWQOS[p],
+               O_M_AWUSER[p]} = w_aou_aximux_1xn_m_awch_rs_mdata;
         
         if ((AOU_AXIMUX_1XN_M_AWCH_RS_EN == 1) & (p==0)) begin
         
@@ -542,14 +561,17 @@ generate
         wire [ AXI_DATA_WD-1: 0]            O_M_WDATA_RS;
         wire [ AXI_WSTRB_WD-1: 0]           O_M_WSTRB_RS;
         wire                                O_M_WLAST_RS;
+        wire [15:0]                         O_M_WUSER_RS;
         
         assign w_aou_aximux_1xn_m_wch_rs_sdata = {O_M_WDATA_RS, 
                                             O_M_WSTRB_RS, 
-                                            O_M_WLAST_RS};
+                                            O_M_WLAST_RS,
+                                            O_M_WUSER_RS};
         
         assign {O_M_WDATA[p], 
                 O_M_WSTRB[p], 
-                O_M_WLAST[p]} = w_aou_aximux_1xn_m_wch_rs_mdata;
+                O_M_WLAST[p],
+                O_M_WUSER[p]} = w_aou_aximux_1xn_m_wch_rs_mdata;
     
         if ((AOU_AXIMUX_1XN_M_WCH_RS_EN == 1) & (p==0)) begin
         
@@ -587,10 +609,12 @@ generate
         assign O_M_AWPROT_RS   = I_S_AWPROT_RS    ;
         assign O_M_AWLOCK_RS   = I_S_AWLOCK_RS    ;
         assign O_M_AWQOS_RS    = I_S_AWQOS_RS     ;
+        assign O_M_AWUSER_RS   = I_S_AWUSER_RS    ;
         
         assign O_M_WDATA_RS = I_S_WDATA_RS     ;
         assign O_M_WSTRB_RS = I_S_WSTRB_RS     ;
         assign O_M_WLAST_RS = I_S_WLAST_RS     ;
+        assign O_M_WUSER_RS = I_S_WUSER_RS     ;
     end
 
 endgenerate

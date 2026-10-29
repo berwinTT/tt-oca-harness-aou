@@ -60,6 +60,7 @@ module AOU_AXI4MUX_3X1_TOP #(
     input       [ 2: 0]                 I_S_ARPROT_0,
     input                               I_S_ARLOCK_0,
     input       [ 3: 0]                 I_S_ARQOS_0,
+    input       [15: 0]                 I_S_ARUSER_0,
     input                               I_S_ARVALID_0,
     output wire                         O_S_ARREADY_0,
 
@@ -72,12 +73,14 @@ module AOU_AXI4MUX_3X1_TOP #(
     input       [ 3: 0]                 I_S_AWCACHE_0,
     input       [ 2: 0]                 I_S_AWPROT_0,
     input       [ 3: 0]                 I_S_AWQOS_0,
+    input       [15: 0]                 I_S_AWUSER_0,
     input                               I_S_AWVALID_0,
     output wire                         O_S_AWREADY_0,
 
     input       [ 255 : 0]              I_S_WDATA_0,
     input       [ 31  : 0]              I_S_WSTRB_0,
     input                               I_S_WLAST_0,
+    input       [15: 0]                 I_S_WUSER_0,
     input                               I_S_WVALID_0,
     output                              O_S_WREADY_0,
 
@@ -97,6 +100,7 @@ module AOU_AXI4MUX_3X1_TOP #(
     input       [ 2: 0]                 I_S_ARPROT_1,
     input                               I_S_ARLOCK_1,
     input       [ 3: 0]                 I_S_ARQOS_1,
+    input       [15: 0]                 I_S_ARUSER_1,
     input                               I_S_ARVALID_1,
     output wire                         O_S_ARREADY_1,
 
@@ -109,12 +113,14 @@ module AOU_AXI4MUX_3X1_TOP #(
     input       [ 3: 0]                 I_S_AWCACHE_1,
     input       [ 2: 0]                 I_S_AWPROT_1,
     input       [ 3: 0]                 I_S_AWQOS_1,
+    input       [15: 0]                 I_S_AWUSER_1,
     input                               I_S_AWVALID_1,
     output wire                         O_S_AWREADY_1,
 
     input       [ 511 : 0]              I_S_WDATA_1,
     input       [ 63: 0]                I_S_WSTRB_1,  //WSTRB width = wdata width / 8
     input                               I_S_WLAST_1,
+    input       [15: 0]                 I_S_WUSER_1,
     input                               I_S_WVALID_1,
     output wire                         O_S_WREADY_1,
 
@@ -134,6 +140,7 @@ module AOU_AXI4MUX_3X1_TOP #(
     input       [ 2: 0]                 I_S_ARPROT_2,
     input                               I_S_ARLOCK_2,
     input       [ 3: 0]                 I_S_ARQOS_2,
+    input       [15: 0]                 I_S_ARUSER_2,
     input                               I_S_ARVALID_2,
     output wire                         O_S_ARREADY_2,
 
@@ -146,12 +153,14 @@ module AOU_AXI4MUX_3X1_TOP #(
     input       [ 3: 0]                 I_S_AWCACHE_2,
     input       [ 2: 0]                 I_S_AWPROT_2,
     input       [ 3: 0]                 I_S_AWQOS_2,
+    input       [15: 0]                 I_S_AWUSER_2,
     input                               I_S_AWVALID_2,
     output wire                         O_S_AWREADY_2,
 
     input       [ 1023: 0]              I_S_WDATA_2,
     input       [ 127: 0]               I_S_WSTRB_2,
     input                               I_S_WLAST_2,
+    input       [15: 0]                 I_S_WUSER_2,
     input                               I_S_WVALID_2,
     output wire                         O_S_WREADY_2,
 
@@ -171,6 +180,7 @@ module AOU_AXI4MUX_3X1_TOP #(
     output wire [ 2: 0]                 O_M_ARPROT,
     output wire                         O_M_ARLOCK,
     output       [ 3: 0]                O_M_ARQOS,
+    output wire  [15: 0]                O_M_ARUSER,
     output wire                         O_M_ARVALID,
     input                               I_M_ARREADY,
 
@@ -191,12 +201,14 @@ module AOU_AXI4MUX_3X1_TOP #(
     output wire [ 3: 0]                 O_M_AWCACHE,
     output wire [ 2: 0]                 O_M_AWPROT,
     output      [ 3: 0]                 O_M_AWQOS,
+    output wire [15: 0]                 O_M_AWUSER,
     output wire                         O_M_AWVALID,
     input                               I_M_AWREADY,
 
     output wire [ DATA_WD-1: 0]         O_M_WDATA,
     output wire [ STRB_WD-1: 0]         O_M_WSTRB,
     output wire                         O_M_WLAST,
+    output wire [15: 0]                 O_M_WUSER,
     output wire                         O_M_WVALID,
     input                               I_M_WREADY,
 
@@ -253,12 +265,14 @@ wire                         o_m_awlock;
 wire [ 3: 0]                 o_m_awcache;
 wire [ 2: 0]                 o_m_awprot;
 wire [ 3: 0]                 o_m_awqos;
+wire [15: 0]                 o_m_awuser;
 wire                         o_m_awvalid;
 wire                         o_s_awready;
 
 wire [ DATA_WD-1: 0]         o_m_wdata;
 wire [ STRB_WD-1: 0]         o_m_wstrb;
 wire                         o_m_wlast;
+wire [15: 0]                 o_m_wuser;
 wire                         o_m_wvalid;
 wire                         o_s_wready;
 
@@ -271,6 +285,7 @@ wire [3:0]                   o_m_arcache;
 wire [2:0]                   o_m_arprot; 
 wire                         o_m_arlock; 
 wire [3:0]                   o_m_arqos; 
+wire [15:0]                  o_m_aruser; 
 wire                         o_m_arvalid;
 wire                         i_m_arready;
                                         
@@ -295,6 +310,7 @@ wire                         w_aggregator_awlock;
 wire [ 3: 0]                 w_aggregator_awcache;
 wire [ 2: 0]                 w_aggregator_awprot;
 wire [ 3: 0]                 w_aggregator_awqos;
+wire [15: 0]                 w_aggregator_awuser;
 wire                         w_aggregator_m_awvalid;
 wire                         w_aggregator_m_awready;
 wire                         w_aggregator_s_awvalid;
@@ -304,6 +320,7 @@ wire                         w_aggregator_s_awready;
 wire [ DATA_WD-1: 0]         w_aggregator_wdata;
 wire [ STRB_WD-1: 0]         w_aggregator_wstrb;
 wire                         w_aggregator_wlast;
+wire [15: 0]                 w_aggregator_wuser;
 wire                         w_aggregator_m_wvalid;
 wire                         w_aggregator_m_wready;
 wire                         w_aggregator_s_wvalid;
@@ -318,6 +335,7 @@ wire [3:0]                   w_aggregator_arcache;
 wire [2:0]                   w_aggregator_arprot; 
 wire                         w_aggregator_arlock; 
 wire [3:0]                   w_aggregator_arqos; 
+wire [15:0]                  w_aggregator_aruser; 
 wire                         w_aggregator_m_arvalid;
 wire                         w_aggregator_m_arready;
 wire                         w_aggregator_s_arvalid;
@@ -344,6 +362,7 @@ wire [ 3: 0]                 O_SPLIT_ARCACHE;
 wire [ 2: 0]                 O_SPLIT_ARPROT;
 wire                         O_SPLIT_ARLOCK;
 wire [ 3: 0]                 O_SPLIT_ARQOS;
+wire [15: 0]                 O_SPLIT_ARUSER;
 wire                         O_SPLIT_ARVALID;
 wire                         I_SPLIT_ARREADY;
 
@@ -366,12 +385,14 @@ wire                         O_SPLIT_AWLOCK;
 wire [ 3: 0]                 O_SPLIT_AWCACHE;
 wire [ 2: 0]                 O_SPLIT_AWPROT;
 wire [ 3: 0]                 O_SPLIT_AWQOS;
+wire [15: 0]                 O_SPLIT_AWUSER;
 wire                         O_SPLIT_AWVALID;
 wire                         I_SPLIT_AWREADY;
 
 wire [ DATA_WD-1: 0]         O_SPLIT_WDATA;
 wire [ STRB_WD-1: 0]         O_SPLIT_WSTRB;
 wire                         O_SPLIT_WLAST;
+wire [15: 0]                 O_SPLIT_WUSER;
 wire                         O_SPLIT_WVALID;
 wire                         I_SPLIT_WREADY;
 
@@ -515,6 +536,7 @@ if(DATA_WD == 512) begin
         .I_S_ARPROT_0     ( I_S_ARPROT_0     ),
         .I_S_ARLOCK_0     ( I_S_ARLOCK_0     ),
         .I_S_ARQOS_0      ( I_S_ARQOS_0      ),
+        .I_S_ARUSER_0     ( I_S_ARUSER_0     ),
         .I_S_ARVALID_0    ( I_S_ARVALID_0    ),
         .O_S_ARREADY_0    ( O_S_ARREADY_0    ),
 
@@ -535,12 +557,14 @@ if(DATA_WD == 512) begin
         .I_S_AWCACHE_0    ( I_S_AWCACHE_0    ),
         .I_S_AWPROT_0     ( I_S_AWPROT_0     ),
         .I_S_AWQOS_0      ( I_S_AWQOS_0      ),
+        .I_S_AWUSER_0     ( I_S_AWUSER_0     ),
         .I_S_AWVALID_0    ( I_S_AWVALID_0    ),
         .O_S_AWREADY_0    ( O_S_AWREADY_0    ),
 
         .I_S_WDATA_0      ( I_S_WDATA_0      ),
         .I_S_WSTRB_0      ( I_S_WSTRB_0      ),
         .I_S_WLAST_0      ( I_S_WLAST_0      ),
+        .I_S_WUSER_0      ( I_S_WUSER_0      ),
         .I_S_WVALID_0     ( I_S_WVALID_0     ),
         .O_S_WREADY_0     ( O_S_WREADY_0     ),
 
@@ -559,6 +583,7 @@ if(DATA_WD == 512) begin
         .I_S_ARPROT_1     ( I_S_ARPROT_1     ),
         .I_S_ARLOCK_1     ( I_S_ARLOCK_1     ),
         .I_S_ARQOS_1      ( I_S_ARQOS_1      ),
+        .I_S_ARUSER_1     ( I_S_ARUSER_1     ),
         .I_S_ARVALID_1    ( I_S_ARVALID_1    ),
         .O_S_ARREADY_1    ( O_S_ARREADY_1    ),
 
@@ -579,12 +604,14 @@ if(DATA_WD == 512) begin
         .I_S_AWCACHE_1    ( I_S_AWCACHE_1    ),
         .I_S_AWPROT_1     ( I_S_AWPROT_1     ),
         .I_S_AWQOS_1      ( I_S_AWQOS_1      ),
+        .I_S_AWUSER_1     ( I_S_AWUSER_1     ),
         .I_S_AWVALID_1    ( I_S_AWVALID_1    ),
         .O_S_AWREADY_1    ( O_S_AWREADY_1    ),
 
         .I_S_WDATA_1      ( I_S_WDATA_1      ),
         .I_S_WSTRB_1      ( I_S_WSTRB_1      ),
         .I_S_WLAST_1      ( I_S_WLAST_1      ),
+        .I_S_WUSER_1      ( I_S_WUSER_1      ),
         .I_S_WVALID_1     ( I_S_WVALID_1     ),
         .O_S_WREADY_1     ( O_S_WREADY_1     ),
 
@@ -603,6 +630,7 @@ if(DATA_WD == 512) begin
         .I_S_ARPROT_2     ( I_S_ARPROT_2     ),
         .I_S_ARLOCK_2     ( I_S_ARLOCK_2     ),
         .I_S_ARQOS_2      ( I_S_ARQOS_2      ),
+        .I_S_ARUSER_2     ( I_S_ARUSER_2     ),
         .I_S_ARVALID_2    ( I_S_ARVALID_2    ),
         .O_S_ARREADY_2    ( O_S_ARREADY_2    ),
 
@@ -623,12 +651,14 @@ if(DATA_WD == 512) begin
         .I_S_AWCACHE_2    ( I_S_AWCACHE_2    ),
         .I_S_AWPROT_2     ( I_S_AWPROT_2     ),
         .I_S_AWQOS_2      ( I_S_AWQOS_2      ),
+        .I_S_AWUSER_2     ( I_S_AWUSER_2     ),
         .I_S_AWVALID_2    ( I_S_AWVALID_2    ),
         .O_S_AWREADY_2    ( O_S_AWREADY_2    ),
 
         .I_S_WDATA_2      ( I_S_WDATA_2      ),
         .I_S_WSTRB_2      ( I_S_WSTRB_2      ),
         .I_S_WLAST_2      ( I_S_WLAST_2      ),
+        .I_S_WUSER_2      ( I_S_WUSER_2      ),
         .I_S_WVALID_2     ( I_S_WVALID_2     ),
         .O_S_WREADY_2     ( O_S_WREADY_2     ),
 
@@ -647,6 +677,7 @@ if(DATA_WD == 512) begin
         .O_M_ARPROT       ( O_SPLIT_ARPROT   ),
         .O_M_ARLOCK       ( O_SPLIT_ARLOCK   ),
         .O_M_ARQOS        ( O_SPLIT_ARQOS    ),
+        .O_M_ARUSER       ( O_SPLIT_ARUSER   ),
         .O_M_ARVALID      ( O_SPLIT_ARVALID  ),
         .I_M_ARREADY      ( I_SPLIT_ARREADY  ),
 
@@ -668,12 +699,14 @@ if(DATA_WD == 512) begin
         .O_M_AWCACHE      ( O_SPLIT_AWCACHE  ),
         .O_M_AWPROT       ( O_SPLIT_AWPROT   ),
         .O_M_AWQOS        ( O_SPLIT_AWQOS    ),
+        .O_M_AWUSER       ( O_SPLIT_AWUSER   ),
         .O_M_AWVALID      ( O_SPLIT_AWVALID  ),
         .I_M_AWREADY      ( I_SPLIT_AWREADY  ),
 
         .O_M_WDATA        ( O_SPLIT_WDATA    ),
         .O_M_WSTRB        ( O_SPLIT_WSTRB    ),
         .O_M_WLAST        ( O_SPLIT_WLAST    ),
+        .O_M_WUSER        ( O_SPLIT_WUSER    ),
         .O_M_WVALID       ( O_SPLIT_WVALID   ),
         .I_M_WREADY       ( I_SPLIT_WREADY   ),
 
@@ -711,6 +744,7 @@ end else if (DATA_WD == 1024) begin
         .I_S_ARPROT_0     ( I_S_ARPROT_0     ),
         .I_S_ARLOCK_0     ( I_S_ARLOCK_0     ),
         .I_S_ARQOS_0      ( I_S_ARQOS_0      ),
+        .I_S_ARUSER_0     ( I_S_ARUSER_0     ),
         .I_S_ARVALID_0    ( I_S_ARVALID_0    ),
         .O_S_ARREADY_0    ( O_S_ARREADY_0    ),
 
@@ -731,12 +765,14 @@ end else if (DATA_WD == 1024) begin
         .I_S_AWCACHE_0    ( I_S_AWCACHE_0    ),
         .I_S_AWPROT_0     ( I_S_AWPROT_0     ),
         .I_S_AWQOS_0      ( I_S_AWQOS_0      ),
+        .I_S_AWUSER_0     ( I_S_AWUSER_0     ),
         .I_S_AWVALID_0    ( I_S_AWVALID_0    ),
         .O_S_AWREADY_0    ( O_S_AWREADY_0    ),
 
         .I_S_WDATA_0      ( I_S_WDATA_0      ),
         .I_S_WSTRB_0      ( I_S_WSTRB_0      ),
         .I_S_WLAST_0      ( I_S_WLAST_0      ),
+        .I_S_WUSER_0      ( I_S_WUSER_0      ),
         .I_S_WVALID_0     ( I_S_WVALID_0     ),
         .O_S_WREADY_0     ( O_S_WREADY_0     ),
 
@@ -755,6 +791,7 @@ end else if (DATA_WD == 1024) begin
         .I_S_ARPROT_1     ( I_S_ARPROT_1     ),
         .I_S_ARLOCK_1     ( I_S_ARLOCK_1     ),
         .I_S_ARQOS_1      ( I_S_ARQOS_1      ),
+        .I_S_ARUSER_1     ( I_S_ARUSER_1     ),
         .I_S_ARVALID_1    ( I_S_ARVALID_1    ),
         .O_S_ARREADY_1    ( O_S_ARREADY_1    ),
 
@@ -775,12 +812,14 @@ end else if (DATA_WD == 1024) begin
         .I_S_AWCACHE_1    ( I_S_AWCACHE_1    ),
         .I_S_AWPROT_1     ( I_S_AWPROT_1     ),
         .I_S_AWQOS_1      ( I_S_AWQOS_1      ),
+        .I_S_AWUSER_1     ( I_S_AWUSER_1     ),
         .I_S_AWVALID_1    ( I_S_AWVALID_1    ),
         .O_S_AWREADY_1    ( O_S_AWREADY_1    ),
 
         .I_S_WDATA_1      ( I_S_WDATA_1      ),
         .I_S_WSTRB_1      ( I_S_WSTRB_1      ),
         .I_S_WLAST_1      ( I_S_WLAST_1      ),
+        .I_S_WUSER_1      ( I_S_WUSER_1      ),
         .I_S_WVALID_1     ( I_S_WVALID_1     ),
         .O_S_WREADY_1     ( O_S_WREADY_1     ),
 
@@ -799,6 +838,7 @@ end else if (DATA_WD == 1024) begin
         .I_S_ARPROT_2     ( I_S_ARPROT_2     ),
         .I_S_ARLOCK_2     ( I_S_ARLOCK_2     ),
         .I_S_ARQOS_2      ( I_S_ARQOS_2      ),
+        .I_S_ARUSER_2     ( I_S_ARUSER_2     ),
         .I_S_ARVALID_2    ( I_S_ARVALID_2    ),
         .O_S_ARREADY_2    ( O_S_ARREADY_2    ),
 
@@ -819,12 +859,14 @@ end else if (DATA_WD == 1024) begin
         .I_S_AWCACHE_2    ( I_S_AWCACHE_2    ),
         .I_S_AWPROT_2     ( I_S_AWPROT_2     ),
         .I_S_AWQOS_2      ( I_S_AWQOS_2      ),
+        .I_S_AWUSER_2     ( I_S_AWUSER_2     ),
         .I_S_AWVALID_2    ( I_S_AWVALID_2    ),
         .O_S_AWREADY_2    ( O_S_AWREADY_2    ),
 
         .I_S_WDATA_2      ( I_S_WDATA_2      ),
         .I_S_WSTRB_2      ( I_S_WSTRB_2      ),
         .I_S_WLAST_2      ( I_S_WLAST_2      ),
+        .I_S_WUSER_2      ( I_S_WUSER_2      ),
         .I_S_WVALID_2     ( I_S_WVALID_2     ),
         .O_S_WREADY_2     ( O_S_WREADY_2     ),
 
@@ -843,6 +885,7 @@ end else if (DATA_WD == 1024) begin
         .O_M_ARPROT       ( O_SPLIT_ARPROT   ),
         .O_M_ARLOCK       ( O_SPLIT_ARLOCK   ),
         .O_M_ARQOS        ( O_SPLIT_ARQOS    ),
+        .O_M_ARUSER       ( O_SPLIT_ARUSER   ),
         .O_M_ARVALID      ( O_SPLIT_ARVALID  ),
         .I_M_ARREADY      ( I_SPLIT_ARREADY  ),
 
@@ -864,12 +907,14 @@ end else if (DATA_WD == 1024) begin
         .O_M_AWCACHE      ( O_SPLIT_AWCACHE  ),
         .O_M_AWPROT       ( O_SPLIT_AWPROT   ),
         .O_M_AWQOS        ( O_SPLIT_AWQOS    ),
+        .O_M_AWUSER       ( O_SPLIT_AWUSER   ),
         .O_M_AWVALID      ( O_SPLIT_AWVALID  ),
         .I_M_AWREADY      ( I_SPLIT_AWREADY  ),
 
         .O_M_WDATA        ( O_SPLIT_WDATA    ),
         .O_M_WSTRB        ( O_SPLIT_WSTRB    ),
         .O_M_WLAST        ( O_SPLIT_WLAST    ),
+        .O_M_WUSER        ( O_SPLIT_WUSER    ),
         .O_M_WVALID       ( O_SPLIT_WVALID   ),
         .I_M_WREADY       ( I_SPLIT_WREADY   ),
 
@@ -909,6 +954,7 @@ end else if (DATA_WD == 256) begin
         .I_S_ARPROT_0     ( I_S_ARPROT_0     ),
         .I_S_ARLOCK_0     ( I_S_ARLOCK_0     ),
         .I_S_ARQOS_0      ( I_S_ARQOS_0      ),
+        .I_S_ARUSER_0     ( I_S_ARUSER_0     ),
         .I_S_ARVALID_0    ( I_S_ARVALID_0    ),
         .O_S_ARREADY_0    ( O_S_ARREADY_0    ),
 
@@ -929,12 +975,14 @@ end else if (DATA_WD == 256) begin
         .I_S_AWCACHE_0    ( I_S_AWCACHE_0    ),
         .I_S_AWPROT_0     ( I_S_AWPROT_0     ),
         .I_S_AWQOS_0      ( I_S_AWQOS_0      ),
+        .I_S_AWUSER_0     ( I_S_AWUSER_0     ),
         .I_S_AWVALID_0    ( I_S_AWVALID_0    ),
         .O_S_AWREADY_0    ( O_S_AWREADY_0    ),
 
         .I_S_WDATA_0      ( I_S_WDATA_0      ),
         .I_S_WSTRB_0      ( I_S_WSTRB_0      ),
         .I_S_WLAST_0      ( I_S_WLAST_0      ),
+        .I_S_WUSER_0      ( I_S_WUSER_0      ),
         .I_S_WVALID_0     ( I_S_WVALID_0     ),
         .O_S_WREADY_0     ( O_S_WREADY_0     ),
 
@@ -953,6 +1001,7 @@ end else if (DATA_WD == 256) begin
         .I_S_ARPROT_1     ( I_S_ARPROT_1     ),
         .I_S_ARLOCK_1     ( I_S_ARLOCK_1     ),
         .I_S_ARQOS_1      ( I_S_ARQOS_1      ),
+        .I_S_ARUSER_1     ( I_S_ARUSER_1     ),
         .I_S_ARVALID_1    ( I_S_ARVALID_1    ),
         .O_S_ARREADY_1    ( O_S_ARREADY_1    ),
 
@@ -973,12 +1022,14 @@ end else if (DATA_WD == 256) begin
         .I_S_AWCACHE_1    ( I_S_AWCACHE_1    ),
         .I_S_AWPROT_1     ( I_S_AWPROT_1     ),
         .I_S_AWQOS_1      ( I_S_AWQOS_1      ),
+        .I_S_AWUSER_1     ( I_S_AWUSER_1     ),
         .I_S_AWVALID_1    ( I_S_AWVALID_1    ),
         .O_S_AWREADY_1    ( O_S_AWREADY_1    ),
 
         .I_S_WDATA_1      ( I_S_WDATA_1      ),
         .I_S_WSTRB_1      ( I_S_WSTRB_1      ),
         .I_S_WLAST_1      ( I_S_WLAST_1      ),
+        .I_S_WUSER_1      ( I_S_WUSER_1      ),
         .I_S_WVALID_1     ( I_S_WVALID_1     ),
         .O_S_WREADY_1     ( O_S_WREADY_1     ),
 
@@ -997,6 +1048,7 @@ end else if (DATA_WD == 256) begin
         .I_S_ARPROT_2     ( I_S_ARPROT_2     ),
         .I_S_ARLOCK_2     ( I_S_ARLOCK_2     ),
         .I_S_ARQOS_2      ( I_S_ARQOS_2      ),
+        .I_S_ARUSER_2     ( I_S_ARUSER_2     ),
         .I_S_ARVALID_2    ( I_S_ARVALID_2    ),
         .O_S_ARREADY_2    ( O_S_ARREADY_2    ),
 
@@ -1017,12 +1069,14 @@ end else if (DATA_WD == 256) begin
         .I_S_AWCACHE_2    ( I_S_AWCACHE_2    ),
         .I_S_AWPROT_2     ( I_S_AWPROT_2     ),
         .I_S_AWQOS_2      ( I_S_AWQOS_2      ),
+        .I_S_AWUSER_2     ( I_S_AWUSER_2     ),
         .I_S_AWVALID_2    ( I_S_AWVALID_2    ),
         .O_S_AWREADY_2    ( O_S_AWREADY_2    ),
 
         .I_S_WDATA_2      ( I_S_WDATA_2      ),
         .I_S_WSTRB_2      ( I_S_WSTRB_2      ),
         .I_S_WLAST_2      ( I_S_WLAST_2      ),
+        .I_S_WUSER_2      ( I_S_WUSER_2      ),
         .I_S_WVALID_2     ( I_S_WVALID_2     ),
         .O_S_WREADY_2     ( O_S_WREADY_2     ),
 
@@ -1041,6 +1095,7 @@ end else if (DATA_WD == 256) begin
         .O_M_ARPROT       ( O_SPLIT_ARPROT   ),
         .O_M_ARLOCK       ( O_SPLIT_ARLOCK   ),
         .O_M_ARQOS        ( O_SPLIT_ARQOS    ),
+        .O_M_ARUSER       ( O_SPLIT_ARUSER   ),
         .O_M_ARVALID      ( O_SPLIT_ARVALID  ),
         .I_M_ARREADY      ( I_SPLIT_ARREADY  ),
 
@@ -1061,12 +1116,14 @@ end else if (DATA_WD == 256) begin
         .O_M_AWCACHE      ( O_SPLIT_AWCACHE  ),
         .O_M_AWPROT       ( O_SPLIT_AWPROT   ),
         .O_M_AWQOS        ( O_SPLIT_AWQOS    ),
+        .O_M_AWUSER       ( O_SPLIT_AWUSER   ),
         .O_M_AWVALID      ( O_SPLIT_AWVALID  ),
         .I_M_AWREADY      ( I_SPLIT_AWREADY  ),
 
         .O_M_WDATA        ( O_SPLIT_WDATA    ),
         .O_M_WSTRB        ( O_SPLIT_WSTRB    ),
         .O_M_WLAST        ( O_SPLIT_WLAST    ),
+        .O_M_WUSER        ( O_SPLIT_WUSER    ),
         .O_M_WVALID       ( O_SPLIT_WVALID   ),
         .I_M_WREADY       ( I_SPLIT_WREADY   ),
 
@@ -1132,6 +1189,7 @@ AOU_AXI_SPLIT_TR #(
     .I_S_ARPROT       ( O_SPLIT_ARPROT   ),
     .I_S_ARLOCK       ( O_SPLIT_ARLOCK   ),
     .I_S_ARQOS        ( O_SPLIT_ARQOS    ),
+    .I_S_ARUSER       ( O_SPLIT_ARUSER   ),
     .I_S_ARVALID      ( O_SPLIT_ARVALID  ),
     .O_S_ARREADY      ( I_SPLIT_ARREADY  ),
 
@@ -1153,12 +1211,14 @@ AOU_AXI_SPLIT_TR #(
     .I_S_AWCACHE      ( O_SPLIT_AWCACHE  ),
     .I_S_AWPROT       ( O_SPLIT_AWPROT   ),
     .I_S_AWQOS        ( O_SPLIT_AWQOS    ),
+    .I_S_AWUSER       ( O_SPLIT_AWUSER   ),
     .I_S_AWVALID      ( O_SPLIT_AWVALID  ),
     .O_S_AWREADY      ( I_SPLIT_AWREADY  ),
 
     .I_S_WDATA        ( O_SPLIT_WDATA    ),
     .I_S_WSTRB        ( O_SPLIT_WSTRB    ),
     .I_S_WLAST        ( O_SPLIT_WLAST    ),
+    .I_S_WUSER        ( O_SPLIT_WUSER    ),
     .I_S_WVALID       ( O_SPLIT_WVALID   ),
     .O_S_WREADY       ( I_SPLIT_WREADY   ),
 
@@ -1177,6 +1237,7 @@ AOU_AXI_SPLIT_TR #(
     .O_M_ARPROT       ( o_m_arprot       ),
     .O_M_ARLOCK       ( o_m_arlock       ),
     .O_M_ARQOS        ( o_m_arqos        ),
+    .O_M_ARUSER       ( o_m_aruser       ),
     .O_M_ARVALID      ( o_m_arvalid      ),
     .I_M_ARREADY      ( i_m_arready      ),
 
@@ -1197,12 +1258,14 @@ AOU_AXI_SPLIT_TR #(
     .O_M_AWCACHE      ( o_m_awcache      ),
     .O_M_AWPROT       ( o_m_awprot       ),
     .O_M_AWQOS        ( o_m_awqos        ),
+    .O_M_AWUSER       ( o_m_awuser       ),
     .O_M_AWVALID      ( o_m_awvalid      ),
     .I_M_AWREADY      ( o_s_awready      ),
 
     .O_M_WDATA        ( o_m_wdata        ),
     .O_M_WSTRB        ( o_m_wstrb        ),
     .O_M_WLAST        ( o_m_wlast        ),
+    .O_M_WUSER        ( o_m_wuser        ),
     .O_M_WVALID       ( o_m_wvalid       ),
     .I_M_WREADY       ( o_s_wready       ),
 
@@ -1259,6 +1322,7 @@ AOU_AGGREGATOR # (
     .I_S_AWCACHE            ( o_m_awcache               ),
     .I_S_AWPROT             ( o_m_awprot                ),
     .I_S_AWQOS              ( o_m_awqos                 ),
+    .I_S_AWUSER             ( o_m_awuser                ),
     .I_S_AWVALID            ( w_aggregator_s_awvalid    ),
     .O_S_AWREADY            ( w_aggregator_s_awready    ),
     .I_S_AW_NO_AGG          ( w_split_aw_dbg_hit        ),
@@ -1267,6 +1331,7 @@ AOU_AGGREGATOR # (
     .I_S_WDATA              ( o_m_wdata                 ),
     .I_S_WSTRB              ( o_m_wstrb                 ),
     .I_S_WLAST              ( o_m_wlast                 ),
+    .I_S_WUSER              ( o_m_wuser                 ),
     .I_S_WVALID             ( w_aggregator_s_wvalid     ),
     .O_S_WREADY             ( w_aggregator_s_wready     ),
              
@@ -1279,12 +1344,14 @@ AOU_AGGREGATOR # (
     .O_M_AWCACHE            ( w_aggregator_awcache      ),
     .O_M_AWPROT             ( w_aggregator_awprot       ),
     .O_M_AWQOS              ( w_aggregator_awqos        ),
+    .O_M_AWUSER             ( w_aggregator_awuser       ),
     .O_M_AWVALID            ( w_aggregator_m_awvalid    ),
     .I_M_AWREADY            ( w_aggregator_m_awready    ),
              
     .O_M_WDATA              ( w_aggregator_wdata        ),
     .O_M_WSTRB              ( w_aggregator_wstrb        ),
     .O_M_WLAST              ( w_aggregator_wlast        ),
+    .O_M_WUSER              ( w_aggregator_wuser        ),
     .O_M_WVALID             ( w_aggregator_m_wvalid     ),
     .I_M_WREADY             ( w_aggregator_m_wready     ),
 
@@ -1300,6 +1367,7 @@ AOU_AGGREGATOR # (
     .I_S_ARPROT             ( o_m_arprot                ),
     .I_S_ARLOCK             ( o_m_arlock                ),
     .I_S_ARQOS              ( o_m_arqos                 ),
+    .I_S_ARUSER             ( o_m_aruser                ),
     .I_S_ARVALID            ( w_aggregator_s_arvalid    ),
     .O_S_ARREADY            ( w_aggregator_s_arready    ),
 
@@ -1320,6 +1388,7 @@ AOU_AGGREGATOR # (
     .O_M_ARPROT             ( w_aggregator_arprot       ),
     .O_M_ARLOCK             ( w_aggregator_arlock       ),
     .O_M_ARQOS              ( w_aggregator_arqos        ),
+    .O_M_ARUSER             ( w_aggregator_aruser       ),
     .O_M_ARVALID            ( w_aggregator_m_arvalid    ),
     .I_M_ARREADY            ( w_aggregator_m_arready    ),
 
@@ -1344,6 +1413,7 @@ assign O_M_AWLOCK   = I_AXI_AGGREGATOR_EN ? w_aggregator_awlock    : o_m_awlock 
 assign O_M_AWCACHE  = I_AXI_AGGREGATOR_EN ? w_aggregator_awcache   : o_m_awcache ;
 assign O_M_AWPROT   = I_AXI_AGGREGATOR_EN ? w_aggregator_awprot    : o_m_awprot  ;
 assign O_M_AWQOS    = I_AXI_AGGREGATOR_EN ? w_aggregator_awqos     : o_m_awqos   ;
+assign O_M_AWUSER   = I_AXI_AGGREGATOR_EN ? w_aggregator_awuser    : o_m_awuser  ;
 assign O_M_AWVALID  = I_AXI_AGGREGATOR_EN ? w_aggregator_m_awvalid : o_m_awvalid ;
 assign o_s_awready  = I_AXI_AGGREGATOR_EN ? w_aggregator_s_awready : I_M_AWREADY ;
 assign w_aggregator_s_awvalid = o_m_awvalid && I_AXI_AGGREGATOR_EN;
@@ -1352,6 +1422,7 @@ assign w_aggregator_m_awready = I_AXI_AGGREGATOR_EN ? I_M_AWREADY : 1'b0;
 assign O_M_WDATA    = I_AXI_AGGREGATOR_EN ? w_aggregator_wdata      : o_m_wdata  ;
 assign O_M_WSTRB    = I_AXI_AGGREGATOR_EN ? w_aggregator_wstrb      : o_m_wstrb  ;
 assign O_M_WLAST    = I_AXI_AGGREGATOR_EN ? w_aggregator_wlast      : o_m_wlast  ;
+assign O_M_WUSER    = I_AXI_AGGREGATOR_EN ? w_aggregator_wuser      : o_m_wuser  ;
 assign O_M_WVALID   = I_AXI_AGGREGATOR_EN ? w_aggregator_m_wvalid   : o_m_wvalid ;
 assign o_s_wready   = I_AXI_AGGREGATOR_EN ? w_aggregator_s_wready   : I_M_WREADY ;
 assign w_aggregator_s_wvalid = o_m_wvalid && I_AXI_AGGREGATOR_EN;
@@ -1366,6 +1437,7 @@ assign O_M_ARCACHE  = I_AXI_AGGREGATOR_EN ? w_aggregator_arcache    : o_m_arcach
 assign O_M_ARPROT   = I_AXI_AGGREGATOR_EN ? w_aggregator_arprot     : o_m_arprot ;
 assign O_M_ARLOCK   = I_AXI_AGGREGATOR_EN ? w_aggregator_arlock     : o_m_arlock ;
 assign O_M_ARQOS    = I_AXI_AGGREGATOR_EN ? w_aggregator_arqos      : o_m_arqos  ;
+assign O_M_ARUSER   = I_AXI_AGGREGATOR_EN ? w_aggregator_aruser     : o_m_aruser ;
 assign O_M_ARVALID  = I_AXI_AGGREGATOR_EN ? w_aggregator_m_arvalid  : o_m_arvalid;
 assign i_m_arready  = I_AXI_AGGREGATOR_EN ? w_aggregator_s_arready  : I_M_ARREADY;
 assign w_aggregator_s_arvalid = o_m_arvalid && I_AXI_AGGREGATOR_EN;

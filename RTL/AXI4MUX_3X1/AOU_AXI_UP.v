@@ -52,6 +52,7 @@ module AOU_AXI_UP #(
     input        [LEN_WD-1:0]                              I_S_ARLEN,
     input                                                  I_S_ARLOCK,
     input        [3:0]                                     I_S_ARQOS,
+    input        [15:0]                                    I_S_ARUSER,
     input                                                  I_S_ARVALID,
     output                                                 O_S_ARREADY,
 
@@ -72,12 +73,14 @@ module AOU_AXI_UP #(
     input        [CACHE_WD-1:0]                            I_S_AWCACHE,
     input        [PROT_WD-1:0]                             I_S_AWPROT,
     input        [3:0]                                     I_S_AWQOS,
+    input        [15:0]                                    I_S_AWUSER,
     input                                                  I_S_AWVALID,
     output                                                 O_S_AWREADY,
 
     input        [I_DATA_WD-1:0]                           I_S_WDATA,
     input        [STRB_WD-1:0]                             I_S_WSTRB,  
     input                                                  I_S_WLAST,
+    input        [15:0]                                    I_S_WUSER,
     input                                                  I_S_WVALID,
     output                                                 O_S_WREADY,
     
@@ -99,6 +102,7 @@ module AOU_AXI_UP #(
     output       [LEN_WD-1:0]                              O_M_ARLEN,
     output                                                 O_M_ARLOCK,
     output       [3:0]                                     O_M_ARQOS,
+    output       [15:0]                                    O_M_ARUSER,
 
     input        [ID_WD-1:0]                               I_M_RID,
     input        [O_DATA_WD-1:0]                           I_M_RDATA,
@@ -118,12 +122,14 @@ module AOU_AXI_UP #(
     output       [CACHE_WD-1:0]                            O_M_AWCACHE,
     output       [PROT_WD-1:0]                             O_M_AWPROT,
     output       [3:0]                                     O_M_AWQOS,
+    output       [15:0]                                    O_M_AWUSER,
     output                                                 O_M_AWVALID,
     input                                                  I_M_AWREADY,      
 
     output       [O_DATA_WD-1:0]                           O_M_WDATA,
     output       [O_STRB_WD-1:0]                           O_M_WSTRB,
     output                                                 O_M_WLAST,
+    output       [15:0]                                    O_M_WUSER,
     output                                                 O_M_WVALID,
     input                                                  I_M_WREADY,
 
@@ -146,8 +152,8 @@ wire                    w_ar_pending_info_valid, w_ar_fifo_ready;
 // =============================================================================
 // ==== WRITE channel modules ==================================================
 // =============================================================================
-assign  {O_M_AWID, O_M_AWADDR, O_M_AWLEN, O_M_AWSIZE, O_M_AWBURST, O_M_AWLOCK, O_M_AWCACHE, O_M_AWPROT, O_M_AWQOS} = 
-            {I_S_AWID, I_S_AWADDR, I_S_AWLEN, I_S_AWSIZE, I_S_AWBURST, I_S_AWLOCK, I_S_AWCACHE, I_S_AWPROT, I_S_AWQOS};
+assign  {O_M_AWID, O_M_AWADDR, O_M_AWLEN, O_M_AWSIZE, O_M_AWBURST, O_M_AWLOCK, O_M_AWCACHE, O_M_AWPROT, O_M_AWQOS, O_M_AWUSER} = 
+            {I_S_AWID, I_S_AWADDR, I_S_AWLEN, I_S_AWSIZE, I_S_AWBURST, I_S_AWLOCK, I_S_AWCACHE, I_S_AWPROT, I_S_AWQOS, I_S_AWUSER};
 
 //1, 2, 4, 8, 16, 32, 64, 128 Byte transfer
 
@@ -449,25 +455,28 @@ always @ (posedge I_CLK or negedge I_RESETN) begin
     end
 end
 
+wire [15:0]                                        w_wuser_mdata;
+
 AOU_FWD_RS #(
-    .DATA_WIDTH        (O_DATA_WD + O_STRB_WD)
+    .DATA_WIDTH        (O_DATA_WD + O_STRB_WD + 16)
 )
 u_w_data_fifo_wdata(
     .I_CLK              (I_CLK), 
     .I_RESETN           (I_RESETN),
 
     .I_SVALID           (I_S_WVALID),
-    .I_SDATA            ({w_modified_wdata_sdata, w_modified_wstrb_sdata} ),
+    .I_SDATA            ({w_modified_wdata_sdata, w_modified_wstrb_sdata, I_S_WUSER} ),
     .O_SREADY           (O_S_WREADY),
 
     .I_MREADY           (I_M_WREADY),     //maybe add last signal with AWLEN     
-    .O_MDATA            ({w_modified_wdata_mdata, w_modified_wstrb_mdata}),
+    .O_MDATA            ({w_modified_wdata_mdata, w_modified_wstrb_mdata, w_wuser_mdata}),
     .O_MVALID           (O_M_WVALID)
 );
 
 
 assign O_M_WDATA = w_modified_wdata_mdata;
 assign O_M_WSTRB = w_modified_wstrb_mdata;
+assign O_M_WUSER = w_wuser_mdata;
 
 assign w_o_m_wlast = (r_wr_cnt == {1'b0, w_o_m_awlen});
 assign O_M_WLAST    = w_o_m_wlast;
@@ -481,6 +490,9 @@ assign O_S_WREADY   = I_M_WREADY;
 assign O_M_WVALID   = I_S_WVALID;
 assign O_M_WDATA    = w_modified_wdata_sdata;
 assign O_M_WSTRB    = w_modified_wstrb_sdata;
+// Each narrow local beat becomes one wide beat (lane placement only, no
+// merging), so the beat keeps its WUSER.
+assign O_M_WUSER    = I_S_WUSER;
 
 assign O_S_AWREADY  = I_M_AWREADY; 
 assign O_M_AWVALID  = I_S_AWVALID; 
@@ -489,8 +501,8 @@ assign O_M_AWVALID  = I_S_AWVALID;
 // =============================================================================
 // ==== READ channel modules ===================================================
 // =============================================================================
-assign  {O_M_ARID, O_M_ARADDR, O_M_ARLEN, O_M_ARSIZE, O_M_ARBURST, O_M_ARLOCK, O_M_ARCACHE, O_M_ARPROT, O_M_ARQOS} = 
-            {I_S_ARID, I_S_ARADDR, I_S_ARLEN, I_S_ARSIZE, I_S_ARBURST, I_S_ARLOCK, I_S_ARCACHE, I_S_ARPROT, I_S_ARQOS};
+assign  {O_M_ARID, O_M_ARADDR, O_M_ARLEN, O_M_ARSIZE, O_M_ARBURST, O_M_ARLOCK, O_M_ARCACHE, O_M_ARPROT, O_M_ARQOS, O_M_ARUSER} = 
+            {I_S_ARID, I_S_ARADDR, I_S_ARLEN, I_S_ARSIZE, I_S_ARBURST, I_S_ARLOCK, I_S_ARCACHE, I_S_ARPROT, I_S_ARQOS, I_S_ARUSER};
     
 localparam DATA_START_IDX_WD = $clog2(O_DATA_WD/I_DATA_WD); 
 
