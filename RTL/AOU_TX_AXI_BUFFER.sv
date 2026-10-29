@@ -100,12 +100,14 @@ import packet_def_pkg::*;
     input  logic    [RP_CNT-1:0][3:0]                    I_AOU_TX_S_AXI_AWCACHE,
     input  logic    [RP_CNT-1:0][2:0]                    I_AOU_TX_S_AXI_AWPROT,
     input  logic    [RP_CNT-1:0][3:0]                    I_AOU_TX_S_AXI_AWQOS,
+    input  logic    [RP_CNT-1:0][15:0]                   I_AOU_TX_S_AXI_AWUSER,
     input  logic    [RP_CNT-1:0]                         I_AOU_TX_S_AXI_AWVALID,
     output logic    [RP_CNT-1:0]                         O_AOU_TX_S_AXI_AWREADY,      
 
     input  logic    [RP_CNT-1:0][MAX_AXI_DATA_WD-1:0]    I_AOU_TX_S_AXI_WDATA,
     input  logic    [RP_CNT-1:0][MAX_AXI_STRB_WD-1:0]    I_AOU_TX_S_AXI_WSTRB,
     input  logic    [RP_CNT-1:0]                         I_AOU_TX_S_AXI_WLAST,
+    input  logic    [RP_CNT-1:0][15:0]                   I_AOU_TX_S_AXI_WUSER,
     input  logic    [RP_CNT-1:0]                         I_AOU_TX_S_AXI_WVALID,
     output logic    [RP_CNT-1:0]                         O_AOU_TX_S_AXI_WREADY,
 
@@ -118,21 +120,25 @@ import packet_def_pkg::*;
     input  logic    [RP_CNT-1:0][3:0]                    I_AOU_TX_S_AXI_ARCACHE,
     input  logic    [RP_CNT-1:0][2:0]                    I_AOU_TX_S_AXI_ARPROT,
     input  logic    [RP_CNT-1:0][3:0]                    I_AOU_TX_S_AXI_ARQOS,
+    input  logic    [RP_CNT-1:0][15:0]                   I_AOU_TX_S_AXI_ARUSER,
     input  logic    [RP_CNT-1:0]                         I_AOU_TX_S_AXI_ARVALID,
     output logic    [RP_CNT-1:0]                         O_AOU_TX_S_AXI_ARREADY,
 
     input  logic    [RP_CNT-1:0][AXI_ID_WD-1:0]          I_AOU_TX_S_AXI_BID_256,
     input  logic    [RP_CNT-1:0][1:0]                    I_AOU_TX_S_AXI_BRESP_256,
+    input  logic    [RP_CNT-1:0][15:0]                   I_AOU_TX_S_AXI_BUSER_256,
     input  logic    [RP_CNT-1:0]                         I_AOU_TX_S_AXI_BVALID_256,
     output logic    [RP_CNT-1:0]                         O_AOU_TX_S_AXI_BREADY_256,
 
     input  logic    [RP_CNT-1:0][AXI_ID_WD-1:0]          I_AOU_TX_S_AXI_BID_512,
     input  logic    [RP_CNT-1:0][1:0]                    I_AOU_TX_S_AXI_BRESP_512,
+    input  logic    [RP_CNT-1:0][15:0]                   I_AOU_TX_S_AXI_BUSER_512,
     input  logic    [RP_CNT-1:0]                         I_AOU_TX_S_AXI_BVALID_512,
     output logic    [RP_CNT-1:0]                         O_AOU_TX_S_AXI_BREADY_512,
 
     input  logic    [RP_CNT-1:0][AXI_ID_WD-1:0]          I_AOU_TX_S_AXI_BID_1024,
     input  logic    [RP_CNT-1:0][1:0]                    I_AOU_TX_S_AXI_BRESP_1024,
+    input  logic    [RP_CNT-1:0][15:0]                   I_AOU_TX_S_AXI_BUSER_1024,
     input  logic    [RP_CNT-1:0]                         I_AOU_TX_S_AXI_BVALID_1024,
     output logic    [RP_CNT-1:0]                         O_AOU_TX_S_AXI_BREADY_1024,
 
@@ -140,6 +146,7 @@ import packet_def_pkg::*;
     input  logic    [RP_CNT-1:0][1:0]                    I_AOU_TX_S_AXI_RDLEN,
     input  logic    [RP_CNT-1:0][1024-1:0]               I_AOU_TX_S_AXI_RDATA,
     input  logic    [RP_CNT-1:0][1:0]                    I_AOU_TX_S_AXI_RRESP,
+    input  logic    [RP_CNT-1:0][15:0]                   I_AOU_TX_S_AXI_RUSER,
     input  logic    [RP_CNT-1:0]                         I_AOU_TX_S_AXI_RLAST,
     input  logic    [RP_CNT-1:0]                         I_AOU_TX_S_AXI_RVALID,
     output logic    [RP_CNT-1:0]                         O_AOU_TX_S_AXI_RREADY,

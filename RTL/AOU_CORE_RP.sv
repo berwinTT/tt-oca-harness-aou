@@ -68,6 +68,7 @@ import packet_def_pkg::*;
     input   [AXI_ID_WD-1:0]                 I_AOU_TX_AXI_M_RID,
     input   [AXI_DATA_WD-1:0]               I_AOU_TX_AXI_M_RDATA,
     input   [1:0]                           I_AOU_TX_AXI_M_RRESP,
+    input   [15:0]                          I_AOU_TX_AXI_M_RUSER,
     input                                   I_AOU_TX_AXI_M_RLAST,
     input                                   I_AOU_TX_AXI_M_RVALID,
     output                                  O_AOU_TX_AXI_M_RREADY,
@@ -92,6 +93,7 @@ import packet_def_pkg::*;
 
     input   [AXI_ID_WD-1:0]                 I_AOU_TX_AXI_M_BID,
     input   [1:0]                           I_AOU_TX_AXI_M_BRESP,
+    input   [15:0]                          I_AOU_TX_AXI_M_BUSER,
     input                                   I_AOU_TX_AXI_M_BVALID,
     output                                  O_AOU_TX_AXI_M_BREADY,
 
@@ -116,12 +118,14 @@ import packet_def_pkg::*;
     input   [3:0]                           I_AOU_TX_AXI_S_AWCACHE,
     input   [2:0]                           I_AOU_TX_AXI_S_AWPROT,
     input   [3:0]                           I_AOU_TX_AXI_S_AWQOS,
+    input   [15:0]                          I_AOU_TX_AXI_S_AWUSER,
     input                                   I_AOU_TX_AXI_S_AWVALID,
     output                                  O_AOU_TX_AXI_S_AWREADY,
 
     input   [AXI_DATA_WD-1:0]               I_AOU_TX_AXI_S_WDATA,
     input   [AXI_STRB_WD-1:0]               I_AOU_TX_AXI_S_WSTRB,
     input                                   I_AOU_TX_AXI_S_WLAST,
+    input   [15:0]                          I_AOU_TX_AXI_S_WUSER,
     input                                   I_AOU_TX_AXI_S_WVALID,
     output                                  O_AOU_TX_AXI_S_WREADY,
 
@@ -176,27 +180,32 @@ import packet_def_pkg::*;
     output  [3:0]                           O_EARLY_BRESP_CTRL_AWCACHE  ,    
     output  [2:0]                           O_EARLY_BRESP_CTRL_AWPROT   ,    
     output  [3:0]                           O_EARLY_BRESP_CTRL_AWQOS    ,    
+    output  [15:0]                          O_EARLY_BRESP_CTRL_AWUSER   ,
     output                                  O_EARLY_BRESP_CTRL_AWVALID  ,    
     input                                   I_EARLY_BRESP_CTRL_AWREADY  ,        
 
     output  [AXI_DATA_WD-1:0]               O_EARLY_BRESP_CTRL_WDATA    , 
     output  [AXI_STRB_WD-1:0]               O_EARLY_BRESP_CTRL_WSTRB    , 
     output                                  O_EARLY_BRESP_CTRL_WLAST    , 
+    output  [15:0]                          O_EARLY_BRESP_CTRL_WUSER    ,
     output                                  O_EARLY_BRESP_CTRL_WVALID   , 
     input                                   I_EARLY_BRESP_CTRL_WREADY   ,
 
     output  [AXI_ID_WD-1:0]                 O_AOU_TX_AXI_BID_256     , 
     output  [1:0]                           O_AOU_TX_AXI_BRESP_256   , 
+    output  [15:0]                          O_AOU_TX_AXI_BUSER_256   ,
     output                                  O_AOU_TX_AXI_BVALID_256  , 
     input                                   I_AOU_TX_AXI_BREADY_256  , 
 
     output  [AXI_ID_WD-1:0]                 O_AOU_TX_AXI_BID_512     , 
     output  [1:0]                           O_AOU_TX_AXI_BRESP_512   , 
+    output  [15:0]                          O_AOU_TX_AXI_BUSER_512   ,
     output                                  O_AOU_TX_AXI_BVALID_512  , 
     input                                   I_AOU_TX_AXI_BREADY_512  , 
 
     output  [AXI_ID_WD-1:0]                 O_AOU_TX_AXI_BID_1024    , 
     output  [1:0]                           O_AOU_TX_AXI_BRESP_1024  , 
+    output  [15:0]                          O_AOU_TX_AXI_BUSER_1024  ,
     output                                  O_AOU_TX_AXI_BVALID_1024 , 
     input                                   I_AOU_TX_AXI_BREADY_1024 , 
 
@@ -204,6 +213,7 @@ import packet_def_pkg::*;
     output  [1:0]                           O_AOU_TX_AXI_RDLEN  , 
     output  [1023:0]                        O_AOU_TX_AXI_RDATA  , 
     output  [1:0]                           O_AOU_TX_AXI_RRESP  , 
+    output  [15:0]                          O_AOU_TX_AXI_RUSER  ,
     output                                  O_AOU_TX_AXI_RLAST  , 
     output                                  O_AOU_TX_AXI_RVALID , 
     input                                   I_AOU_TX_AXI_RREADY , 
@@ -799,6 +809,18 @@ import packet_def_pkg::*;
         .I_SFR_WDT_THRESHOLD        ( I_EARLY_BRESP_WDT_THRESHOLD       ),
         .O_AXI_WR_TRANS_TIMEOUT_ERR ( O_EARLY_BRESP_TRANS_TIMEOUT_ERR   )                             
     );
+
+    // AXI USER signals, carried as the FLEX field of the messages the DUT sends
+    // (AoU v0.8 Basic Profile: FLEX = USER[15:0]). The early write response block
+    // passes AW and W through unchanged, so USER goes beside them here. The M-port
+    // BUSER/RUSER are not yet carried through the width converter: FLEX of
+    // WriteResp and ReadData stays 0 until that path is added.
+    assign O_EARLY_BRESP_CTRL_AWUSER = I_AOU_TX_AXI_S_AWUSER;
+    assign O_EARLY_BRESP_CTRL_WUSER  = I_AOU_TX_AXI_S_WUSER;
+    assign O_AOU_TX_AXI_BUSER_256    = 16'd0;
+    assign O_AOU_TX_AXI_BUSER_512    = 16'd0;
+    assign O_AOU_TX_AXI_BUSER_1024   = 16'd0;
+    assign O_AOU_TX_AXI_RUSER        = 16'd0;
 
 //----------------------------------------------------------------------------
     AOU_AXI4MUX_3X1_TOP #(
