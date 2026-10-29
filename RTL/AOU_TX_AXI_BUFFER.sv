@@ -256,12 +256,14 @@ logic       [RP_CNT-1:0]                        w_aou_tx_m_axi_awlock;
 logic       [RP_CNT-1:0][3:0]                   w_aou_tx_m_axi_awcache;
 logic       [RP_CNT-1:0][2:0]                   w_aou_tx_m_axi_awprot;
 logic       [RP_CNT-1:0][3:0]                   w_aou_tx_m_axi_awqos;
+logic       [RP_CNT-1:0][15:0]                  w_aou_tx_m_axi_awuser;
 logic       [RP_CNT-1:0]                        w_aou_tx_m_axi_awvalid;
 logic       [RP_CNT-1:0]                        w_aou_tx_m_axi_awready;
 
 logic       [RP_CNT-1:0][MAX_AXI_DATA_WD-1:0]   w_aou_tx_m_axi_wdata;
 logic       [RP_CNT-1:0][MAX_AXI_STRB_WD-1:0]   w_aou_tx_m_axi_wstrb;
 logic       [RP_CNT-1:0]                        w_aou_tx_m_axi_wlast;
+logic       [RP_CNT-1:0][15:0]                  w_aou_tx_m_axi_wuser;
 logic       [RP_CNT-1:0]                        w_aou_tx_m_axi_wstrb_full;
 logic       [RP_CNT-1:0]                        w_aou_tx_m_axi_wvalid;
 logic       [RP_CNT-1:0]                        w_aou_tx_m_axi_wready;
@@ -284,6 +286,7 @@ logic       [RP_CNT-1:0]                        w_aou_tx_m_axi_arlock;
 logic       [RP_CNT-1:0][3:0]                   w_aou_tx_m_axi_arcache;
 logic       [RP_CNT-1:0][2:0]                   w_aou_tx_m_axi_arprot;
 logic       [RP_CNT-1:0][3:0]                   w_aou_tx_m_axi_arqos;
+logic       [RP_CNT-1:0][15:0]                  w_aou_tx_m_axi_aruser;
 logic       [RP_CNT-1:0]                        w_aou_tx_m_axi_arvalid;
 logic       [RP_CNT-1:0]                        w_aou_tx_m_axi_arready;
 
@@ -305,12 +308,14 @@ logic                             w_aou_tx_fifo_m_axi_awlock;
 logic     [3:0]                   w_aou_tx_fifo_m_axi_awcache;
 logic     [2:0]                   w_aou_tx_fifo_m_axi_awprot;
 logic     [3:0]                   w_aou_tx_fifo_m_axi_awqos;
+logic     [15:0]                  w_aou_tx_fifo_m_axi_awuser;
 logic                             w_aou_tx_fifo_m_axi_awvalid;
 logic                             w_aou_tx_fifo_m_axi_awready;
 
 logic     [MAX_AXI_DATA_WD-1:0]   w_aou_tx_fifo_m_axi_wdata;
 logic     [MAX_AXI_STRB_WD-1:0]   w_aou_tx_fifo_m_axi_wstrb;
 logic                             w_aou_tx_fifo_m_axi_wlast;
+logic     [15:0]                  w_aou_tx_fifo_m_axi_wuser;
 logic                             w_aou_tx_fifo_m_axi_wstrb_full;
 logic                             w_aou_tx_fifo_m_axi_wvalid;
 logic                             w_aou_tx_fifo_m_axi_wready;
@@ -324,6 +329,7 @@ logic                             w_aou_tx_fifo_m_axi_awlock_tmp;
 logic     [3:0]                   w_aou_tx_fifo_m_axi_awcache_tmp;
 logic     [2:0]                   w_aou_tx_fifo_m_axi_awprot_tmp;
 logic     [3:0]                   w_aou_tx_fifo_m_axi_awqos_tmp;
+logic     [15:0]                  w_aou_tx_fifo_m_axi_awuser_tmp;
 logic                             w_aou_tx_fifo_m_axi_awvalid_tmp;
 logic                             w_aou_tx_fifo_m_axi_awready_tmp;
 
@@ -350,6 +356,7 @@ logic                             w_aou_tx_fifo_m_axi_arlock;
 logic     [3:0]                   w_aou_tx_fifo_m_axi_arcache;
 logic     [2:0]                   w_aou_tx_fifo_m_axi_arprot;
 logic     [3:0]                   w_aou_tx_fifo_m_axi_arqos;
+logic     [15:0]                  w_aou_tx_fifo_m_axi_aruser;
 logic                             w_aou_tx_fifo_m_axi_arvalid;
 logic                             w_aou_tx_fifo_m_axi_arready;
 
@@ -364,9 +371,11 @@ logic                             w_aou_tx_fifo_s_axi_rready;
 
 // byte swap
 
-logic   [11:0]                 w_aou_writereq_prof  ;
-logic   [11:0]                 w_aou_readreq_prof   ;
-logic   [11:0]                 w_aou_writedata_prof ;
+// FLEX field of the request and write-data messages: the AXI USER of the AW, AR or
+// W beat the message carries (FLEX = USER[15:0], AoU v0.8 §5.2, §11.1 Basic Profile).
+logic   [15:0]                 w_aou_writereq_flex  ;
+logic   [15:0]                 w_aou_readreq_flex   ;
+logic   [15:0]                 w_aou_writedata_flex ;
 logic   [11:0]                 w_aou_readdata_prof  ;
 logic   [11:0]                 w_aou_writeresp_prof ;
 
@@ -473,7 +482,7 @@ generate
     for (i = 0 ; i < RP_CNT ; i++) begin : g_aw_rp_fifo
         AOU_TX_QOS_BUFFER
         #(
-            .FIFO_WIDTH                     (AXI_ID_WD + AXI_ADDR_WD + AXI_LEN_WD + 3 + 1 + 4 + 3 + 4),
+            .FIFO_WIDTH                     (AXI_ID_WD + AXI_ADDR_WD + AXI_LEN_WD + 3 + 1 + 4 + 3 + 4 + 16),
             .FIFO_DEPTH                     (AXI_AW_FIFO_DEPTH)        
         )
         u_axi_slave_aw_rp0_fifo(
@@ -483,12 +492,12 @@ generate
             .I_SVALID                       (I_AOU_TX_S_AXI_AWVALID[i]),
             .I_TRANS_QOS                    ( w_aou_aw_fifo_qos[i]      ),
             .I_SDATA                        ({I_AOU_TX_S_AXI_AWID[i], I_AOU_TX_S_AXI_AWADDR[i], I_AOU_TX_S_AXI_AWLEN[i], I_AOU_TX_S_AXI_AWSIZE[i],
-                                            I_AOU_TX_S_AXI_AWLOCK[i], I_AOU_TX_S_AXI_AWCACHE[i], I_AOU_TX_S_AXI_AWPROT[i], I_AOU_TX_S_AXI_AWQOS[i]}),
+                                            I_AOU_TX_S_AXI_AWLOCK[i], I_AOU_TX_S_AXI_AWCACHE[i], I_AOU_TX_S_AXI_AWPROT[i], I_AOU_TX_S_AXI_AWQOS[i], I_AOU_TX_S_AXI_AWUSER[i]}),
             .O_SREADY                       (O_AOU_TX_S_AXI_AWREADY[i]),
 
             .I_MREADY                       (w_aou_tx_m_axi_awready[i] && w_aou_tx_aw_send_en[i]),
             .O_MDATA                        ({w_aou_tx_m_axi_awid[i], w_aou_tx_m_axi_awaddr[i], w_aou_tx_m_axi_awlen[i], w_aou_tx_m_axi_awsize[i],
-                                            w_aou_tx_m_axi_awlock[i], w_aou_tx_m_axi_awcache[i], w_aou_tx_m_axi_awprot[i], w_aou_tx_m_axi_awqos[i]}),
+                                            w_aou_tx_m_axi_awlock[i], w_aou_tx_m_axi_awcache[i], w_aou_tx_m_axi_awprot[i], w_aou_tx_m_axi_awqos[i], w_aou_tx_m_axi_awuser[i]}),
             .O_TRANS_QOS                    ( w_aou_aw_rp_qos[i]     ),
             .O_MVALID                       (w_aou_tx_m_axi_awvalid[i]),
 
@@ -525,6 +534,7 @@ always_comb begin
     w_aou_tx_fifo_m_axi_awcache = 'b0;
     w_aou_tx_fifo_m_axi_awprot  = 'b0;
     w_aou_tx_fifo_m_axi_awqos   = 'b0;
+    w_aou_tx_fifo_m_axi_awuser  = 'b0;
     w_aou_tx_fifo_m_axi_awvalid = 'b0;
     w_aou_tx_m_axi_awready  = 'b0;
 
@@ -539,13 +549,14 @@ always_comb begin
             w_aou_tx_fifo_m_axi_awcache = w_aou_tx_m_axi_awcache[i];
             w_aou_tx_fifo_m_axi_awprot  = w_aou_tx_m_axi_awprot[i];
             w_aou_tx_fifo_m_axi_awqos   = w_aou_tx_m_axi_awqos[i];
+            w_aou_tx_fifo_m_axi_awuser  = w_aou_tx_m_axi_awuser[i];
             w_aou_tx_fifo_m_axi_awvalid = w_aou_tx_aw_valid[i];
             w_aou_tx_m_axi_awready[i]  = w_aou_tx_fifo_m_axi_awready;
         end
     end
 end
 
-assign w_writereq_message_byteswap           = {MSG_WR_REQ, I_RP_DEST_RP[w_aou_tx_fifo_m_axi_aw_rp_tmp], 1'b0, w_aou_tx_fifo_m_axi_awlock_tmp, 4'b0, w_aou_writereq_prof, w_aou_tx_fifo_m_axi_awid_tmp, w_aou_tx_fifo_m_axi_awsize_tmp,
+assign w_writereq_message_byteswap           = {MSG_WR_REQ, I_RP_DEST_RP[w_aou_tx_fifo_m_axi_aw_rp_tmp], 1'b0, w_aou_tx_fifo_m_axi_awlock_tmp, w_aou_writereq_flex, w_aou_tx_fifo_m_axi_awid_tmp, w_aou_tx_fifo_m_axi_awsize_tmp,
                                             w_aou_tx_fifo_m_axi_awprot_tmp, w_aou_tx_fifo_m_axi_awlen_tmp, w_aou_tx_fifo_m_axi_awcache_tmp, w_aou_tx_fifo_m_axi_awqos_tmp, w_aou_tx_fifo_m_axi_awaddr_tmp};
 
 
@@ -607,7 +618,7 @@ generate
 
         AOU_SYNC_FIFO_REG
         #(
-            .FIFO_WIDTH                     (RP_AXI_DATA_WD[i] + RP_AXI_STRB_WD[i] + 1 + 1),
+            .FIFO_WIDTH                     (RP_AXI_DATA_WD[i] + RP_AXI_STRB_WD[i] + 1 + 16 + 1),
             .FIFO_DEPTH                     (AXI_W_FIFO_DEPTH)        
         )
         u_axi_slave_w_rp_fifo(
@@ -615,11 +626,11 @@ generate
             .I_RESETN                       (I_RESETN),
 
             .I_SVALID                       (I_AOU_TX_S_AXI_WVALID[i]),
-            .I_SDATA                        ({I_AOU_TX_S_AXI_WDATA[i][0 +: RP_AXI_DATA_WD[i]], I_AOU_TX_S_AXI_WSTRB[i][0 +: RP_AXI_STRB_WD[i]], I_AOU_TX_S_AXI_WLAST[i], w_w_full_strb[i]}),
+            .I_SDATA                        ({I_AOU_TX_S_AXI_WDATA[i][0 +: RP_AXI_DATA_WD[i]], I_AOU_TX_S_AXI_WSTRB[i][0 +: RP_AXI_STRB_WD[i]], I_AOU_TX_S_AXI_WLAST[i], I_AOU_TX_S_AXI_WUSER[i], w_w_full_strb[i]}),
             .O_SREADY                       (O_AOU_TX_S_AXI_WREADY[i]),
 
             .I_MREADY                       (w_aou_tx_m_axi_wready[i] && w_aou_tx_w_credit_valid[i]),
-            .O_MDATA                        ({w_tx_axi_data_tmp, w_tx_axi_strb_tmp, w_aou_tx_m_axi_wlast[i], w_aou_tx_m_axi_wstrb_full[i]}),
+            .O_MDATA                        ({w_tx_axi_data_tmp, w_tx_axi_strb_tmp, w_aou_tx_m_axi_wlast[i], w_aou_tx_m_axi_wuser[i], w_aou_tx_m_axi_wstrb_full[i]}),
             .O_MVALID                       (w_aou_tx_m_axi_wvalid[i]),
 
             .O_EMPTY_CNT                    (),
@@ -657,6 +668,7 @@ AOU_AW_W_ALIGNER #(
     .I_S_AWCACHE    ( w_aou_tx_fifo_m_axi_awcache       ),
     .I_S_AWPROT     ( w_aou_tx_fifo_m_axi_awprot        ),
     .I_S_AWQOS      ( w_aou_tx_fifo_m_axi_awqos         ),
+    .I_S_AWUSER     ( w_aou_tx_fifo_m_axi_awuser        ),
     .I_S_AWVALID    ( w_aou_tx_fifo_m_axi_awvalid       ),
     .O_S_AWREADY    ( w_aou_tx_fifo_m_axi_awready       ),
 
@@ -664,6 +676,7 @@ AOU_AW_W_ALIGNER #(
     .I_S_WSTRB      ( w_aou_tx_m_axi_wstrb              ),
     .I_S_WSTRB_FULL ( w_aou_tx_m_axi_wstrb_full         ),
     .I_S_WLAST      ( w_aou_tx_m_axi_wlast              ),
+    .I_S_WUSER      ( w_aou_tx_m_axi_wuser              ),
     .I_S_WVALID     ( w_aou_tx_m_axi_wvalid & w_aou_tx_w_credit_valid),
     .O_S_WREADY     ( w_aou_tx_m_axi_wready             ),
 
@@ -678,6 +691,7 @@ AOU_AW_W_ALIGNER #(
     .O_M_AWCACHE    ( w_aou_tx_fifo_m_axi_awcache_tmp   ),
     .O_M_AWPROT     ( w_aou_tx_fifo_m_axi_awprot_tmp    ),
     .O_M_AWQOS      ( w_aou_tx_fifo_m_axi_awqos_tmp     ),
+    .O_M_AWUSER     ( w_aou_tx_fifo_m_axi_awuser_tmp    ),
     .O_M_AWVALID    ( w_aou_tx_fifo_m_axi_awvalid_tmp   ),
     .I_M_AWREADY    ( w_aou_tx_fifo_m_axi_awready_tmp   ),      
 
@@ -686,6 +700,7 @@ AOU_AW_W_ALIGNER #(
     .O_M_WSTRB      ( w_aou_tx_fifo_m_axi_wstrb         ),
     .O_M_WSTRB_FULL ( w_aou_tx_fifo_m_axi_wstrb_full    ),
     .O_M_WLAST      ( w_aou_tx_fifo_m_axi_wlast         ),
+    .O_M_WUSER      ( w_aou_tx_fifo_m_axi_wuser         ),
     .O_M_WVALID     ( w_aou_tx_fifo_m_axi_wvalid        ),
     .I_M_WREADY     ( w_aou_tx_fifo_m_axi_wready        )
 );
@@ -706,16 +721,16 @@ always_comb begin
 
     case (RP_AXI_DATA_WD[w_aou_tx_fifo_m_axi_w_rp_tmp])
         256 : begin
-            w_writedata_wo_strb_message_byteswap = {MSG_WRF_DATA, I_RP_DEST_RP[w_aou_tx_fifo_m_axi_w_rp_tmp], 2'b00, 4'b0, w_aou_writedata_prof, w_fifo_wdata_ext[255:0], 768'b0, 32'b0};
-            w_writedata_message_byteswap         = {MSG_WR_DATA,  I_RP_DEST_RP[w_aou_tx_fifo_m_axi_w_rp_tmp], 2'b00, 4'b0, w_aou_writedata_prof, w_fifo_wdata_ext[255:0], w_fifo_wstrb_ext[31:0], 768'b0, 96'b0, 24'b0};
+            w_writedata_wo_strb_message_byteswap = {MSG_WRF_DATA, I_RP_DEST_RP[w_aou_tx_fifo_m_axi_w_rp_tmp], 2'b00, w_aou_writedata_flex, w_fifo_wdata_ext[255:0], 768'b0, 32'b0};
+            w_writedata_message_byteswap         = {MSG_WR_DATA,  I_RP_DEST_RP[w_aou_tx_fifo_m_axi_w_rp_tmp], 2'b00, w_aou_writedata_flex, w_fifo_wdata_ext[255:0], w_fifo_wstrb_ext[31:0], 768'b0, 96'b0, 24'b0};
         end
         512 : begin 
-            w_writedata_wo_strb_message_byteswap = {MSG_WRF_DATA, I_RP_DEST_RP[w_aou_tx_fifo_m_axi_w_rp_tmp], 2'b01, 4'b0, w_aou_writedata_prof, w_fifo_wdata_ext[511:0], 512'b0, 32'b0};
-            w_writedata_message_byteswap         = {MSG_WR_DATA,  I_RP_DEST_RP[w_aou_tx_fifo_m_axi_w_rp_tmp], 2'b01, 4'b0, w_aou_writedata_prof, w_fifo_wdata_ext[511:0], w_fifo_wstrb_ext[63:0], 512'b0, 64'b0, 24'b0};
+            w_writedata_wo_strb_message_byteswap = {MSG_WRF_DATA, I_RP_DEST_RP[w_aou_tx_fifo_m_axi_w_rp_tmp], 2'b01, w_aou_writedata_flex, w_fifo_wdata_ext[511:0], 512'b0, 32'b0};
+            w_writedata_message_byteswap         = {MSG_WR_DATA,  I_RP_DEST_RP[w_aou_tx_fifo_m_axi_w_rp_tmp], 2'b01, w_aou_writedata_flex, w_fifo_wdata_ext[511:0], w_fifo_wstrb_ext[63:0], 512'b0, 64'b0, 24'b0};
         end
         1024 : begin 
-            w_writedata_wo_strb_message_byteswap = {MSG_WRF_DATA, I_RP_DEST_RP[w_aou_tx_fifo_m_axi_w_rp_tmp], 2'b10, 4'b0, w_aou_writedata_prof, w_fifo_wdata_ext, 32'b0};
-            w_writedata_message_byteswap         = {MSG_WR_DATA,  I_RP_DEST_RP[w_aou_tx_fifo_m_axi_w_rp_tmp], 2'b10, 4'b0, w_aou_writedata_prof, w_fifo_wdata_ext, w_fifo_wstrb_ext, 24'b0};
+            w_writedata_wo_strb_message_byteswap = {MSG_WRF_DATA, I_RP_DEST_RP[w_aou_tx_fifo_m_axi_w_rp_tmp], 2'b10, w_aou_writedata_flex, w_fifo_wdata_ext, 32'b0};
+            w_writedata_message_byteswap         = {MSG_WR_DATA,  I_RP_DEST_RP[w_aou_tx_fifo_m_axi_w_rp_tmp], 2'b10, w_aou_writedata_flex, w_fifo_wdata_ext, w_fifo_wstrb_ext, 24'b0};
         end
         default : begin
             w_writedata_wo_strb_message_byteswap = '0;
@@ -761,7 +776,7 @@ generate
     for (i =0; i < RP_CNT ; i++) begin :g_ar_rp_fifo
         AOU_TX_QOS_BUFFER
         #(
-            .FIFO_WIDTH                     (AXI_ID_WD + AXI_ADDR_WD + AXI_LEN_WD + 3 + 1 + 4 + 3 + 4),
+            .FIFO_WIDTH                     (AXI_ID_WD + AXI_ADDR_WD + AXI_LEN_WD + 3 + 1 + 4 + 3 + 4 + 16),
             .FIFO_DEPTH                     (AXI_AR_FIFO_DEPTH)        
         )
         u_axi_slave_ar_rp_fifo(
@@ -771,12 +786,12 @@ generate
             .I_SVALID                       ( I_AOU_TX_S_AXI_ARVALID[i] ),
             .I_TRANS_QOS                    ( w_aou_ar_fifo_qos[i]      ),
             .I_SDATA                        ( {I_AOU_TX_S_AXI_ARID[i], I_AOU_TX_S_AXI_ARADDR[i], I_AOU_TX_S_AXI_ARLEN[i], I_AOU_TX_S_AXI_ARSIZE[i], 
-                                              I_AOU_TX_S_AXI_ARLOCK[i], I_AOU_TX_S_AXI_ARCACHE[i], I_AOU_TX_S_AXI_ARPROT[i], I_AOU_TX_S_AXI_ARQOS[i]}   ),
+                                              I_AOU_TX_S_AXI_ARLOCK[i], I_AOU_TX_S_AXI_ARCACHE[i], I_AOU_TX_S_AXI_ARPROT[i], I_AOU_TX_S_AXI_ARQOS[i], I_AOU_TX_S_AXI_ARUSER[i]}   ),
             .O_SREADY                       ( O_AOU_TX_S_AXI_ARREADY[i] ),
 
             .I_MREADY                       ( w_aou_tx_m_axi_arready[i] && w_aou_tx_ar_credit_valid[i]  ),
             .O_MDATA                        ( {w_aou_tx_m_axi_arid[i], w_aou_tx_m_axi_araddr[i], w_aou_tx_m_axi_arlen[i], w_aou_tx_m_axi_arsize[i], 
-                                              w_aou_tx_m_axi_arlock[i], w_aou_tx_m_axi_arcache[i], w_aou_tx_m_axi_arprot[i], w_aou_tx_m_axi_arqos[i]}   ),
+                                              w_aou_tx_m_axi_arlock[i], w_aou_tx_m_axi_arcache[i], w_aou_tx_m_axi_arprot[i], w_aou_tx_m_axi_arqos[i], w_aou_tx_m_axi_aruser[i]}   ),
             .O_TRANS_QOS                    ( w_aou_ar_rp_qos[i]        ),
             .O_MVALID                       ( w_aou_tx_m_axi_arvalid[i] ),
             
@@ -812,6 +827,7 @@ always_comb begin
     w_aou_tx_fifo_m_axi_arcache = 'b0;
     w_aou_tx_fifo_m_axi_arprot  = 'b0;
     w_aou_tx_fifo_m_axi_arqos   = 'b0;
+    w_aou_tx_fifo_m_axi_aruser  = 'b0;
     w_aou_tx_fifo_m_axi_arvalid = 'b0;
     w_aou_tx_m_axi_arready  = 'b0;
 
@@ -826,6 +842,7 @@ always_comb begin
             w_aou_tx_fifo_m_axi_arcache = w_aou_tx_m_axi_arcache[i];
             w_aou_tx_fifo_m_axi_arprot  = w_aou_tx_m_axi_arprot[i];
             w_aou_tx_fifo_m_axi_arqos   = w_aou_tx_m_axi_arqos[i];
+            w_aou_tx_fifo_m_axi_aruser  = w_aou_tx_m_axi_aruser[i];
             w_aou_tx_fifo_m_axi_arvalid = w_aou_tx_ar_req[i];
             w_aou_tx_m_axi_arready[i]  = w_aou_tx_fifo_m_axi_arready;
         end
@@ -833,7 +850,7 @@ always_comb begin
 end
 
 
-assign w_readreq_message_byteswap  = {MSG_RD_REQ, w_aou_tx_fifo_m_axi_ar_rp, 1'b0, w_aou_tx_fifo_m_axi_arlock, 4'b0, w_aou_readreq_prof, w_aou_tx_fifo_m_axi_arid, w_aou_tx_fifo_m_axi_arsize, w_aou_tx_fifo_m_axi_arprot,
+assign w_readreq_message_byteswap  = {MSG_RD_REQ, w_aou_tx_fifo_m_axi_ar_rp, 1'b0, w_aou_tx_fifo_m_axi_arlock, w_aou_readreq_flex, w_aou_tx_fifo_m_axi_arid, w_aou_tx_fifo_m_axi_arsize, w_aou_tx_fifo_m_axi_arprot,
                             w_aou_tx_fifo_m_axi_arlen, w_aou_tx_fifo_m_axi_arcache, w_aou_tx_fifo_m_axi_arqos, w_aou_tx_fifo_m_axi_araddr};
 
 
@@ -1184,9 +1201,12 @@ always_comb begin
 end
 
 
-assign  w_aou_writereq_prof  = 12'd0;
-assign  w_aou_readreq_prof   = 12'd0;
-assign  w_aou_writedata_prof = 12'd0;
+// FLEX = USER[15:0] of the AW, AR or W beat the message carries, passed unmodified
+// (AoU v0.8 §5.2, §11.1 Basic Profile). No merging happens on this side of the link:
+// one AXI transfer becomes one message, so each takes the USER of its own transfer.
+assign  w_aou_writereq_flex  = w_aou_tx_fifo_m_axi_awuser_tmp;
+assign  w_aou_readreq_flex   = w_aou_tx_fifo_m_axi_aruser;
+assign  w_aou_writedata_flex = w_aou_tx_fifo_m_axi_wuser;
 assign  w_aou_readdata_prof  = 12'd0;
 assign  w_aou_writeresp_prof = 12'd0;
 endmodule
