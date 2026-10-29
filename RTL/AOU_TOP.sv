@@ -71,32 +71,30 @@ import packet_def_pkg::*;
     // single-PHY (FDI_IF_WD0 == 1024) and two-PHY (FDI_IF_WD1 == 1024) cases.
     parameter   RP0_RX_AW_FIFO_DEPTH        = 44,
     parameter   RP0_RX_AR_FIFO_DEPTH        = 44,
-    parameter   RP0_RX_W_FIFO_DEPTH         = ((FDI_IF_WD0 == 1024) || (FDI_IF_WD1 == 1024)) ? 140 : 88,
-    parameter   RP0_RX_R_FIFO_DEPTH         = ((FDI_IF_WD0 == 1024) || (FDI_IF_WD1 == 1024)) ? 140 : 88,
+    parameter   RP0_RX_W_FIFO_DEPTH         = (FDI_IF_WD0 == 2048) ? 960 : 600,   // granules
+    parameter   RP0_RX_R_FIFO_DEPTH         = (FDI_IF_WD0 == 2048) ? 960 : 600,   // granules
     parameter   RP0_RX_B_FIFO_DEPTH         = 44,
 
     parameter   RP1_RX_AW_FIFO_DEPTH        = 44,
     parameter   RP1_RX_AR_FIFO_DEPTH        = 44,
-    parameter   RP1_RX_W_FIFO_DEPTH         = ((FDI_IF_WD0 == 1024) || (FDI_IF_WD1 == 1024)) ? 140 : 88,
-    parameter   RP1_RX_R_FIFO_DEPTH         = ((FDI_IF_WD0 == 1024) || (FDI_IF_WD1 == 1024)) ? 140 : 88,
+    parameter   RP1_RX_W_FIFO_DEPTH         = (FDI_IF_WD0 == 2048) ? 960 : 600,   // granules
+    parameter   RP1_RX_R_FIFO_DEPTH         = (FDI_IF_WD0 == 2048) ? 960 : 600,   // granules
     parameter   RP1_RX_B_FIFO_DEPTH         = 44,
 
     parameter   RP2_RX_AW_FIFO_DEPTH        = 44,
     parameter   RP2_RX_AR_FIFO_DEPTH        = 44,
-    parameter   RP2_RX_W_FIFO_DEPTH         = ((FDI_IF_WD0 == 1024) || (FDI_IF_WD1 == 1024)) ? 140 : 88,
-    parameter   RP2_RX_R_FIFO_DEPTH         = ((FDI_IF_WD0 == 1024) || (FDI_IF_WD1 == 1024)) ? 140 : 88,
+    parameter   RP2_RX_W_FIFO_DEPTH         = (FDI_IF_WD0 == 2048) ? 960 : 600,   // granules
+    parameter   RP2_RX_R_FIFO_DEPTH         = (FDI_IF_WD0 == 2048) ? 960 : 600,   // granules
     parameter   RP2_RX_B_FIFO_DEPTH         = 44,
 
     parameter   RP3_RX_AW_FIFO_DEPTH        = 44,
     parameter   RP3_RX_AR_FIFO_DEPTH        = 44,
-    parameter   RP3_RX_W_FIFO_DEPTH         = ((FDI_IF_WD0 == 1024) || (FDI_IF_WD1 == 1024)) ? 140 : 88,
-    parameter   RP3_RX_R_FIFO_DEPTH         = ((FDI_IF_WD0 == 1024) || (FDI_IF_WD1 == 1024)) ? 140 : 88,
+    parameter   RP3_RX_W_FIFO_DEPTH         = (FDI_IF_WD0 == 2048) ? 960 : 600,   // granules
+    parameter   RP3_RX_R_FIFO_DEPTH         = (FDI_IF_WD0 == 2048) ? 960 : 600,   // granules
     parameter   RP3_RX_B_FIFO_DEPTH         = 44,
 
     parameter   RX_AW_FIFO_RS_EN            = 1,
     parameter   RX_AR_FIFO_RS_EN            = 1,
-    parameter   RX_W_FIFO_RS_EN             = 1,
-    parameter   RX_R_FIFO_RS_EN             = 1,
     parameter   RX_B_FIFO_RS_EN             = 1,
 
     parameter   RP0_AXI_DATA_WD             = 512,
@@ -219,6 +217,7 @@ import packet_def_pkg::*;
     output logic [RP_COUNT-1:0][RP_AXI_DATA_WD_MAX-1:0] O_AOU_RX_AXI_S_RDATA,
     output logic [RP_COUNT-1:0][1:0]                    O_AOU_RX_AXI_S_RRESP,
     output logic [RP_COUNT-1:0]                         O_AOU_RX_AXI_S_RLAST,
+    output logic [RP_COUNT-1:0][15:0]                   O_AOU_RX_AXI_S_RUSER,
     output logic [RP_COUNT-1:0]                         O_AOU_RX_AXI_S_RVALID,
     input  logic [RP_COUNT-1:0]                         I_AOU_RX_AXI_S_RREADY,
 
@@ -427,8 +426,6 @@ import packet_def_pkg::*;
 
         .RX_AW_FIFO_RS_EN          ( RX_AW_FIFO_RS_EN             ),
         .RX_AR_FIFO_RS_EN          ( RX_AR_FIFO_RS_EN             ),
-        .RX_W_FIFO_RS_EN           ( RX_W_FIFO_RS_EN              ),
-        .RX_R_FIFO_RS_EN           ( RX_R_FIFO_RS_EN              ),
         .RX_B_FIFO_RS_EN           ( RX_B_FIFO_RS_EN              ),
 
         .RP0_AXI_DATA_WD           ( RP0_AXI_DATA_WD              ),
@@ -527,6 +524,7 @@ import packet_def_pkg::*;
         .O_AOU_RX_AXI_S_RDATA       ( O_AOU_RX_AXI_S_RDATA          ),
         .O_AOU_RX_AXI_S_RRESP       ( O_AOU_RX_AXI_S_RRESP          ),
         .O_AOU_RX_AXI_S_RLAST       ( O_AOU_RX_AXI_S_RLAST          ),
+        .O_AOU_RX_AXI_S_RUSER       ( O_AOU_RX_AXI_S_RUSER          ),
         .O_AOU_RX_AXI_S_RVALID      ( O_AOU_RX_AXI_S_RVALID         ),
         .I_AOU_RX_AXI_S_RREADY      ( I_AOU_RX_AXI_S_RREADY         ),
 

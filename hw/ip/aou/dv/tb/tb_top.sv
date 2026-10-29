@@ -7,7 +7,8 @@
 // configuration comes from defines (aou_sim_cfg.toml targets; Makefile CONFIG): AOU_RP_COUNT, AOU_RP<n>_DATA_W (per RP; default
 // AOU_RP_DATA_W), AOU_FDI_CONFIG, AOU_TX_NXT_PACKING (TX_NXT_PACKING_EN, default 0), TWO_PHY for the
 // two-PHY FDI configurations, and
-// AOU_RX_FIFO_ALT for non-default RX FIFO depths with the register slices off
+// AOU_RX_FIFO_ALT for non-default RX FIFO depths (granules for W and R) with the
+// request/response register slices off
 // (aou_t1_env_pkg::AOU_T1_RX_DEPTH). Every interface is registered in
 // uvm_config_db under scope "*" (docs/ARCHITECTURE.md) by the SV-UVM harness
 // block at the end (`ifdef UVM), which also compiles the test classes
@@ -206,7 +207,7 @@ module tb_top;
   // AXI USER, 16 bits (AoU v0.8 Table 31): the DUT takes AWUSER/ARUSER/WUSER
   // on the S port and BUSER/RUSER on the M port and sends them as FLEX; the
   // FLEX of the messages it receives comes out as M-port AWUSER/ARUSER/WUSER
-  // and S-port BUSER/RUSER. s_ruser stays 0 until the R granule store lands.
+  // and S-port BUSER/RUSER.
   logic [RP_COUNT-1:0][15:0]          s_awuser, s_aruser, s_wuser, s_buser, s_ruser;
   logic [RP_COUNT-1:0][15:0]          m_awuser, m_aruser, m_wuser, m_buser, m_ruser;
 
@@ -260,7 +261,6 @@ module tb_top;
     assign s_aruser[r]  = s_axi[r].aruser;
     assign s_arvalid[r] = s_axi[r].arvalid;
     assign s_axi[r].arready = s_arready[r];
-    assign s_ruser[r]   = '0;
     assign s_axi[r].rid    = s_rid[r];
     assign s_axi[r].rdata  = AXI_W'(s_rdata[r][W-1:0]);
     assign s_axi[r].rresp  = s_rresp[r];
@@ -451,8 +451,6 @@ module tb_top;
       .RP3_RX_B_FIFO_DEPTH(aou_t1_env_pkg::AOU_T1_RX_DEPTH[3][4]),
       .RX_AW_FIFO_RS_EN(aou_t1_env_pkg::AOU_T1_RX_RS_EN),
       .RX_AR_FIFO_RS_EN(aou_t1_env_pkg::AOU_T1_RX_RS_EN),
-      .RX_W_FIFO_RS_EN(aou_t1_env_pkg::AOU_T1_RX_RS_EN),
-      .RX_R_FIFO_RS_EN(aou_t1_env_pkg::AOU_T1_RX_RS_EN),
       .RX_B_FIFO_RS_EN(aou_t1_env_pkg::AOU_T1_RX_RS_EN)
 `endif
   ) u_dut (
@@ -505,6 +503,7 @@ module tb_top;
       .O_AOU_TX_AXI_S_ARREADY(s_arready),
       .O_AOU_RX_AXI_S_RID    (s_rid),     .O_AOU_RX_AXI_S_RDATA  (s_rdata),
       .O_AOU_RX_AXI_S_RRESP  (s_rresp),   .O_AOU_RX_AXI_S_RLAST  (s_rlast),
+      .O_AOU_RX_AXI_S_RUSER  (s_ruser),
       .O_AOU_RX_AXI_S_RVALID (s_rvalid),  .I_AOU_RX_AXI_S_RREADY (s_rready),
       .I_AOU_TX_AXI_S_AWID   (s_awid),    .I_AOU_TX_AXI_S_AWADDR (s_awaddr),
       .I_AOU_TX_AXI_S_AWLEN  (s_awlen),   .I_AOU_TX_AXI_S_AWSIZE (s_awsize),

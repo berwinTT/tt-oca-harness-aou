@@ -60,7 +60,7 @@ module aou_reg_top;
   wire [RP_COUNT-1:0][2:0]        m_arsize, m_awsize, m_arprot, m_awprot;
   wire [RP_COUNT-1:0][1:0]        m_arburst, m_awburst, s_rresp, s_bresp;
   wire [RP_COUNT-1:0][3:0]        m_arcache, m_awcache, m_arqos, m_awqos;
-  wire [RP_COUNT-1:0][15:0]       m_aruser, m_awuser, m_wuser, s_buser;
+  wire [RP_COUNT-1:0][15:0]       m_aruser, m_awuser, m_wuser, s_buser, s_ruser;
   wire [RP_COUNT-1:0]             m_arlock, m_awlock, m_arvalid, m_awvalid, m_wlast, m_wvalid;
   wire [RP_COUNT-1:0]             m_rready, m_bready, s_arready, s_awready, s_wready;
   wire [RP_COUNT-1:0]             s_rlast, s_rvalid, s_bvalid;
@@ -153,6 +153,7 @@ module aou_reg_top;
       .O_AOU_RX_AXI_S_RDATA  (s_rdata),
       .O_AOU_RX_AXI_S_RRESP  (s_rresp),
       .O_AOU_RX_AXI_S_RLAST  (s_rlast),
+      .O_AOU_RX_AXI_S_RUSER  (s_ruser),
       .O_AOU_RX_AXI_S_RVALID (s_rvalid),
       .I_AOU_RX_AXI_S_RREADY ('0),
       .I_AOU_TX_AXI_S_AWID   ('0),

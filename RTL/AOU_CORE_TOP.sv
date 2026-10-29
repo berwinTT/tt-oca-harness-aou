@@ -71,32 +71,30 @@ import packet_def_pkg::*;
     // single-PHY (FDI_IF_WD0 == 1024) and two-PHY (FDI_IF_WD1 == 1024) cases.
     parameter   RP0_RX_AW_FIFO_DEPTH        = 44,
     parameter   RP0_RX_AR_FIFO_DEPTH        = 44,
-    parameter   RP0_RX_W_FIFO_DEPTH         = ((FDI_IF_WD0 == 1024) || (FDI_IF_WD1 == 1024)) ? 140 : 88,
-    parameter   RP0_RX_R_FIFO_DEPTH         = ((FDI_IF_WD0 == 1024) || (FDI_IF_WD1 == 1024)) ? 140 : 88,
+    parameter   RP0_RX_W_FIFO_DEPTH         = (FDI_IF_WD0 == 2048) ? 960 : 600,   // granules
+    parameter   RP0_RX_R_FIFO_DEPTH         = (FDI_IF_WD0 == 2048) ? 960 : 600,   // granules
     parameter   RP0_RX_B_FIFO_DEPTH         = 44,
 
     parameter   RP1_RX_AW_FIFO_DEPTH        = 44,
     parameter   RP1_RX_AR_FIFO_DEPTH        = 44,
-    parameter   RP1_RX_W_FIFO_DEPTH         = ((FDI_IF_WD0 == 1024) || (FDI_IF_WD1 == 1024)) ? 140 : 88,
-    parameter   RP1_RX_R_FIFO_DEPTH         = ((FDI_IF_WD0 == 1024) || (FDI_IF_WD1 == 1024)) ? 140 : 88,
+    parameter   RP1_RX_W_FIFO_DEPTH         = (FDI_IF_WD0 == 2048) ? 960 : 600,   // granules
+    parameter   RP1_RX_R_FIFO_DEPTH         = (FDI_IF_WD0 == 2048) ? 960 : 600,   // granules
     parameter   RP1_RX_B_FIFO_DEPTH         = 44,
 
     parameter   RP2_RX_AW_FIFO_DEPTH        = 44,
     parameter   RP2_RX_AR_FIFO_DEPTH        = 44,
-    parameter   RP2_RX_W_FIFO_DEPTH         = ((FDI_IF_WD0 == 1024) || (FDI_IF_WD1 == 1024)) ? 140 : 88,
-    parameter   RP2_RX_R_FIFO_DEPTH         = ((FDI_IF_WD0 == 1024) || (FDI_IF_WD1 == 1024)) ? 140 : 88,
+    parameter   RP2_RX_W_FIFO_DEPTH         = (FDI_IF_WD0 == 2048) ? 960 : 600,   // granules
+    parameter   RP2_RX_R_FIFO_DEPTH         = (FDI_IF_WD0 == 2048) ? 960 : 600,   // granules
     parameter   RP2_RX_B_FIFO_DEPTH         = 44,
 
     parameter   RP3_RX_AW_FIFO_DEPTH        = 44,
     parameter   RP3_RX_AR_FIFO_DEPTH        = 44,
-    parameter   RP3_RX_W_FIFO_DEPTH         = ((FDI_IF_WD0 == 1024) || (FDI_IF_WD1 == 1024)) ? 140 : 88,
-    parameter   RP3_RX_R_FIFO_DEPTH         = ((FDI_IF_WD0 == 1024) || (FDI_IF_WD1 == 1024)) ? 140 : 88,
+    parameter   RP3_RX_W_FIFO_DEPTH         = (FDI_IF_WD0 == 2048) ? 960 : 600,   // granules
+    parameter   RP3_RX_R_FIFO_DEPTH         = (FDI_IF_WD0 == 2048) ? 960 : 600,   // granules
     parameter   RP3_RX_B_FIFO_DEPTH         = 44,
 
     parameter   RX_AW_FIFO_RS_EN            = 1,
     parameter   RX_AR_FIFO_RS_EN            = 1,
-    parameter   RX_W_FIFO_RS_EN             = 1,
-    parameter   RX_R_FIFO_RS_EN             = 1,
     parameter   RX_B_FIFO_RS_EN             = 1,
 
     parameter   RP0_AXI_DATA_WD             = 512,
@@ -258,6 +256,7 @@ import packet_def_pkg::*;
     output  [RP_COUNT-1:0][RP_AXI_DATA_WD_MAX-1:0]  O_AOU_RX_AXI_S_RDATA,
     output  [RP_COUNT-1:0][1:0]                     O_AOU_RX_AXI_S_RRESP,
     output  [RP_COUNT-1:0]                          O_AOU_RX_AXI_S_RLAST,
+    output  [RP_COUNT-1:0][15:0]                    O_AOU_RX_AXI_S_RUSER,
     output  [RP_COUNT-1:0]                          O_AOU_RX_AXI_S_RVALID,
     input   [RP_COUNT-1:0]                          I_AOU_RX_AXI_S_RREADY,
 
@@ -342,29 +341,22 @@ import packet_def_pkg::*;
     input                                           TIEL_DFT_MODESCAN
 );
 //----------------------------------------------------------------------------
-    // Active FDI width for RX decode and PHY classification.
-    // In both TWO_PHY and single-PHY configurations the relevant width is
-    // max(FDI_IF_WD0, FDI_IF_WD1). This matches the original ifdef branches:
-    //   TWO_PHY+FDI_32B   -> max(256,512)  = 512
-    //   TWO_PHY+FDI_128B  -> max(512,1024) = 1024
-    //   SP+FDI_32B        -> max(256,512)  = 512
-    //   SP+FDI_64B        -> max(512,512)  = 512
-    //   SP+FDI_128B       -> max(1024,512) = 1024
-    localparam  FDI_ACTIVE_WD               = (FDI_IF_WD0 > FDI_IF_WD1) ? FDI_IF_WD0 : FDI_IF_WD1;
-    localparam  PHY_TYPE                    = (FDI_ACTIVE_WD == 32*8)  ? 0:
-                                              (FDI_ACTIVE_WD == 64*8)  ? 1:
-                                              (FDI_ACTIVE_WD == 128*8) ? 2: 0;
-    localparam  PHASE_CNT                   = 256*8/FDI_ACTIVE_WD;
-
-    localparam  DEC_MULTI                   = (PHY_TYPE == 0) ? 1 : 4/PHASE_CNT;
+    // FDI beat width the RX decode sees: with TWO_PHY the wider PHY (the
+    // narrower one is paired up to it), otherwise PHY0 as is. The decode
+    // handles one half flit per cycle, or a whole flit on a 2048-bit FDI.
+`ifdef TWO_PHY
+    localparam  FDI_DEC_WD                  = (FDI_IF_WD0 > FDI_IF_WD1) ? FDI_IF_WD0 : FDI_IF_WD1;
+`else
+    localparam  FDI_DEC_WD                  = FDI_IF_WD0;
+`endif
+    localparam  G_CNT                       = (FDI_DEC_WD == 2048) ? 48 : 24;
+    localparam  REQ_LANES                   = G_CNT/3 + 1;
+    localparam  B_LANES                     = G_CNT;
 
     localparam  AW_AR_FIFO_WIDTH            = AXI_ID_WD + AXI_ADDR_WD + AXI_LEN_WD + 3 + 1 + 4 + 3 + 4 + 16; // + FLEX
     localparam  B_FIFO_WIDTH                = AXI_ID_WD + 2 + 16;                                            // + FLEX
     localparam  R_FIFO_EXT_DATA_WIDTH       = AXI_ID_WD + 2 + 1;
 
-    localparam  MAX_REQ_COUNT               = 4;
-    localparam  MAX_WR_RESP_COUNT           = 12;
-    localparam  DATA_DEC_CNT                = 4;
     //It should be configured to a value greater than the maximum burst length of the local bus.
     localparam  RP0_AGG_WCH_FIFO_DEPTH      = 16;
     localparam  RP1_AGG_WCH_FIFO_DEPTH      = 16; 
@@ -427,7 +419,6 @@ import packet_def_pkg::*;
 //----------------------------------------------------------------------------
     // WriteData FLEX: the legacy W data FIFO stores the data lane only; the
     // granule store (AOU_RX_GRANULE_STORE) supplies the per-beat FLEX from here.
-    assign w_aou_rx_wlast_gen_wuser = '0;
 //----------------------------------------------------------------------------
     logic                                   w_aou_rp0_aw_fifo_parity_error      ;
     logic                                   w_aou_rp0_w_fifo_parity_error       ;
@@ -435,24 +426,21 @@ import packet_def_pkg::*;
     logic                                   w_aou_rp0_r_fifo_parity_error       ;
     logic                                   w_aou_rp0_b_fifo_parity_error       ;
 //----------------------------------------------------------------------------
-    logic [RP_COUNT-1:0][DEC_MULTI-1:0][MAX_REQ_COUNT -1:0][AW_AR_FIFO_WIDTH-1:0]       w_rd_req_fifo_sdata;
-    logic [RP_COUNT-1:0][DEC_MULTI-1:0][MAX_REQ_COUNT -1:0]                             w_rd_req_fifo_svalid;
+    logic [RP_COUNT-1:0][REQ_LANES-1:0][AW_AR_FIFO_WIDTH-1:0]   w_rd_req_fifo_sdata;
+    logic [RP_COUNT-1:0][REQ_LANES-1:0]                         w_rd_req_fifo_svalid;
 
-    logic [RP_COUNT-1:0][DEC_MULTI-1:0][MAX_REQ_COUNT -1:0][AW_AR_FIFO_WIDTH-1:0]       w_wr_req_fifo_sdata;
-    logic [RP_COUNT-1:0][DEC_MULTI-1:0][MAX_REQ_COUNT -1:0]                             w_wr_req_fifo_svalid;
+    logic [RP_COUNT-1:0][REQ_LANES-1:0][AW_AR_FIFO_WIDTH-1:0]   w_wr_req_fifo_sdata;
+    logic [RP_COUNT-1:0][REQ_LANES-1:0]                         w_wr_req_fifo_svalid;
 
-    logic [RP_COUNT-1:0][DEC_MULTI-1:0][DATA_DEC_CNT-1:0][AXI_PEER_DIE_MAX_DATA_WD-1:0] w_wr_data_fifo_sdata;
-    logic [RP_COUNT-1:0][DEC_MULTI-1:0][DATA_DEC_CNT-1:0][AXI_MAX_STRB_WD -1:0]         w_wr_data_fifo_sdata_strb;
-    logic [RP_COUNT-1:0][DEC_MULTI-1:0][DATA_DEC_CNT-1:0]                               w_wr_data_fifo_sdata_wdataf;
-    logic [RP_COUNT-1:0][DEC_MULTI-1:0][DATA_DEC_CNT-1:0][1:0]                          w_wr_data_fifo_sdlen;
-    logic [RP_COUNT-1:0][DEC_MULTI-1:0][DATA_DEC_CNT-1:0]                               w_wr_data_fifo_svalid;
+    logic [RP_COUNT-1:0][B_LANES-1:0][B_FIFO_WIDTH-1:0]         w_wr_resp_fifo_sdata;
+    logic [RP_COUNT-1:0][B_LANES-1:0]                           w_wr_resp_fifo_svalid;
 
-    logic [RP_COUNT-1:0][DEC_MULTI-1:0][MAX_WR_RESP_COUNT -1:0][B_FIFO_WIDTH-1:0]       w_wr_resp_fifo_sdata;
-    logic [RP_COUNT-1:0][DEC_MULTI-1:0][MAX_WR_RESP_COUNT -1:0]                         w_wr_resp_fifo_svalid;
-
-    logic [RP_COUNT-1:0][DEC_MULTI-1:0][DATA_DEC_CNT-1:0][AXI_PEER_DIE_MAX_DATA_WD-1:0] w_rd_data_fifo_sdata;
-    logic [RP_COUNT-1:0][DEC_MULTI-1:0][DATA_DEC_CNT-1:0][R_FIFO_EXT_DATA_WIDTH -1:0]   w_rd_data_fifo_ext_sdata;
-    logic [RP_COUNT-1:0][DEC_MULTI-1:0][DATA_DEC_CNT-1:0]                               w_rd_data_fifo_svalid;
+    logic                                                       w_granule_valid;
+    logic [G_CNT-1:0][39:0]                                     w_granule;
+    logic [RP_COUNT-1:0][G_CNT-1:0]                             w_wr_data_cover;
+    logic [RP_COUNT-1:0][G_CNT-1:0]                             w_wr_data_start;
+    logic [RP_COUNT-1:0][G_CNT-1:0]                             w_rd_data_cover;
+    logic [RP_COUNT-1:0][G_CNT-1:0]                             w_rd_data_start;
 
 //----------------------------------------------------------------------------
     logic                                   w_err_info_rid_mismatch_err;
@@ -583,9 +571,7 @@ import packet_def_pkg::*;
 
         .FDI_IF_WD0                 ( FDI_IF_WD0                ),
         .FDI_IF_WD1                 ( FDI_IF_WD1                ),
-        .RP_COUNT                   ( RP_COUNT                  ),
-        .DEC_MULTI                  ( DEC_MULTI                 ),
-        .PHY_TYPE                   ( PHY_TYPE                  )
+        .RP_COUNT                   ( RP_COUNT                  )
 
     ) u_aou_core
     (
@@ -768,17 +754,15 @@ import packet_def_pkg::*;
         .O_WR_REQ_FIFO_SDATA                ( w_wr_req_fifo_sdata               ),
         .O_WR_REQ_FIFO_SVALID               ( w_wr_req_fifo_svalid              ),
 
-        .O_WR_DATA_FIFO_SDATA               ( w_wr_data_fifo_sdata              ),
-        .O_WR_DATA_FIFO_SDATA_STRB          ( w_wr_data_fifo_sdata_strb         ),
-        .O_WR_DATA_FIFO_SDATA_WDATAF        ( w_wr_data_fifo_sdata_wdataf       ),
-        .O_WR_DATA_FIFO_SVALID              ( w_wr_data_fifo_svalid             ),
-
         .O_WR_RESP_FIFO_SDATA               ( w_wr_resp_fifo_sdata              ),
         .O_WR_RESP_FIFO_SVALID              ( w_wr_resp_fifo_svalid             ),
 
-        .O_RD_DATA_FIFO_SDATA               ( w_rd_data_fifo_sdata              ),
-        .O_RD_DATA_FIFO_EXT_SDATA           ( w_rd_data_fifo_ext_sdata          ),
-        .O_RD_DATA_FIFO_SVALID              ( w_rd_data_fifo_svalid             ),
+        .O_GRANULE_VALID                    ( w_granule_valid                   ),
+        .O_GRANULE                          ( w_granule                         ),
+        .O_WR_DATA_COVER                    ( w_wr_data_cover                   ),
+        .O_WR_DATA_START                    ( w_wr_data_start                   ),
+        .O_RD_DATA_COVER                    ( w_rd_data_cover                   ),
+        .O_RD_DATA_START                    ( w_rd_data_start                   ),
 
         .O_ERR_INFO_RID_MISMATCH_ERR        ( w_err_info_rid_mismatch_err       ),
         .O_ERR_INFO_SPLIT_BID_MISMATCH_ERR  ( w_err_info_split_bid_mismatch_err ),
@@ -827,13 +811,11 @@ import packet_def_pkg::*;
                 .R_FIFO_DEPTH                       ( RP_R_FIFO_DEPTH[i]                    ),
                 .B_FIFO_DEPTH                       ( RP_B_FIFO_DEPTH[i]                    ),
 
-                .DEC_MULTI                          ( DEC_MULTI                             ),
+                .G_CNT                              ( G_CNT                                 ),
 
                 .AW_FWD_RS_EN                       ( RX_AW_FIFO_RS_EN                      ),
-                .W_FWD_RS_EN                        ( RX_W_FIFO_RS_EN                       ),
                 .B_FWD_RS_EN                        ( RX_B_FIFO_RS_EN                       ),
-                .AR_FWD_RS_EN                       ( RX_AR_FIFO_RS_EN                      ),
-                .R_FWD_RS_EN                        ( RX_R_FIFO_RS_EN                       )
+                .AR_FWD_RS_EN                       ( RX_AR_FIFO_RS_EN                      )
 
             ) u_aou_fifo_rp
             (
@@ -847,16 +829,19 @@ import packet_def_pkg::*;
                 .O_WR_REQ_FIFO_MDATA                ( {w_aou_rx_wlast_gen_awid[i], w_aou_rx_wlast_gen_awaddr[i], w_aou_rx_wlast_gen_awlen[i], w_aou_rx_wlast_gen_awsize[i], w_aou_rx_wlast_gen_awlock[i], w_aou_rx_wlast_gen_awcache[i], w_aou_rx_wlast_gen_awprot[i], w_aou_rx_wlast_gen_awqos[i], w_aou_rx_wlast_gen_awuser[i]} ),
                 .O_WR_REQ_FIFO_MVALID               ( w_aou_rx_wlast_gen_awvalid[i]         ),
 
-                .I_WR_DATA_FIFO_SVALID              ( w_wr_data_fifo_svalid[i]              ),
-                .I_WR_DATA_FIFO_SDATA               ( w_wr_data_fifo_sdata[i]               ),
-                .I_WR_DATA_FIFO_STRB                ( w_wr_data_fifo_sdata_strb[i]          ),
-                .I_WR_DATA_FIFO_WDATAF              ( w_wr_data_fifo_sdata_wdataf[i]        ),
+                .I_GRANULE_VALID                    ( w_granule_valid                       ),
+                .I_GRANULE                          ( w_granule                             ),
+                .I_WR_DATA_COVER                    ( w_wr_data_cover[i]                    ),
+                .I_WR_DATA_START                    ( w_wr_data_start[i]                    ),
+                .I_RD_DATA_COVER                    ( w_rd_data_cover[i]                    ),
+                .I_RD_DATA_START                    ( w_rd_data_start[i]                    ),
 
                 .I_WR_DATA_FIFO_MREADY              ( w_aou_rx_wlast_gen_wready[i]          ),
                 .O_WR_DATA_FIFO_MDATA               ( w_aou_rx_wlast_gen_wdata[i]           ),
                 .O_WR_DATA_FIFO_MSTRB               ( w_aou_rx_wlast_gen_wstrb[i]           ),
                 .O_WR_DATA_FIFO_MDLEN               ( w_aou_rx_wlast_gen_wdlength[i]        ),
                 .O_WR_DATA_FIFO_WDATAF              ( w_aou_rx_wlast_gen_wdataf[i]          ),
+                .O_WR_DATA_FIFO_MFLEX               ( w_aou_rx_wlast_gen_wuser[i]           ),
                 .O_WR_DATA_FIFO_MVALID              ( w_aou_rx_wlast_gen_wvalid[i]          ),
 
                 .I_RD_REQ_FIFO_SVALID               ( w_rd_req_fifo_svalid[i]               ),
@@ -866,14 +851,11 @@ import packet_def_pkg::*;
                 .O_RD_REQ_FIFO_MDATA                ( {w_aou_rx_axi_mm_arid[i], w_aou_rx_axi_mm_araddr[i], w_aou_rx_axi_mm_arlen[i], w_aou_rx_axi_mm_arsize[i], w_aou_rx_axi_mm_arlock[i], w_aou_rx_axi_mm_arcache[i], w_aou_rx_axi_mm_arprot[i], w_aou_rx_axi_mm_arqos[i], w_aou_rx_axi_mm_aruser[i]} ),
                 .O_RD_REQ_FIFO_MVALID               ( w_aou_rx_axi_mm_arvalid[i]            ),
 
-                .I_RD_DATA_FIFO_SVALID              ( w_rd_data_fifo_svalid[i]              ),
-                .I_RD_DATA_FIFO_SDATA               ( w_rd_data_fifo_sdata[i]               ),
-                .I_RD_DATA_FIFO_EXT_SDATA           ( w_rd_data_fifo_ext_sdata[i]           ),
-
                 .I_RD_DATA_FIFO_MREADY              ( I_AOU_RX_AXI_S_RREADY[i]              ),
                 .O_RD_DATA_FIFO_MDATA               ( w_rd_data_fifo_mdata[i]               ),
                 .O_RD_DATA_FIFO_EXT_MDATA           ( {O_AOU_RX_AXI_S_RID[i], O_AOU_RX_AXI_S_RRESP[i], O_AOU_RX_AXI_S_RLAST[i]} ),
                 .O_RD_DATA_FIFO_MDLEN               ( w_aou_rx_axi_s_rdlength[i]            ),
+                .O_RD_DATA_FIFO_MFLEX               ( O_AOU_RX_AXI_S_RUSER[i]               ),
                 .O_RD_DATA_FIFO_MVALID              ( w_aou_rx_axi_s_rvalid[i]              ),
 
                 .I_WR_RESP_FIFO_SVALID              ( w_wr_resp_fifo_svalid[i]              ),

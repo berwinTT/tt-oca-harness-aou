@@ -109,13 +109,20 @@ import packet_def_pkg::*;
     parameter   FDI_IF_WD0                  = 512,
     parameter   FDI_IF_WD1                  = 512,
     parameter   RP_COUNT                    = 1,
-    parameter   DEC_MULTI                   = 2,
-    parameter   PHY_TYPE                    = 1,
 
-    // Active FDI width for RX decode: max of the two PHY widths. In both
-    // TWO_PHY and single-PHY configurations this matches the width the
-    // AOU_RX_CORE expects on its I_FDI_PL_DATA bus.
+    // FDI beat width the RX decode sees. With TWO_PHY the narrower PHY is
+    // paired up to the wider one by AOU_RX_CORE_IN_MUX; a single PHY feeds
+    // AOU_RX_CORE directly, whatever its width.
+`ifdef TWO_PHY
     localparam  FDI_DEC_WD                  = (FDI_IF_WD0 > FDI_IF_WD1) ? FDI_IF_WD0 : FDI_IF_WD1,
+`else
+    localparam  FDI_DEC_WD                  = FDI_IF_WD0,
+`endif
+    // Granules decoded per cycle: one half flit, or a whole flit on a 2048-bit FDI.
+    localparam  G_CNT                       = (FDI_DEC_WD == 2048) ? 48 : 24,
+    localparam  REQ_LANES                   = G_CNT/3 + 1,
+    localparam  B_LANES                     = G_CNT,
+    localparam  MISC_LANES                  = 3,
 
     localparam  RP0_AXI_STRB_WD             = RP0_AXI_DATA_WD / 8,
     localparam  RP1_AXI_STRB_WD             = RP1_AXI_DATA_WD / 8,
@@ -130,11 +137,6 @@ import packet_def_pkg::*;
     localparam  AXI_LEN_WD                  = 8,
 
     localparam  AXI_MAX_STRB_WD             = AXI_PEER_DIE_MAX_DATA_WD / 8,
-
-    localparam  MAX_MISC_COUNT              = 2,
-    localparam  MAX_REQ_COUNT               = 4,
-    localparam  MAX_WR_RESP_COUNT           = 12,
-    localparam  DATA_DEC_CNT                = 4,
 
     parameter   AW_AR_FIFO_WIDTH            = AXI_ID_WD + AXI_ADDR_WD + AXI_LEN_WD + 3 + 1 + 4 + 3 + 4 + 16, // + FLEX
     parameter   B_FIFO_WIDTH                = AXI_ID_WD + 2 + 16,                                            // + FLEX
@@ -346,23 +348,22 @@ import packet_def_pkg::*;
 `endif
 
     //From RX_CORE
-    output  [RP_COUNT-1:0][DEC_MULTI-1:0][MAX_REQ_COUNT -1:0][AW_AR_FIFO_WIDTH-1:0]         O_RD_REQ_FIFO_SDATA,
-    output  [RP_COUNT-1:0][DEC_MULTI-1:0][MAX_REQ_COUNT -1:0]                               O_RD_REQ_FIFO_SVALID,
+    output  [RP_COUNT-1:0][REQ_LANES-1:0][AW_AR_FIFO_WIDTH-1:0]     O_RD_REQ_FIFO_SDATA,
+    output  [RP_COUNT-1:0][REQ_LANES-1:0]                           O_RD_REQ_FIFO_SVALID,
 
-    output  [RP_COUNT-1:0][DEC_MULTI-1:0][MAX_REQ_COUNT -1:0][AW_AR_FIFO_WIDTH-1:0]         O_WR_REQ_FIFO_SDATA,
-    output  [RP_COUNT-1:0][DEC_MULTI-1:0][MAX_REQ_COUNT -1:0]                               O_WR_REQ_FIFO_SVALID,
+    output  [RP_COUNT-1:0][REQ_LANES-1:0][AW_AR_FIFO_WIDTH-1:0]     O_WR_REQ_FIFO_SDATA,
+    output  [RP_COUNT-1:0][REQ_LANES-1:0]                           O_WR_REQ_FIFO_SVALID,
 
-    output  [RP_COUNT-1:0][DEC_MULTI-1:0][DATA_DEC_CNT-1:0][AXI_PEER_DIE_MAX_DATA_WD-1:0]   O_WR_DATA_FIFO_SDATA,
-    output  [RP_COUNT-1:0][DEC_MULTI-1:0][DATA_DEC_CNT-1:0]                                 O_WR_DATA_FIFO_SDATA_WDATAF,
-    output  [RP_COUNT-1:0][DEC_MULTI-1:0][DATA_DEC_CNT-1:0][AXI_MAX_STRB_WD -1:0]           O_WR_DATA_FIFO_SDATA_STRB,
-    output  [RP_COUNT-1:0][DEC_MULTI-1:0][DATA_DEC_CNT-1:0]                                 O_WR_DATA_FIFO_SVALID,
+    output  [RP_COUNT-1:0][B_LANES-1:0][B_FIFO_WIDTH-1:0]           O_WR_RESP_FIFO_SDATA,
+    output  [RP_COUNT-1:0][B_LANES-1:0]                             O_WR_RESP_FIFO_SVALID,
 
-    output  [RP_COUNT-1:0][DEC_MULTI-1:0][MAX_WR_RESP_COUNT -1:0][B_FIFO_WIDTH-1:0]         O_WR_RESP_FIFO_SDATA,
-    output  [RP_COUNT-1:0][DEC_MULTI-1:0][MAX_WR_RESP_COUNT -1:0]                           O_WR_RESP_FIFO_SVALID,
-
-    output  [RP_COUNT-1:0][DEC_MULTI-1:0][DATA_DEC_CNT-1:0][AXI_PEER_DIE_MAX_DATA_WD-1:0]   O_RD_DATA_FIFO_SDATA,
-    output  [RP_COUNT-1:0][DEC_MULTI-1:0][DATA_DEC_CNT-1:0][R_FIFO_EXT_DATA_WIDTH -1:0]     O_RD_DATA_FIFO_EXT_SDATA,
-    output  [RP_COUNT-1:0][DEC_MULTI-1:0][DATA_DEC_CNT-1:0]                                 O_RD_DATA_FIFO_SVALID,
+    // tagged granule stream to the W and R granule stores
+    output                                                          O_GRANULE_VALID,
+    output  [G_CNT-1:0][39:0]                                       O_GRANULE,
+    output  [RP_COUNT-1:0][G_CNT-1:0]                               O_WR_DATA_COVER,
+    output  [RP_COUNT-1:0][G_CNT-1:0]                               O_WR_DATA_START,
+    output  [RP_COUNT-1:0][G_CNT-1:0]                               O_RD_DATA_COVER,
+    output  [RP_COUNT-1:0][G_CNT-1:0]                               O_RD_DATA_START,
 
     //Interface for Error Handler
     output                                                  O_ERR_INFO_RID_MISMATCH_ERR,
@@ -392,34 +393,6 @@ import packet_def_pkg::*;
 );
 
 //----------------------------------------------------------------------------
-    localparam  RP0_RDATA_G_SIZE                 =  (RP0_AXI_DATA_WD == 256) ? R256b_G  :
-                                                    (RP0_AXI_DATA_WD == 512) ? R512b_G  :
-                                                    (RP0_AXI_DATA_WD == 1024)? R1024b_G : 0;
-    localparam  RP0_RDATA_FIFO_USAGE_PER_MSG     =  (RP0_AXI_DATA_WD == 256) ? 1  :
-                                                    (RP0_AXI_DATA_WD == 512) ? 2  :
-                                                    (RP0_AXI_DATA_WD == 1024)? 4 : 0;
-
-    localparam  RP1_RDATA_G_SIZE                 =  (RP1_AXI_DATA_WD == 256) ? R256b_G  :
-                                                    (RP1_AXI_DATA_WD == 512) ? R512b_G  :
-                                                    (RP1_AXI_DATA_WD == 1024)? R1024b_G : 0;
-    localparam  RP1_RDATA_FIFO_USAGE_PER_MSG     =  (RP1_AXI_DATA_WD == 256) ? 1  :
-                                                    (RP1_AXI_DATA_WD == 512) ? 2  :
-                                                    (RP1_AXI_DATA_WD == 1024)? 4 : 0;
-
-    localparam  RP2_RDATA_G_SIZE                 =  (RP2_AXI_DATA_WD == 256) ? R256b_G  :
-                                                    (RP2_AXI_DATA_WD == 512) ? R512b_G  :
-                                                    (RP2_AXI_DATA_WD == 1024)? R1024b_G : 0;
-    localparam  RP2_RDATA_FIFO_USAGE_PER_MSG     =  (RP2_AXI_DATA_WD == 256) ? 1  :
-                                                    (RP2_AXI_DATA_WD == 512) ? 2  :
-                                                    (RP2_AXI_DATA_WD == 1024)? 4 : 0;
-
-    localparam  RP3_RDATA_G_SIZE                 =  (RP3_AXI_DATA_WD == 256) ? R256b_G  :
-                                                    (RP3_AXI_DATA_WD == 512) ? R512b_G  :
-                                                    (RP3_AXI_DATA_WD == 1024)? R1024b_G : 0;
-    localparam  RP3_RDATA_FIFO_USAGE_PER_MSG     =  (RP3_AXI_DATA_WD == 256) ? 1  :
-                                                    (RP3_AXI_DATA_WD == 512) ? 2  :
-                                                    (RP3_AXI_DATA_WD == 1024)? 4 : 0;
-
     localparam  CNT_RP0_TX_AW_MAX_CREDIT    = $clog2(RP0_TX_AW_MAX_CREDIT +1);
     localparam  CNT_RP0_TX_AR_MAX_CREDIT    = $clog2(RP0_TX_AR_MAX_CREDIT +1);
     localparam  CNT_RP0_TX_W_MAX_CREDIT     = $clog2(RP0_TX_W_MAX_CREDIT  +1);
@@ -446,26 +419,26 @@ import packet_def_pkg::*;
 
     localparam  RP0_RX_AW_MAX_CREDIT        = RP0_RX_AW_FIFO_DEPTH     * AW_G;
     localparam  RP0_RX_AR_MAX_CREDIT        = RP0_RX_AR_FIFO_DEPTH     * AR_G;
-    localparam  RP0_RX_W_MAX_CREDIT         = (RP0_RX_W_FIFO_DEPTH/4)  * WF1024b_G;
-    localparam  RP0_RX_R_MAX_CREDIT         = (RP0_RX_R_FIFO_DEPTH/RP0_RDATA_FIFO_USAGE_PER_MSG)  * RP0_RDATA_G_SIZE;
+    localparam  RP0_RX_W_MAX_CREDIT         = RP0_RX_W_FIFO_DEPTH;      // one credit per granule
+    localparam  RP0_RX_R_MAX_CREDIT         = RP0_RX_R_FIFO_DEPTH;      // one credit per granule
     localparam  RP0_RX_B_MAX_CREDIT         = RP0_RX_B_FIFO_DEPTH      * B_G;
 
     localparam  RP1_RX_AW_MAX_CREDIT        = RP1_RX_AW_FIFO_DEPTH     * AW_G;
     localparam  RP1_RX_AR_MAX_CREDIT        = RP1_RX_AR_FIFO_DEPTH     * AR_G;
-    localparam  RP1_RX_W_MAX_CREDIT         = (RP1_RX_W_FIFO_DEPTH/4)  * WF1024b_G;
-    localparam  RP1_RX_R_MAX_CREDIT         = (RP1_RX_R_FIFO_DEPTH/RP1_RDATA_FIFO_USAGE_PER_MSG)  * RP1_RDATA_G_SIZE;
+    localparam  RP1_RX_W_MAX_CREDIT         = RP1_RX_W_FIFO_DEPTH;      // one credit per granule
+    localparam  RP1_RX_R_MAX_CREDIT         = RP1_RX_R_FIFO_DEPTH;      // one credit per granule
     localparam  RP1_RX_B_MAX_CREDIT         = RP1_RX_B_FIFO_DEPTH      * B_G;
 
     localparam  RP2_RX_AW_MAX_CREDIT        = RP2_RX_AW_FIFO_DEPTH     * AW_G;
     localparam  RP2_RX_AR_MAX_CREDIT        = RP2_RX_AR_FIFO_DEPTH     * AR_G;
-    localparam  RP2_RX_W_MAX_CREDIT         = (RP2_RX_W_FIFO_DEPTH/4)  * WF1024b_G;
-    localparam  RP2_RX_R_MAX_CREDIT         = (RP2_RX_R_FIFO_DEPTH/RP2_RDATA_FIFO_USAGE_PER_MSG)  * RP2_RDATA_G_SIZE;
+    localparam  RP2_RX_W_MAX_CREDIT         = RP2_RX_W_FIFO_DEPTH;      // one credit per granule
+    localparam  RP2_RX_R_MAX_CREDIT         = RP2_RX_R_FIFO_DEPTH;      // one credit per granule
     localparam  RP2_RX_B_MAX_CREDIT         = RP2_RX_B_FIFO_DEPTH      * B_G;
 
     localparam  RP3_RX_AW_MAX_CREDIT        = RP3_RX_AW_FIFO_DEPTH     * AW_G;
     localparam  RP3_RX_AR_MAX_CREDIT        = RP3_RX_AR_FIFO_DEPTH     * AR_G;
-    localparam  RP3_RX_W_MAX_CREDIT         = (RP3_RX_W_FIFO_DEPTH/4)  * WF1024b_G;
-    localparam  RP3_RX_R_MAX_CREDIT         = (RP3_RX_R_FIFO_DEPTH/RP3_RDATA_FIFO_USAGE_PER_MSG)  * RP3_RDATA_G_SIZE;
+    localparam  RP3_RX_W_MAX_CREDIT         = RP3_RX_W_FIFO_DEPTH;      // one credit per granule
+    localparam  RP3_RX_R_MAX_CREDIT         = RP3_RX_R_FIFO_DEPTH;      // one credit per granule
     localparam  RP3_RX_B_MAX_CREDIT         = RP3_RX_B_FIFO_DEPTH      * B_G;
 
     localparam  CNT_RP_TX_AW_MAX_CREDIT_MAX = max4(CNT_RP0_TX_AW_MAX_CREDIT, CNT_RP1_TX_AW_MAX_CREDIT, CNT_RP2_TX_AW_MAX_CREDIT, CNT_RP3_TX_AW_MAX_CREDIT);
@@ -523,27 +496,27 @@ import packet_def_pkg::*;
 
     logic    [3:0]                                      w_axi_slv_id_mismatch_en        ;
 //----------------------------------------------------------------------------
-    logic [DEC_MULTI-1:0][MAX_MISC_COUNT-1:0][1:0]  w_rxcore_crdtgrant_wrespcred3   ;
-    logic [DEC_MULTI-1:0][MAX_MISC_COUNT-1:0][1:0]  w_rxcore_crdtgrant_wrespcred2   ;
-    logic [DEC_MULTI-1:0][MAX_MISC_COUNT-1:0][1:0]  w_rxcore_crdtgrant_wrespcred1   ;
-    logic [DEC_MULTI-1:0][MAX_MISC_COUNT-1:0][1:0]  w_rxcore_crdtgrant_wrespcred0   ;
-    logic [DEC_MULTI-1:0][MAX_MISC_COUNT-1:0][2:0]  w_rxcore_crdtgrant_rdatacred3   ;
-    logic [DEC_MULTI-1:0][MAX_MISC_COUNT-1:0][2:0]  w_rxcore_crdtgrant_rdatacred2   ;
-    logic [DEC_MULTI-1:0][MAX_MISC_COUNT-1:0][2:0]  w_rxcore_crdtgrant_rdatacred1   ;
-    logic [DEC_MULTI-1:0][MAX_MISC_COUNT-1:0][2:0]  w_rxcore_crdtgrant_rdatacred0   ;
-    logic [DEC_MULTI-1:0][MAX_MISC_COUNT-1:0][2:0]  w_rxcore_crdtgrant_wdatacred3   ;
-    logic [DEC_MULTI-1:0][MAX_MISC_COUNT-1:0][2:0]  w_rxcore_crdtgrant_wdatacred2   ;
-    logic [DEC_MULTI-1:0][MAX_MISC_COUNT-1:0][2:0]  w_rxcore_crdtgrant_wdatacred1   ;
-    logic [DEC_MULTI-1:0][MAX_MISC_COUNT-1:0][2:0]  w_rxcore_crdtgrant_wdatacred0   ;
-    logic [DEC_MULTI-1:0][MAX_MISC_COUNT-1:0][2:0]  w_rxcore_crdtgrant_rreqcred3    ;
-    logic [DEC_MULTI-1:0][MAX_MISC_COUNT-1:0][2:0]  w_rxcore_crdtgrant_rreqcred2    ;
-    logic [DEC_MULTI-1:0][MAX_MISC_COUNT-1:0][2:0]  w_rxcore_crdtgrant_rreqcred1    ;
-    logic [DEC_MULTI-1:0][MAX_MISC_COUNT-1:0][2:0]  w_rxcore_crdtgrant_rreqcred0    ;
-    logic [DEC_MULTI-1:0][MAX_MISC_COUNT-1:0][2:0]  w_rxcore_crdtgrant_wreqcred3    ;
-    logic [DEC_MULTI-1:0][MAX_MISC_COUNT-1:0][2:0]  w_rxcore_crdtgrant_wreqcred2    ;
-    logic [DEC_MULTI-1:0][MAX_MISC_COUNT-1:0][2:0]  w_rxcore_crdtgrant_wreqcred1    ;
-    logic [DEC_MULTI-1:0][MAX_MISC_COUNT-1:0][2:0]  w_rxcore_crdtgrant_wreqcred0    ;
-    logic [DEC_MULTI-1:0][MAX_MISC_COUNT-1:0]       w_rxcore_crdtgrant_valid        ;
+    logic [MISC_LANES-1:0][1:0]  w_rxcore_crdtgrant_wrespcred3   ;
+    logic [MISC_LANES-1:0][1:0]  w_rxcore_crdtgrant_wrespcred2   ;
+    logic [MISC_LANES-1:0][1:0]  w_rxcore_crdtgrant_wrespcred1   ;
+    logic [MISC_LANES-1:0][1:0]  w_rxcore_crdtgrant_wrespcred0   ;
+    logic [MISC_LANES-1:0][2:0]  w_rxcore_crdtgrant_rdatacred3   ;
+    logic [MISC_LANES-1:0][2:0]  w_rxcore_crdtgrant_rdatacred2   ;
+    logic [MISC_LANES-1:0][2:0]  w_rxcore_crdtgrant_rdatacred1   ;
+    logic [MISC_LANES-1:0][2:0]  w_rxcore_crdtgrant_rdatacred0   ;
+    logic [MISC_LANES-1:0][2:0]  w_rxcore_crdtgrant_wdatacred3   ;
+    logic [MISC_LANES-1:0][2:0]  w_rxcore_crdtgrant_wdatacred2   ;
+    logic [MISC_LANES-1:0][2:0]  w_rxcore_crdtgrant_wdatacred1   ;
+    logic [MISC_LANES-1:0][2:0]  w_rxcore_crdtgrant_wdatacred0   ;
+    logic [MISC_LANES-1:0][2:0]  w_rxcore_crdtgrant_rreqcred3    ;
+    logic [MISC_LANES-1:0][2:0]  w_rxcore_crdtgrant_rreqcred2    ;
+    logic [MISC_LANES-1:0][2:0]  w_rxcore_crdtgrant_rreqcred1    ;
+    logic [MISC_LANES-1:0][2:0]  w_rxcore_crdtgrant_rreqcred0    ;
+    logic [MISC_LANES-1:0][2:0]  w_rxcore_crdtgrant_wreqcred3    ;
+    logic [MISC_LANES-1:0][2:0]  w_rxcore_crdtgrant_wreqcred2    ;
+    logic [MISC_LANES-1:0][2:0]  w_rxcore_crdtgrant_wreqcred1    ;
+    logic [MISC_LANES-1:0][2:0]  w_rxcore_crdtgrant_wreqcred0    ;
+    logic [MISC_LANES-1:0]       w_rxcore_crdtgrant_valid        ;
 
     logic [1:0]                             w_rxcore_msgcrdt_wrespcred      ;
     logic [2:0]                             w_rxcore_msgcrdt_rdatacred      ;
@@ -1005,7 +978,7 @@ import packet_def_pkg::*;
         .RP2_AXI_DATA_WD        ( RP2_AXI_DATA_WD       ),
         .RP3_AXI_DATA_WD        ( RP3_AXI_DATA_WD       ),
 
-        .DEC_MULTI              ( DEC_MULTI             )
+        .MISC_LANES             ( MISC_LANES            )
 
     ) u_aou_crd_ctrl
     (
@@ -1422,10 +1395,10 @@ import packet_def_pkg::*;
 
 //-------------------------------------------------------------
 
-    // RX PHY->decode width adapter: instantiate a mux when TWO_PHY is
-    // enabled (mux both PHY streams) or when the single PHY is narrower than
-    // the decode width (the 32B primary-width case). Otherwise PHY0 data
-    // matches the decode width and is wired through directly.
+    // RX PHY->decode width adapter: with TWO_PHY the two PHY streams are
+    // muxed onto one FDI_DEC_WD-wide beat stream; a single PHY feeds the RX
+    // decode directly at its own width (AOU_RX_FDI_IF collects the beats of a
+    // half flit whatever the beat width).
     logic                           w_fdi_pl_valid;
     logic   [FDI_DEC_WD-1:0]        w_fdi_pl_data;
     logic                           w_fdi_pl_flit_cancel;
@@ -1451,37 +1424,13 @@ import packet_def_pkg::*;
         .O_FDI_PL_FLIT_CANCEL       ( w_fdi_pl_flit_cancel      )
     );
 `else
-    generate if (FDI_IF_WD0 < FDI_DEC_WD) begin : g_rx_mux_sp
-        AOU_RX_CORE_IN_MUX #(
-            .FDI_IF_WD              ( FDI_DEC_WD                )
-        ) u_aou_rx_core_in_mux
-        (
-            .I_CLK                  ( I_CLK                     ),
-            .I_RESETN               ( I_RESETN                  ),
-            .I_PHY_TYPE             ( 1'b0                      ),
-            .I_FDI_PL_1_VALID       ( '0                        ),
-            .I_FDI_PL_1_DATA        ( '0                        ),
-            .I_FDI_PL_1_FLIT_CANCEL ( '0                        ),
-
-            .I_FDI_PL_0_VALID       ( I_FDI_PL_0_VALID          ),
-            .I_FDI_PL_0_DATA        ( I_FDI_PL_0_DATA           ),
-            .I_FDI_PL_0_FLIT_CANCEL ( I_FDI_PL_0_FLIT_CANCEL    ),
-
-            .O_FDI_PL_VALID         ( w_fdi_pl_valid            ),
-            .O_FDI_PL_DATA          ( w_fdi_pl_data             ),
-            .O_FDI_PL_FLIT_CANCEL   ( w_fdi_pl_flit_cancel      )
-        );
-    end else begin : g_rx_direct
-        assign w_fdi_pl_valid       = I_FDI_PL_0_VALID;
-        assign w_fdi_pl_data        = I_FDI_PL_0_DATA;
-        assign w_fdi_pl_flit_cancel = I_FDI_PL_0_FLIT_CANCEL;
-    end endgenerate
+    assign w_fdi_pl_valid       = I_FDI_PL_0_VALID;
+    assign w_fdi_pl_data        = I_FDI_PL_0_DATA;
+    assign w_fdi_pl_flit_cancel = I_FDI_PL_0_FLIT_CANCEL;
 `endif
 
     AOU_RX_CORE #(
-        .DEC_MULTI                        ( DEC_MULTI                         ),
-        .PHY_TYPE                         ( PHY_TYPE                          ),
-        .FDI_IF_WD                        ( FDI_DEC_WD                        ),
+        .FDI_IF_WD                          ( FDI_DEC_WD                        ),
 
         .AXI_PEER_DIE_MAX_DATA_WD           ( AXI_PEER_DIE_MAX_DATA_WD          ),
         .AXI_ADDR_WD                        ( AXI_ADDR_WD                       ),
@@ -1490,8 +1439,7 @@ import packet_def_pkg::*;
 
         .RP_COUNT                           ( RP_COUNT                          ),
         .AW_AR_FIFO_DATA_WIDTH              ( AW_AR_FIFO_WIDTH                  ),
-        .B_FIFO_DATA_WIDTH                  ( B_FIFO_WIDTH                      ),
-        .R_FIFO_EXT_DATA_WIDTH              ( R_FIFO_EXT_DATA_WIDTH             )
+        .B_FIFO_DATA_WIDTH                  ( B_FIFO_WIDTH                      )
 
     ) u_aou_rx_core
     (
@@ -1508,17 +1456,15 @@ import packet_def_pkg::*;
         .O_WR_REQ_FIFO_SDATA                ( O_WR_REQ_FIFO_SDATA               ),
         .O_WR_REQ_FIFO_SVALID               ( O_WR_REQ_FIFO_SVALID              ),
 
-        .O_WR_DATA_FIFO_SDATA               ( O_WR_DATA_FIFO_SDATA              ),
-        .O_WR_DATA_FIFO_SDATA_STRB          ( O_WR_DATA_FIFO_SDATA_STRB         ),
-        .O_WR_DATA_FIFO_SDATA_WDATAF        ( O_WR_DATA_FIFO_SDATA_WDATAF       ),
-        .O_WR_DATA_FIFO_SVALID              ( O_WR_DATA_FIFO_SVALID             ),
-
         .O_WR_RESP_FIFO_SDATA               ( O_WR_RESP_FIFO_SDATA              ),
         .O_WR_RESP_FIFO_SVALID              ( O_WR_RESP_FIFO_SVALID             ),
 
-        .O_RD_DATA_FIFO_SDATA               ( O_RD_DATA_FIFO_SDATA              ),
-        .O_RD_DATA_FIFO_EXT_SDATA           ( O_RD_DATA_FIFO_EXT_SDATA          ),
-        .O_RD_DATA_FIFO_SVALID              ( O_RD_DATA_FIFO_SVALID             ),
+        .O_GRANULE_VALID                    ( O_GRANULE_VALID                   ),
+        .O_GRANULE                          ( O_GRANULE                         ),
+        .O_WR_DATA_COVER                    ( O_WR_DATA_COVER                   ),
+        .O_WR_DATA_START                    ( O_WR_DATA_START                   ),
+        .O_RD_DATA_COVER                    ( O_RD_DATA_COVER                   ),
+        .O_RD_DATA_START                    ( O_RD_DATA_START                   ),
 
         .O_CRDTGRANT_WRESPCRED3             ( w_rxcore_crdtgrant_wrespcred3     ),
         .O_CRDTGRANT_WRESPCRED2             ( w_rxcore_crdtgrant_wrespcred2     ),
