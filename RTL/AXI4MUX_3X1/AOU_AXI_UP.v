@@ -58,6 +58,7 @@ module AOU_AXI_UP #(
     output       [ID_WD-1:0]                               O_S_RID,
     output       [I_DATA_WD-1:0]                           O_S_RDATA,
     output       [RESP_WD-1:0]                             O_S_RRESP,
+    output       [15:0]                                    O_S_RUSER,
     output                                                 O_S_RLAST,
     output                                                 O_S_RVALID,
     input                                                  I_S_RREADY,
@@ -82,6 +83,7 @@ module AOU_AXI_UP #(
     
     output       [ID_WD-1:0]                               O_S_BID,
     output       [RESP_WD-1:0]                             O_S_BRESP,
+    output       [15:0]                                    O_S_BUSER,
     output                                                 O_S_BVALID,
     input                                                  I_S_BREADY,
 
@@ -101,6 +103,7 @@ module AOU_AXI_UP #(
     input        [ID_WD-1:0]                               I_M_RID,
     input        [O_DATA_WD-1:0]                           I_M_RDATA,
     input        [RESP_WD-1:0]                             I_M_RRESP,
+    input        [15:0]                                    I_M_RUSER,
     input                                                  I_M_RLAST,
     input        [ADDR_WD-1:0]                             I_M_ADDR_CNT,
     input                                                  I_M_RVALID,
@@ -126,6 +129,7 @@ module AOU_AXI_UP #(
 
     input        [ID_WD-1:0]                               I_M_BID,
     input        [RESP_WD-1:0]                             I_M_BRESP,
+    input        [15:0]                                    I_M_BUSER,
     input                                                  I_M_BVALID,
     output                                                 O_M_BREADY
      
@@ -501,6 +505,7 @@ assign w_start_idx = I_M_ADDR_CNT[$clog2(O_DATA_WD/8)-1:$clog2(I_DATA_WD/8)];
 //  B CH ==================================================
 assign O_S_BID      = I_M_BID;
 assign O_S_BRESP    = I_M_BRESP;
+assign O_S_BUSER    = I_M_BUSER;
 assign O_S_BVALID   = I_M_BVALID;
 assign O_M_BREADY   = I_S_BREADY;
 
@@ -513,6 +518,9 @@ assign O_S_RDATA  = rdata_2d[w_start_idx];
 assign O_S_RID    = I_M_RID;
 assign O_S_RLAST  = I_M_RLAST;
 assign O_S_RRESP  = I_M_RRESP;
+// One wide local beat becomes several narrow beats: nothing is merged, so each
+// of them carries the beat's RUSER, as it carries its RRESP.
+assign O_S_RUSER  = I_M_RUSER;
 assign O_S_RVALID = I_M_RVALID;
 assign O_M_RREADY = I_S_RREADY;
 

@@ -64,6 +64,7 @@ module AOU_AXIMUX_1XN_SS #(
     output        [AXI_ID_WD-1:0]             O_S_RID       ,
     output        [AXI_DATA_WD-1:0]           O_S_RDATA     ,
     output        [1:0]                       O_S_RRESP     ,
+    output        [15:0]                      O_S_RUSER     ,
     output                                    O_S_RLAST     ,
     output                                    O_S_RVALID    ,
     input                                     I_S_RREADY    ,
@@ -88,6 +89,7 @@ module AOU_AXIMUX_1XN_SS #(
 
     output        [AXI_ID_WD-1:0]             O_S_BID       ,
     output        [1:0]                       O_S_BRESP     ,
+    output        [15:0]                      O_S_BUSER     ,
     output                                    O_S_BVALID    ,
     input                                     I_S_BREADY    ,
 
@@ -111,6 +113,7 @@ module AOU_AXIMUX_1XN_SS #(
 
     input         [SN-1:0][AXI_ID_WD-1:0]     I_M_BID       ,
     input         [SN-1:0][1:0]               I_M_BRESP     ,
+    input         [SN-1:0][15:0]              I_M_BUSER     ,
     input         [SN-1:0]                    I_M_BVALID    ,
     output        [SN-1:0]                    O_M_BREADY    ,
 
@@ -129,6 +132,7 @@ module AOU_AXIMUX_1XN_SS #(
     input         [SN-1:0][AXI_ID_WD-1:0]     I_M_RID       ,
     input         [SN-1:0][AXI_DATA_WD-1:0]   I_M_RDATA     ,
     input         [SN-1:0][1:0]               I_M_RRESP     ,
+    input         [SN-1:0][15:0]              I_M_RUSER     ,
     input         [SN-1:0]                    I_M_RLAST     ,
     input         [SN-1:0]                    I_M_RVALID    ,
     output        [SN-1:0]                    O_M_RREADY    ,
@@ -318,13 +322,14 @@ end
 endgenerate
 
 //--------------------------------------------------------------
-localparam AOU_AXIMUX_1XN_RCH_PAYLOAD_WD = AXI_ID_WD + AXI_DATA_WD + 2 + 1; 
+localparam AOU_AXIMUX_1XN_RCH_PAYLOAD_WD = AXI_ID_WD + AXI_DATA_WD + 2 + 16 + 1; // + RUSER
 wire [AOU_AXIMUX_1XN_RCH_PAYLOAD_WD - 1:0] w_aou_aximux_1xn_rch_rs_sdata;
 wire [AOU_AXIMUX_1XN_RCH_PAYLOAD_WD - 1:0] w_aou_aximux_1xn_rch_rs_mdata;
 
 wire        [AXI_ID_WD-1:0]             O_S_RID_RS       ;
 wire        [AXI_DATA_WD-1:0]           O_S_RDATA_RS     ;
 wire        [1:0]                       O_S_RRESP_RS     ;
+wire        [15:0]                      O_S_RUSER_RS     ;
 wire                                    O_S_RLAST_RS     ;
 wire                                    O_S_RVALID_RS    ;
 wire                                    I_S_RREADY_RS    ;
@@ -332,11 +337,13 @@ wire                                    I_S_RREADY_RS    ;
 assign w_aou_aximux_1xn_rch_rs_sdata = {O_S_RID_RS       ,
                                         O_S_RDATA_RS     ,
                                         O_S_RRESP_RS     ,
+                                        O_S_RUSER_RS     ,
                                         O_S_RLAST_RS     };
 
 assign {O_S_RID   ,    
         O_S_RDATA ,   
         O_S_RRESP ,  
+        O_S_RUSER ,
         O_S_RLAST} = w_aou_aximux_1xn_rch_rs_mdata;
 
 generate
@@ -591,11 +598,13 @@ endgenerate
 assign O_S_RID_RS      = I_M_RID[r_selected_ar_ch];
 assign O_S_RDATA_RS    = I_M_RDATA[r_selected_ar_ch];
 assign O_S_RRESP_RS    = I_M_RRESP[r_selected_ar_ch];
+assign O_S_RUSER_RS    = I_M_RUSER[r_selected_ar_ch];
 assign O_S_RLAST_RS    = I_M_RLAST[r_selected_ar_ch];
 assign O_S_RVALID_RS   = I_M_RVALID[r_selected_ar_ch];
 
 assign O_S_BID      = I_M_BID[r_selected_aw_ch];
 assign O_S_BRESP    = I_M_BRESP[r_selected_aw_ch];
+assign O_S_BUSER    = I_M_BUSER[r_selected_aw_ch];
 assign O_S_BVALID   = I_M_BVALID[r_selected_aw_ch];
 
 //--------------------------------------------------------------

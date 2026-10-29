@@ -270,11 +270,13 @@ logic       [RP_CNT-1:0]                        w_aou_tx_m_axi_wready;
 
 logic       [RP_CNT-1:0][AXI_ID_WD-1:0]         w_granted_fifo_bid;
 logic       [RP_CNT-1:0][1:0]                   w_granted_fifo_bresp;
+logic       [RP_CNT-1:0][15:0]                  w_granted_fifo_buser;
 logic       [RP_CNT-1:0]                        w_granted_fifo_bvalid;
 logic       [RP_CNT-1:0]                        w_granted_fifo_bready;
 
 logic       [RP_CNT-1:0][AXI_ID_WD-1:0]         w_aou_tx_s_axi_bid;
 logic       [RP_CNT-1:0][1:0]                   w_aou_tx_s_axi_bresp;
+logic       [RP_CNT-1:0][15:0]                  w_aou_tx_s_axi_buser;
 logic       [RP_CNT-1:0]                        w_aou_tx_s_axi_bvalid;
 logic       [RP_CNT-1:0]                        w_aou_tx_s_axi_bready;
 
@@ -294,6 +296,7 @@ logic       [RP_CNT-1:0][AXI_ID_WD-1:0]         w_aou_tx_s_axi_rid;
 logic       [RP_CNT-1:0][1:0]                   w_aou_tx_s_axi_rdlen;
 logic       [RP_CNT-1:0][1024-1:0]              w_aou_tx_s_axi_rdata;
 logic       [RP_CNT-1:0][1:0]                   w_aou_tx_s_axi_rresp;
+logic       [RP_CNT-1:0][15:0]                  w_aou_tx_s_axi_ruser;
 logic       [RP_CNT-1:0]                        w_aou_tx_s_axi_rlast;
 logic       [RP_CNT-1:0]                        w_aou_tx_s_axi_rvalid;
 logic       [RP_CNT-1:0]                        w_aou_tx_s_axi_rready;
@@ -344,6 +347,7 @@ logic                             w_aou_tx_fifo_m_axi_wready_tmp;
 logic     [1:0]                   w_aou_tx_fifo_s_axi_b_rp;
 logic     [AXI_ID_WD-1:0]         w_aou_tx_fifo_s_axi_bid;
 logic     [1:0]                   w_aou_tx_fifo_s_axi_bresp;
+logic     [15:0]                  w_aou_tx_fifo_s_axi_buser;
 logic                             w_aou_tx_fifo_s_axi_bvalid;
 logic                             w_aou_tx_fifo_s_axi_bready;
 
@@ -365,19 +369,20 @@ logic     [AXI_ID_WD-1:0]         w_aou_tx_fifo_s_axi_rid;
 logic     [1:0]                   w_aou_tx_fifo_s_axi_rdlen;
 logic     [1024-1:0]              w_aou_tx_fifo_s_axi_rdata;
 logic     [1:0]                   w_aou_tx_fifo_s_axi_rresp;
+logic     [15:0]                  w_aou_tx_fifo_s_axi_ruser;
 logic                             w_aou_tx_fifo_s_axi_rlast;
 logic                             w_aou_tx_fifo_s_axi_rvalid;
 logic                             w_aou_tx_fifo_s_axi_rready;
 
 // byte swap
 
-// FLEX field of the request and write-data messages: the AXI USER of the AW, AR or
-// W beat the message carries (FLEX = USER[15:0], AoU v0.8 §5.2, §11.1 Basic Profile).
+// FLEX field of each message: the AXI USER of the AW, AR, W beat, B or R beat the
+// message carries (FLEX = USER[15:0], AoU v0.8 §5.2, §11.1 Basic Profile, Table 31).
 logic   [15:0]                 w_aou_writereq_flex  ;
 logic   [15:0]                 w_aou_readreq_flex   ;
 logic   [15:0]                 w_aou_writedata_flex ;
-logic   [11:0]                 w_aou_readdata_prof  ;
-logic   [11:0]                 w_aou_writeresp_prof ;
+logic   [15:0]                 w_aou_readdata_flex  ;
+logic   [15:0]                 w_aou_writeresp_flex ;
 
 logic [40*AW_G-1:0            ]  w_writereq_message_byteswap;
 logic [40*W1024b_G-1:0        ]  w_writedata_message_byteswap;
@@ -907,31 +912,35 @@ generate
                     w_granted_fifo_bvalid[i]  = I_AOU_TX_S_AXI_BVALID_256[i];
                     w_granted_fifo_bid[i]    = I_AOU_TX_S_AXI_BID_256[i];
                     w_granted_fifo_bresp[i]  = I_AOU_TX_S_AXI_BRESP_256[i];
+                    w_granted_fifo_buser[i]  = I_AOU_TX_S_AXI_BUSER_256[i];
                     O_AOU_TX_S_AXI_BREADY_256[i] = w_granted_fifo_bready[i];
                 end
                 3'b010 : begin 
                     w_granted_fifo_bvalid[i]  = I_AOU_TX_S_AXI_BVALID_512[i];
                     w_granted_fifo_bid[i]    = I_AOU_TX_S_AXI_BID_512[i];
                     w_granted_fifo_bresp[i]  = I_AOU_TX_S_AXI_BRESP_512[i];
+                    w_granted_fifo_buser[i]  = I_AOU_TX_S_AXI_BUSER_512[i];
                     O_AOU_TX_S_AXI_BREADY_512[i] = w_granted_fifo_bready[i];
                 end
                 3'b100 : begin 
                     w_granted_fifo_bvalid[i]  = I_AOU_TX_S_AXI_BVALID_1024[i];
                     w_granted_fifo_bid[i]    = I_AOU_TX_S_AXI_BID_1024[i];
                     w_granted_fifo_bresp[i]  = I_AOU_TX_S_AXI_BRESP_1024[i];
+                    w_granted_fifo_buser[i]  = I_AOU_TX_S_AXI_BUSER_1024[i];
                     O_AOU_TX_S_AXI_BREADY_1024[i] = w_granted_fifo_bready[i];
                 end
                 default : begin 
                     w_granted_fifo_bvalid[i]  = 1'b0;
                     w_granted_fifo_bid[i]    = {(AXI_ID_WD){1'b0}};
                     w_granted_fifo_bresp[i]  = 2'b0;
+                    w_granted_fifo_buser[i]  = 16'b0;
                 end
             endcase
         end
 
         AOU_SYNC_FIFO_REG
         #(
-            .FIFO_WIDTH                     (AXI_ID_WD + 2),
+            .FIFO_WIDTH                     (AXI_ID_WD + 2 + 16),
             .FIFO_DEPTH                     (AXI_B_FIFO_DEPTH)        
         )
         u_axi_master_rp_b_fifo(
@@ -939,11 +948,11 @@ generate
             .I_RESETN                       (I_RESETN),
 
             .I_SVALID                       (w_granted_fifo_bvalid[i]),
-            .I_SDATA                        ({w_granted_fifo_bid[i], w_granted_fifo_bresp[i]}),
+            .I_SDATA                        ({w_granted_fifo_bid[i], w_granted_fifo_bresp[i], w_granted_fifo_buser[i]}),
             .O_SREADY                       (w_granted_fifo_bready[i]),
 
             .I_MREADY                       (w_aou_tx_s_axi_bready[i] && w_aou_tx_b_credit_valid[i]),
-            .O_MDATA                        ({w_aou_tx_s_axi_bid[i], w_aou_tx_s_axi_bresp[i]}),  
+            .O_MDATA                        ({w_aou_tx_s_axi_bid[i], w_aou_tx_s_axi_bresp[i], w_aou_tx_s_axi_buser[i]}),  
             .O_MVALID                       (w_aou_tx_s_axi_bvalid[i]),
 
             .O_EMPTY_CNT                    (),
@@ -972,6 +981,7 @@ always_comb begin
     w_aou_tx_fifo_s_axi_b_rp        = 2'b00;
     w_aou_tx_fifo_s_axi_bid         = 'b0;
     w_aou_tx_fifo_s_axi_bresp       = 'b0;
+    w_aou_tx_fifo_s_axi_buser       = 'b0;
     w_aou_tx_fifo_s_axi_bvalid      = 'b0;
     w_aou_tx_s_axi_bready           = 'b0;
 
@@ -980,6 +990,7 @@ always_comb begin
             w_aou_tx_fifo_s_axi_b_rp        = I_RP_DEST_RP[i];
             w_aou_tx_fifo_s_axi_bid         = w_aou_tx_s_axi_bid[i];
             w_aou_tx_fifo_s_axi_bresp       = w_aou_tx_s_axi_bresp[i];
+            w_aou_tx_fifo_s_axi_buser       = w_aou_tx_s_axi_buser[i];
             w_aou_tx_fifo_s_axi_bvalid      = w_aou_tx_b_req[i];
             w_aou_tx_s_axi_bready[i]        = w_aou_tx_fifo_s_axi_bready;
         end
@@ -989,12 +1000,13 @@ end
 
 logic [AXI_ID_WD-1:0]   w_aou_tx_m_axi_bid;
 logic [1:0]             w_aou_tx_m_axi_bresp;
+logic [15:0]            w_aou_tx_m_axi_buser;
 logic [1:0]             w_aou_tx_m_axi_b_rp;
 
 
 AOU_SYNC_FIFO_REG
 #(
-    .FIFO_WIDTH                     (2+ AXI_ID_WD + 2),
+    .FIFO_WIDTH                     (2+ AXI_ID_WD + 2 + 16),
     .FIFO_DEPTH                     (AXI_B_FIFO_DEPTH)        
 )
 u_axi_master_b_fifo(
@@ -1002,11 +1014,11 @@ u_axi_master_b_fifo(
     .I_RESETN                       (I_RESETN),
 
     .I_SVALID                       (w_aou_tx_fifo_s_axi_bvalid),
-    .I_SDATA                        ({w_aou_tx_fifo_s_axi_b_rp, w_aou_tx_fifo_s_axi_bid, w_aou_tx_fifo_s_axi_bresp}),
+    .I_SDATA                        ({w_aou_tx_fifo_s_axi_b_rp, w_aou_tx_fifo_s_axi_bid, w_aou_tx_fifo_s_axi_bresp, w_aou_tx_fifo_s_axi_buser}),
     .O_SREADY                       (w_aou_tx_fifo_s_axi_bready),
 
     .I_MREADY                       (I_AOU_TX_M_AXI_BREADY),
-    .O_MDATA                        ({w_aou_tx_m_axi_b_rp, w_aou_tx_m_axi_bid, w_aou_tx_m_axi_bresp}),
+    .O_MDATA                        ({w_aou_tx_m_axi_b_rp, w_aou_tx_m_axi_bid, w_aou_tx_m_axi_bresp, w_aou_tx_m_axi_buser}),
     .O_MVALID                       (O_AOU_TX_M_AXI_BVALID),
 
     .O_EMPTY_CNT                    (),
@@ -1014,7 +1026,7 @@ u_axi_master_b_fifo(
 );
 assign O_AOU_TX_B_FIFO_SVALID = w_granted_fifo_bvalid;
 
-assign w_writeresp_message_byteswap      = {MSG_WR_RESP, w_aou_tx_m_axi_b_rp, 2'b0, 4'b0, w_aou_writeresp_prof, w_aou_tx_m_axi_bid, w_aou_tx_m_axi_bresp, 4'b0};
+assign w_writeresp_message_byteswap      = {MSG_WR_RESP, w_aou_tx_m_axi_b_rp, 2'b0, w_aou_writeresp_flex, w_aou_tx_m_axi_bid, w_aou_tx_m_axi_bresp, 4'b0};
 
 assign w_writeresp_message = {<<8{w_writeresp_message_byteswap}};
 
@@ -1027,7 +1039,7 @@ generate
     for (i = 0; i < RP_CNT ; i ++) begin : g_r_rp_fifo
         AOU_SYNC_FIFO_REG
         #(
-            .FIFO_WIDTH                     (AXI_ID_WD +2 +  1024 + 2 + 1),
+            .FIFO_WIDTH                     (AXI_ID_WD +2 +  1024 + 2 + 16 + 1),
             .FIFO_DEPTH                     (AXI_R_FIFO_DEPTH)        
         )
         u_axi_slave_r_rp0_fifo(
@@ -1035,11 +1047,11 @@ generate
             .I_RESETN                       (I_RESETN),
 
             .I_SVALID                       (I_AOU_TX_S_AXI_RVALID[i]),
-            .I_SDATA                        ({I_AOU_TX_S_AXI_RID[i], I_AOU_TX_S_AXI_RDLEN[i], I_AOU_TX_S_AXI_RDATA[i], I_AOU_TX_S_AXI_RRESP[i], I_AOU_TX_S_AXI_RLAST[i]}),
+            .I_SDATA                        ({I_AOU_TX_S_AXI_RID[i], I_AOU_TX_S_AXI_RDLEN[i], I_AOU_TX_S_AXI_RDATA[i], I_AOU_TX_S_AXI_RRESP[i], I_AOU_TX_S_AXI_RUSER[i], I_AOU_TX_S_AXI_RLAST[i]}),
             .O_SREADY                       (O_AOU_TX_S_AXI_RREADY[i]),
 
             .I_MREADY                       (w_aou_tx_s_axi_rready[i] && w_aou_tx_r_credit_valid[i]),
-            .O_MDATA                        ({w_aou_tx_s_axi_rid[i], w_aou_tx_s_axi_rdlen[i], w_aou_tx_s_axi_rdata[i], w_aou_tx_s_axi_rresp[i], w_aou_tx_s_axi_rlast[i]}),
+            .O_MDATA                        ({w_aou_tx_s_axi_rid[i], w_aou_tx_s_axi_rdlen[i], w_aou_tx_s_axi_rdata[i], w_aou_tx_s_axi_rresp[i], w_aou_tx_s_axi_ruser[i], w_aou_tx_s_axi_rlast[i]}),
             .O_MVALID                       (w_aou_tx_s_axi_rvalid[i]),
 
             .O_EMPTY_CNT                    (),
@@ -1070,6 +1082,7 @@ always_comb begin
     w_aou_tx_fifo_s_axi_rdlen   = 'd0; 
     w_aou_tx_fifo_s_axi_rdata   = 'd0; 
     w_aou_tx_fifo_s_axi_rresp   = 'd0; 
+    w_aou_tx_fifo_s_axi_ruser   = 'd0; 
     w_aou_tx_fifo_s_axi_rlast   = 'd0; 
     w_aou_tx_fifo_s_axi_rvalid  = 'd0; 
     w_aou_tx_s_axi_rready   = 'b0;
@@ -1081,6 +1094,7 @@ always_comb begin
             w_aou_tx_fifo_s_axi_rdlen   = w_aou_tx_s_axi_rdlen[i];
             w_aou_tx_fifo_s_axi_rdata   = w_aou_tx_s_axi_rdata[i];
             w_aou_tx_fifo_s_axi_rresp   = w_aou_tx_s_axi_rresp[i];
+            w_aou_tx_fifo_s_axi_ruser   = w_aou_tx_s_axi_ruser[i];
             w_aou_tx_fifo_s_axi_rlast   = w_aou_tx_s_axi_rlast[i];
             w_aou_tx_fifo_s_axi_rvalid  = w_aou_tx_r_req[i];
             w_aou_tx_s_axi_rready[i]   = w_aou_tx_fifo_s_axi_rready;
@@ -1111,9 +1125,9 @@ end
 // Proposal RTL ==========================================
 logic [40*R1024b_G-1:0]     w_readdata_message_raw;
 
-logic [(4+2+2+4+12+AXI_ID_WD+2+1+3)-1:0] w_readdata_message_header;
+logic [(4+2+2+16+AXI_ID_WD+2+1+3)-1:0] w_readdata_message_header;
 
-assign w_readdata_message_header = {MSG_RD_DATA, w_aou_tx_fifo_m_axi_r_rp, w_aou_tx_fifo_s_axi_rdlen, 4'b0, w_aou_readdata_prof, w_aou_tx_fifo_s_axi_rid, w_aou_tx_fifo_s_axi_rresp, w_aou_tx_fifo_s_axi_rlast, 3'b0};
+assign w_readdata_message_header = {MSG_RD_DATA, w_aou_tx_fifo_m_axi_r_rp, w_aou_tx_fifo_s_axi_rdlen, w_aou_readdata_flex, w_aou_tx_fifo_s_axi_rid, w_aou_tx_fifo_s_axi_rresp, w_aou_tx_fifo_s_axi_rlast, 3'b0};
 
 always_comb begin
     w_readdata_message_raw = '0;
@@ -1201,12 +1215,14 @@ always_comb begin
 end
 
 
-// FLEX = USER[15:0] of the AW, AR or W beat the message carries, passed unmodified
+// FLEX = USER[15:0] of the AXI transfer the message carries, passed unmodified
 // (AoU v0.8 §5.2, §11.1 Basic Profile). No merging happens on this side of the link:
-// one AXI transfer becomes one message, so each takes the USER of its own transfer.
+// one AW, AR or W transfer becomes one message, so each takes the USER of its own
+// transfer. The B and R USER values arrive already merged by the width converter
+// (USER of the transaction's first beat where several local transfers became one).
 assign  w_aou_writereq_flex  = w_aou_tx_fifo_m_axi_awuser_tmp;
 assign  w_aou_readreq_flex   = w_aou_tx_fifo_m_axi_aruser;
 assign  w_aou_writedata_flex = w_aou_tx_fifo_m_axi_wuser;
-assign  w_aou_readdata_prof  = 12'd0;
-assign  w_aou_writeresp_prof = 12'd0;
+assign  w_aou_readdata_flex  = w_aou_tx_fifo_s_axi_ruser;
+assign  w_aou_writeresp_flex = w_aou_tx_m_axi_buser;
 endmodule

@@ -55,6 +55,7 @@ module AOU_AXI4MUX_3X1_256 #(
     output wire [ ID_WD-1: 0]           O_S_RID_0,
     output wire [ 255: 0]               O_S_RDATA_0,
     output wire [ 1: 0]                 O_S_RRESP_0,
+    output wire [15: 0]                 O_S_RUSER_0,
     output wire                         O_S_RLAST_0,
     output wire                         O_S_RVALID_0,
     input                               I_S_RREADY_0,
@@ -79,6 +80,7 @@ module AOU_AXI4MUX_3X1_256 #(
 
     output wire [ ID_WD-1: 0]           O_S_BID_0,
     output wire [ 1: 0]                 O_S_BRESP_0,
+    output wire [15: 0]                 O_S_BUSER_0,
     output wire                         O_S_BVALID_0,
     input                               I_S_BREADY_0,
 
@@ -98,6 +100,7 @@ module AOU_AXI4MUX_3X1_256 #(
     output wire [ ID_WD-1: 0]           O_S_RID_1,
     output wire [ 511 : 0]              O_S_RDATA_1,
     output wire [ 1: 0]                 O_S_RRESP_1,
+    output wire [15: 0]                 O_S_RUSER_1,
     output wire                         O_S_RLAST_1,
     output wire                         O_S_RVALID_1,
     input                               I_S_RREADY_1,       
@@ -122,6 +125,7 @@ module AOU_AXI4MUX_3X1_256 #(
 
     output wire [ ID_WD-1: 0]           O_S_BID_1,
     output wire [ 1: 0]                 O_S_BRESP_1,
+    output wire [15: 0]                 O_S_BUSER_1,
     output wire                         O_S_BVALID_1,       
     input                               I_S_BREADY_1,
 
@@ -141,6 +145,7 @@ module AOU_AXI4MUX_3X1_256 #(
     output wire [ ID_WD-1: 0]           O_S_RID_2,
     output wire [ 1023: 0]              O_S_RDATA_2,
     output wire [ 1: 0]                 O_S_RRESP_2,
+    output wire [15: 0]                 O_S_RUSER_2,
     output wire                         O_S_RLAST_2,
     output wire                         O_S_RVALID_2,
     input                               I_S_RREADY_2,       
@@ -165,6 +170,7 @@ module AOU_AXI4MUX_3X1_256 #(
 
     output wire [ ID_WD-1: 0]           O_S_BID_2,
     output wire [ 1: 0]                 O_S_BRESP_2,
+    output wire [15: 0]                 O_S_BUSER_2,
     output wire                         O_S_BVALID_2,       
     input                               I_S_BREADY_2,
 
@@ -184,6 +190,7 @@ module AOU_AXI4MUX_3X1_256 #(
     input       [ ID_WD+1: 0]           I_M_RID,
     input       [ DATA_WD-1: 0]         I_M_RDATA,
     input       [ 1: 0]                 I_M_RRESP,
+    input       [15: 0]                 I_M_RUSER,
     input                               I_M_RLAST,
     input                               I_M_RVALID,
     output wire                         O_M_RREADY,
@@ -208,6 +215,7 @@ module AOU_AXI4MUX_3X1_256 #(
 
     input       [ ID_WD+1: 0]           I_M_BID,
     input       [ 1: 0]                 I_M_BRESP,
+    input       [15: 0]                 I_M_BUSER,
     input                               I_M_BVALID,
     output wire                         O_M_BREADY,
 
@@ -242,6 +250,7 @@ wire                         dn_s_wready_1;
 
 wire [ ID_WD-1: 0]           dn_s_bid_1;
 wire [ 1: 0]                 dn_s_bresp_1;
+wire [15: 0]                 dn_s_buser_1;
 wire                         dn_s_bvalid_1;       
 wire                         dn_s_bready_1;
 
@@ -260,6 +269,7 @@ wire                         dn_s_arready_1;
 wire [ ID_WD-1: 0]           dn_s_rid_1;
 wire [ DATA_WD-1: 0]         dn_s_rdata_1;
 wire [ 1: 0]                 dn_s_rresp_1;
+wire [15: 0]                 dn_s_ruser_1;
 wire                         dn_s_rlast_1;
 wire                         dn_s_rvalid_1;
 wire                         dn_s_rready_1;       
@@ -284,6 +294,7 @@ wire                         dn_s_wready_2;
 
 wire [ ID_WD-1: 0]           dn_s_bid_2;
 wire [ 1: 0]                 dn_s_bresp_2;
+wire [15: 0]                 dn_s_buser_2;
 wire                         dn_s_bvalid_2;       
 wire                         dn_s_bready_2;
 
@@ -302,6 +313,7 @@ wire                         dn_s_arready_2;
 wire [ ID_WD-1: 0]           dn_s_rid_2;
 wire [ DATA_WD-1: 0]         dn_s_rdata_2;
 wire [ 1: 0]                 dn_s_rresp_2;
+wire [15: 0]                 dn_s_ruser_2;
 wire                         dn_s_rlast_2;
 wire                         dn_s_rvalid_2;
 wire                         dn_s_rready_2;       
@@ -335,6 +347,7 @@ AOU_AXI_DOWN #(
     .O_S_RID       ( O_S_RID_1       ),
     .O_S_RDATA     ( O_S_RDATA_1     ),
     .O_S_RRESP     ( O_S_RRESP_1     ),
+    .O_S_RUSER     ( O_S_RUSER_1     ),
     .O_S_RLAST     ( O_S_RLAST_1     ),
     .O_S_RVALID    ( O_S_RVALID_1    ),
     .I_S_RREADY    ( I_S_RREADY_1    ),
@@ -359,6 +372,7 @@ AOU_AXI_DOWN #(
 
     .O_S_BID       ( O_S_BID_1       ),
     .O_S_BRESP     ( O_S_BRESP_1     ),
+    .O_S_BUSER     ( O_S_BUSER_1     ),
     .O_S_BVALID    ( O_S_BVALID_1    ),
     .I_S_BREADY    ( I_S_BREADY_1    ),
 
@@ -377,6 +391,7 @@ AOU_AXI_DOWN #(
     .I_M_RID       ( dn_s_rid_1      ),
     .I_M_RDATA     ( dn_s_rdata_1    ),
     .I_M_RRESP     ( dn_s_rresp_1    ),
+    .I_M_RUSER     ( dn_s_ruser_1    ),
     .I_M_RLAST     ( dn_s_rlast_1    ),
     .I_M_RVALID    ( dn_s_rvalid_1   ),
     .O_M_RREADY    ( dn_s_rready_1   ),
@@ -401,6 +416,7 @@ AOU_AXI_DOWN #(
 
     .I_M_BID       ( dn_s_bid_1      ),
     .I_M_BRESP     ( dn_s_bresp_1    ),
+    .I_M_BUSER     ( dn_s_buser_1    ),
     .I_M_BVALID    ( dn_s_bvalid_1   ),
     .O_M_BREADY    ( dn_s_bready_1   ),
 
@@ -437,6 +453,7 @@ AOU_AXI_DOWN #(
     .O_S_RID       ( O_S_RID_2       ),
     .O_S_RDATA     ( O_S_RDATA_2     ),
     .O_S_RRESP     ( O_S_RRESP_2     ),
+    .O_S_RUSER     ( O_S_RUSER_2     ),
     .O_S_RLAST     ( O_S_RLAST_2     ),
     .O_S_RVALID    ( O_S_RVALID_2    ),
     .I_S_RREADY    ( I_S_RREADY_2    ),
@@ -461,6 +478,7 @@ AOU_AXI_DOWN #(
 
     .O_S_BID       ( O_S_BID_2       ),
     .O_S_BRESP     ( O_S_BRESP_2     ),
+    .O_S_BUSER     ( O_S_BUSER_2     ),
     .O_S_BVALID    ( O_S_BVALID_2    ),
     .I_S_BREADY    ( I_S_BREADY_2    ),
 
@@ -479,6 +497,7 @@ AOU_AXI_DOWN #(
     .I_M_RID       ( dn_s_rid_2      ),
     .I_M_RDATA     ( dn_s_rdata_2    ),
     .I_M_RRESP     ( dn_s_rresp_2    ),
+    .I_M_RUSER     ( dn_s_ruser_2    ),
     .I_M_RLAST     ( dn_s_rlast_2    ),
     .I_M_RVALID    ( dn_s_rvalid_2   ),
     .O_M_RREADY    ( dn_s_rready_2   ),
@@ -503,6 +522,7 @@ AOU_AXI_DOWN #(
 
     .I_M_BID       ( dn_s_bid_2      ),
     .I_M_BRESP     ( dn_s_bresp_2    ),
+    .I_M_BUSER     ( dn_s_buser_2    ),
     .I_M_BVALID    ( dn_s_bvalid_2   ),
     .O_M_BREADY    ( dn_s_bready_2   ),
 
@@ -610,8 +630,11 @@ assign  O_S_RDATA_0     = I_M_RDATA;
 assign  dn_s_rdata_1    = I_M_RDATA;
 assign  dn_s_rdata_2    = I_M_RDATA;
 assign  O_S_RRESP_0     = I_M_RRESP;
+assign  O_S_RUSER_0     = I_M_RUSER;
 assign  dn_s_rresp_1    = I_M_RRESP;
+assign  dn_s_ruser_1    = I_M_RUSER;
 assign  dn_s_rresp_2    = I_M_RRESP;
+assign  dn_s_ruser_2    = I_M_RUSER;
 assign  O_S_RLAST_0     = I_M_RLAST;
 assign  dn_s_rlast_1    = I_M_RLAST;
 assign  dn_s_rlast_2    = I_M_RLAST;
@@ -843,8 +866,11 @@ assign  O_S_BID_0       = I_M_BID[ID_WD+1:2];
 assign  dn_s_bid_1      = I_M_BID[ID_WD+1:2];
 assign  dn_s_bid_2      = I_M_BID[ID_WD+1:2];
 assign  O_S_BRESP_0     = I_M_BRESP;
+assign  O_S_BUSER_0     = I_M_BUSER;
 assign  dn_s_bresp_1    = I_M_BRESP;
+assign  dn_s_buser_1    = I_M_BUSER;
 assign  dn_s_bresp_2    = I_M_BRESP;
+assign  dn_s_buser_2    = I_M_BUSER;
 assign  O_S_BVALID_0    = (I_M_BID[1:0] == 2'b00) & I_M_BVALID;
 assign  dn_s_bvalid_1   = (I_M_BID[1:0] == 2'b01) & I_M_BVALID;
 assign  dn_s_bvalid_2   = (I_M_BID[1:0] == 2'b10) & I_M_BVALID;

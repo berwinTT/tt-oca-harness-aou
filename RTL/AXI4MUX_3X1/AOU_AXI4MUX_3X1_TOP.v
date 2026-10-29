@@ -45,6 +45,7 @@ module AOU_AXI4MUX_3X1_TOP #(
     output reg   [ID_WD-1:0]            O_S_RID,
     output reg   [1023:0]               O_S_RDATA,
     output reg   [1:0]                  O_S_RRESP,
+    output reg   [15:0]                  O_S_RUSER,
     output reg                          O_S_RLAST,
     output reg                          O_S_RVALID,
     input                               I_S_RREADY,
@@ -82,6 +83,7 @@ module AOU_AXI4MUX_3X1_TOP #(
 
     output wire [ ID_WD-1: 0]           O_S_BID_0,
     output wire [ 1: 0]                 O_S_BRESP_0,
+    output wire [15: 0]                 O_S_BUSER_0,
     output wire                         O_S_BVALID_0,
     input                               I_S_BREADY_0,
 
@@ -118,6 +120,7 @@ module AOU_AXI4MUX_3X1_TOP #(
 
     output wire [ ID_WD-1: 0]           O_S_BID_1,
     output wire [ 1: 0]                 O_S_BRESP_1,
+    output wire [15: 0]                 O_S_BUSER_1,
     output wire                         O_S_BVALID_1,
     input                               I_S_BREADY_1,
 
@@ -154,6 +157,7 @@ module AOU_AXI4MUX_3X1_TOP #(
 
     output wire [ ID_WD-1: 0]           O_S_BID_2,
     output wire [ 1: 0]                 O_S_BRESP_2,
+    output wire [15: 0]                 O_S_BUSER_2,
     output wire                         O_S_BVALID_2,
     input                               I_S_BREADY_2,
 
@@ -173,6 +177,7 @@ module AOU_AXI4MUX_3X1_TOP #(
     input       [ ID_WD-1: 0]           I_M_RID,
     input       [ DATA_WD-1: 0]         I_M_RDATA,
     input       [ 1: 0]                 I_M_RRESP,
+    input       [15: 0]                 I_M_RUSER,
     input                               I_M_RLAST,
     input                               I_M_RVALID,
     output wire                         O_M_RREADY,
@@ -197,6 +202,7 @@ module AOU_AXI4MUX_3X1_TOP #(
 
     input       [ ID_WD-1: 0]           I_M_BID,
     input       [ 1: 0]                 I_M_BRESP,
+    input       [15: 0]                 I_M_BUSER,
     input                               I_M_BVALID,
     output wire                         O_M_BREADY,
 
@@ -271,6 +277,7 @@ wire                         i_m_arready;
 wire [ID_WD-1:0]             i_m_rid;    
 wire [DATA_WD-1:0]           i_m_rdata;  
 wire [1:0]                   i_m_rresp;  
+wire [15:0]                   w_m_ruser_sel;  
 wire                         i_m_rlast;  
 wire                         i_m_rvalid; 
 wire                         o_m_rready; 
@@ -319,6 +326,7 @@ wire                         w_aggregator_s_arready;
 wire [ID_WD-1:0]             w_aggregator_rid;    
 wire [DATA_WD-1:0]           w_aggregator_rdata;  
 wire [1:0]                   w_aggregator_rresp;  
+wire [15:0]                   w_aggregator_ruser;  
 wire                         w_aggregator_rlast;  
 wire                         w_aggregator_m_rvalid; 
 wire                         w_aggregator_m_rready; 
@@ -342,6 +350,7 @@ wire                         I_SPLIT_ARREADY;
 wire [ ID_WD+1: 0]           I_SPLIT_RID;
 wire [ DATA_WD-1: 0]         I_SPLIT_RDATA;
 wire [ 1: 0]                 I_SPLIT_RRESP;
+wire [15: 0]                 I_SPLIT_RUSER;
 wire                         I_SPLIT_RLAST;
 wire [ADDR_WD-1:0]           I_SPLIT_ADDR_CNT;
 wire                         I_SPLIT_RVALID;
@@ -368,17 +377,20 @@ wire                         I_SPLIT_WREADY;
 
 wire [ ID_WD+1: 0]           I_SPLIT_BID;
 wire [ 1: 0]                 I_SPLIT_BRESP;
+wire [15: 0]                 I_SPLIT_BUSER;
 wire                         I_SPLIT_BVALID;
 wire                         O_SPLIT_BREADY;
 
 wire [ ID_WD+1: 0]           I_SPLIT_BID_RS;
 wire [ 1: 0]                 I_SPLIT_BRESP_RS;
+wire [15: 0]                 I_SPLIT_BUSER_RS;
 wire                         I_SPLIT_BVALID_RS;
 wire                         O_SPLIT_BREADY_RS;
 
 wire [ ID_WD-1: 0]           O_S_RID_0;
 wire [ 255: 0]               O_S_RDATA_0;
 wire [ 1: 0]                 O_S_RRESP_0;
+wire [15: 0]                 O_S_RUSER_0;
 wire                         O_S_RLAST_0;
 wire                         O_S_RVALID_0;
 wire                         I_S_RREADY_0;
@@ -386,6 +398,7 @@ wire                         I_S_RREADY_0;
 wire [ ID_WD-1: 0]           O_S_RID_1;
 wire [ 511: 0]               O_S_RDATA_1;
 wire [ 1: 0]                 O_S_RRESP_1;
+wire [15: 0]                 O_S_RUSER_1;
 wire                         O_S_RLAST_1;
 wire                         O_S_RVALID_1;
 wire                         I_S_RREADY_1;
@@ -393,6 +406,7 @@ wire                         I_S_RREADY_1;
 wire [ ID_WD-1: 0]           O_S_RID_2;
 wire [ 1023: 0]              O_S_RDATA_2;
 wire [ 1: 0]                 O_S_RRESP_2;
+wire [15: 0]                 O_S_RUSER_2;
 wire                         O_S_RLAST_2;
 wire                         O_S_RVALID_2;
 wire                         I_S_RREADY_2;
@@ -441,6 +455,7 @@ always_comb begin
             O_S_RID    = O_S_RID_0;
             O_S_RDATA  = {768'b0, O_S_RDATA_0};
             O_S_RRESP  = O_S_RRESP_0;
+            O_S_RUSER  = O_S_RUSER_0;
             O_S_RLAST  = O_S_RLAST_0;
             O_S_RVALID = O_S_RVALID_0;
         end
@@ -449,6 +464,7 @@ always_comb begin
             O_S_RID    = O_S_RID_1;
             O_S_RDATA  = {512'b0, O_S_RDATA_1};
             O_S_RRESP  = O_S_RRESP_1;
+            O_S_RUSER  = O_S_RUSER_1;
             O_S_RLAST  = O_S_RLAST_1;
             O_S_RVALID = O_S_RVALID_1;
         end
@@ -457,6 +473,7 @@ always_comb begin
             O_S_RID    = O_S_RID_2;
             O_S_RDATA  = O_S_RDATA_2;
             O_S_RRESP  = O_S_RRESP_2;
+            O_S_RUSER  = O_S_RUSER_2;
             O_S_RLAST  = O_S_RLAST_2;
             O_S_RVALID = O_S_RVALID_2;
         end
@@ -465,6 +482,7 @@ always_comb begin
             O_S_RID    = 'd0;
             O_S_RDATA  = 'd0;
             O_S_RRESP  = 'd0;
+            O_S_RUSER  = 'd0;
             O_S_RLAST  = 'd0;
             O_S_RVALID = 'd0;
         end
@@ -503,6 +521,7 @@ if(DATA_WD == 512) begin
         .O_S_RID_0        ( O_S_RID_0   ),
         .O_S_RDATA_0      ( O_S_RDATA_0 ),
         .O_S_RRESP_0      ( O_S_RRESP_0 ),
+        .O_S_RUSER_0      ( O_S_RUSER_0 ),
         .O_S_RLAST_0      ( O_S_RLAST_0 ),
         .O_S_RVALID_0     ( O_S_RVALID_0),
         .I_S_RREADY_0     ( I_S_RREADY_0),
@@ -527,6 +546,7 @@ if(DATA_WD == 512) begin
 
         .O_S_BID_0        ( O_S_BID_0        ),
         .O_S_BRESP_0      ( O_S_BRESP_0      ),
+        .O_S_BUSER_0      ( O_S_BUSER_0      ),
         .O_S_BVALID_0     ( O_S_BVALID_0     ),
         .I_S_BREADY_0     ( I_S_BREADY_0     ),
 
@@ -545,6 +565,7 @@ if(DATA_WD == 512) begin
         .O_S_RID_1        ( O_S_RID_1   ),
         .O_S_RDATA_1      ( O_S_RDATA_1 ),
         .O_S_RRESP_1      ( O_S_RRESP_1 ),
+        .O_S_RUSER_1      ( O_S_RUSER_1 ),
         .O_S_RLAST_1      ( O_S_RLAST_1 ),
         .O_S_RVALID_1     ( O_S_RVALID_1),
         .I_S_RREADY_1     ( I_S_RREADY_1),
@@ -569,6 +590,7 @@ if(DATA_WD == 512) begin
 
         .O_S_BID_1        ( O_S_BID_1        ),
         .O_S_BRESP_1      ( O_S_BRESP_1      ),
+        .O_S_BUSER_1      ( O_S_BUSER_1      ),
         .O_S_BVALID_1     ( O_S_BVALID_1     ),
         .I_S_BREADY_1     ( I_S_BREADY_1     ),
 
@@ -587,6 +609,7 @@ if(DATA_WD == 512) begin
         .O_S_RID_2        ( O_S_RID_2   ),
         .O_S_RDATA_2      ( O_S_RDATA_2 ),
         .O_S_RRESP_2      ( O_S_RRESP_2 ),
+        .O_S_RUSER_2      ( O_S_RUSER_2 ),
         .O_S_RLAST_2      ( O_S_RLAST_2 ),
         .O_S_RVALID_2     ( O_S_RVALID_2),
         .I_S_RREADY_2     ( I_S_RREADY_2),
@@ -611,6 +634,7 @@ if(DATA_WD == 512) begin
 
         .O_S_BID_2        ( O_S_BID_2        ),
         .O_S_BRESP_2      ( O_S_BRESP_2      ),
+        .O_S_BUSER_2      ( O_S_BUSER_2      ),
         .O_S_BVALID_2     ( O_S_BVALID_2     ),
         .I_S_BREADY_2     ( I_S_BREADY_2     ),
 
@@ -629,6 +653,7 @@ if(DATA_WD == 512) begin
         .I_M_RID          ( I_SPLIT_RID      ),
         .I_M_RDATA        ( I_SPLIT_RDATA    ),
         .I_M_RRESP        ( I_SPLIT_RRESP    ),
+        .I_M_RUSER        ( I_SPLIT_RUSER    ),
         .I_M_RLAST        ( I_SPLIT_RLAST    ),
         .I_M_ADDR_CNT     ( I_SPLIT_ADDR_CNT ),
         .I_M_RVALID       ( I_SPLIT_RVALID   ),
@@ -654,6 +679,7 @@ if(DATA_WD == 512) begin
 
         .I_M_BID          ( I_SPLIT_BID_RS   ),
         .I_M_BRESP        ( I_SPLIT_BRESP_RS ),
+        .I_M_BUSER        ( I_SPLIT_BUSER_RS ),
         .I_M_BVALID       ( I_SPLIT_BVALID_RS),
         .O_M_BREADY       ( O_SPLIT_BREADY_RS),
 
@@ -691,6 +717,7 @@ end else if (DATA_WD == 1024) begin
         .O_S_RID_0        ( O_S_RID_0   ),
         .O_S_RDATA_0      ( O_S_RDATA_0 ),
         .O_S_RRESP_0      ( O_S_RRESP_0 ),
+        .O_S_RUSER_0      ( O_S_RUSER_0 ),
         .O_S_RLAST_0      ( O_S_RLAST_0 ),
         .O_S_RVALID_0     ( O_S_RVALID_0),
         .I_S_RREADY_0     ( I_S_RREADY_0),
@@ -715,6 +742,7 @@ end else if (DATA_WD == 1024) begin
 
         .O_S_BID_0        ( O_S_BID_0        ),
         .O_S_BRESP_0      ( O_S_BRESP_0      ),
+        .O_S_BUSER_0      ( O_S_BUSER_0      ),
         .O_S_BVALID_0     ( O_S_BVALID_0     ),
         .I_S_BREADY_0     ( I_S_BREADY_0     ),
 
@@ -733,6 +761,7 @@ end else if (DATA_WD == 1024) begin
         .O_S_RID_1        ( O_S_RID_1   ),
         .O_S_RDATA_1      ( O_S_RDATA_1 ),
         .O_S_RRESP_1      ( O_S_RRESP_1 ),
+        .O_S_RUSER_1      ( O_S_RUSER_1 ),
         .O_S_RLAST_1      ( O_S_RLAST_1 ),
         .O_S_RVALID_1     ( O_S_RVALID_1),
         .I_S_RREADY_1     ( I_S_RREADY_1),
@@ -757,6 +786,7 @@ end else if (DATA_WD == 1024) begin
 
         .O_S_BID_1        ( O_S_BID_1        ),
         .O_S_BRESP_1      ( O_S_BRESP_1      ),
+        .O_S_BUSER_1      ( O_S_BUSER_1      ),
         .O_S_BVALID_1     ( O_S_BVALID_1     ),
         .I_S_BREADY_1     ( I_S_BREADY_1     ),
 
@@ -775,6 +805,7 @@ end else if (DATA_WD == 1024) begin
         .O_S_RID_2        ( O_S_RID_2   ),
         .O_S_RDATA_2      ( O_S_RDATA_2 ),
         .O_S_RRESP_2      ( O_S_RRESP_2 ),
+        .O_S_RUSER_2      ( O_S_RUSER_2 ),
         .O_S_RLAST_2      ( O_S_RLAST_2 ),
         .O_S_RVALID_2     ( O_S_RVALID_2),
         .I_S_RREADY_2     ( I_S_RREADY_2),
@@ -799,6 +830,7 @@ end else if (DATA_WD == 1024) begin
 
         .O_S_BID_2        ( O_S_BID_2        ),
         .O_S_BRESP_2      ( O_S_BRESP_2      ),
+        .O_S_BUSER_2      ( O_S_BUSER_2      ),
         .O_S_BVALID_2     ( O_S_BVALID_2     ),
         .I_S_BREADY_2     ( I_S_BREADY_2     ),
 
@@ -817,6 +849,7 @@ end else if (DATA_WD == 1024) begin
         .I_M_RID          ( I_SPLIT_RID      ),
         .I_M_RDATA        ( I_SPLIT_RDATA    ),
         .I_M_RRESP        ( I_SPLIT_RRESP    ),
+        .I_M_RUSER        ( I_SPLIT_RUSER    ),
         .I_M_RLAST        ( I_SPLIT_RLAST    ),
         .I_M_ADDR_CNT     ( I_SPLIT_ADDR_CNT ),
         .I_M_RVALID       ( I_SPLIT_RVALID   ),
@@ -842,6 +875,7 @@ end else if (DATA_WD == 1024) begin
 
         .I_M_BID          ( I_SPLIT_BID_RS   ),
         .I_M_BRESP        ( I_SPLIT_BRESP_RS ),
+        .I_M_BUSER        ( I_SPLIT_BUSER_RS ),
         .I_M_BVALID       ( I_SPLIT_BVALID_RS),
         .O_M_BREADY       ( O_SPLIT_BREADY_RS)
 
@@ -881,6 +915,7 @@ end else if (DATA_WD == 256) begin
         .O_S_RID_0        ( O_S_RID_0   ),
         .O_S_RDATA_0      ( O_S_RDATA_0 ),
         .O_S_RRESP_0      ( O_S_RRESP_0 ),
+        .O_S_RUSER_0      ( O_S_RUSER_0 ),
         .O_S_RLAST_0      ( O_S_RLAST_0 ),
         .O_S_RVALID_0     ( O_S_RVALID_0),
         .I_S_RREADY_0     ( I_S_RREADY_0),
@@ -905,6 +940,7 @@ end else if (DATA_WD == 256) begin
 
         .O_S_BID_0        ( O_S_BID_0        ),
         .O_S_BRESP_0      ( O_S_BRESP_0      ),
+        .O_S_BUSER_0      ( O_S_BUSER_0      ),
         .O_S_BVALID_0     ( O_S_BVALID_0     ),
         .I_S_BREADY_0     ( I_S_BREADY_0     ),
 
@@ -923,6 +959,7 @@ end else if (DATA_WD == 256) begin
         .O_S_RID_1        ( O_S_RID_1   ),
         .O_S_RDATA_1      ( O_S_RDATA_1 ),
         .O_S_RRESP_1      ( O_S_RRESP_1 ),
+        .O_S_RUSER_1      ( O_S_RUSER_1 ),
         .O_S_RLAST_1      ( O_S_RLAST_1 ),
         .O_S_RVALID_1     ( O_S_RVALID_1),
         .I_S_RREADY_1     ( I_S_RREADY_1),
@@ -947,6 +984,7 @@ end else if (DATA_WD == 256) begin
 
         .O_S_BID_1        ( O_S_BID_1        ),
         .O_S_BRESP_1      ( O_S_BRESP_1      ),
+        .O_S_BUSER_1      ( O_S_BUSER_1      ),
         .O_S_BVALID_1     ( O_S_BVALID_1     ),
         .I_S_BREADY_1     ( I_S_BREADY_1     ),
 
@@ -965,6 +1003,7 @@ end else if (DATA_WD == 256) begin
         .O_S_RID_2        ( O_S_RID_2   ),
         .O_S_RDATA_2      ( O_S_RDATA_2 ),
         .O_S_RRESP_2      ( O_S_RRESP_2 ),
+        .O_S_RUSER_2      ( O_S_RUSER_2 ),
         .O_S_RLAST_2      ( O_S_RLAST_2 ),
         .O_S_RVALID_2     ( O_S_RVALID_2),
         .I_S_RREADY_2     ( I_S_RREADY_2),
@@ -989,6 +1028,7 @@ end else if (DATA_WD == 256) begin
 
         .O_S_BID_2        ( O_S_BID_2        ),
         .O_S_BRESP_2      ( O_S_BRESP_2      ),
+        .O_S_BUSER_2      ( O_S_BUSER_2      ),
         .O_S_BVALID_2     ( O_S_BVALID_2     ),
         .I_S_BREADY_2     ( I_S_BREADY_2     ),
 
@@ -1007,6 +1047,7 @@ end else if (DATA_WD == 256) begin
         .I_M_RID          ( I_SPLIT_RID      ),
         .I_M_RDATA        ( I_SPLIT_RDATA    ),
         .I_M_RRESP        ( I_SPLIT_RRESP    ),
+        .I_M_RUSER        ( I_SPLIT_RUSER    ),
         .I_M_RLAST        ( I_SPLIT_RLAST    ),
         .I_M_RVALID       ( I_SPLIT_RVALID   ),
         .O_M_RREADY       ( O_SPLIT_RREADY   ),
@@ -1031,6 +1072,7 @@ end else if (DATA_WD == 256) begin
 
         .I_M_BID          ( I_SPLIT_BID_RS   ),
         .I_M_BRESP        ( I_SPLIT_BRESP_RS ),
+        .I_M_BUSER        ( I_SPLIT_BUSER_RS ),
         .I_M_BVALID       ( I_SPLIT_BVALID_RS),
         .O_M_BREADY       ( O_SPLIT_BREADY_RS),
 
@@ -1046,7 +1088,7 @@ end
 endgenerate
 
 AOU_SYNC_FIFO_REG #(
-    .FIFO_WIDTH      ( ID_WD + 2 + 2                ),
+    .FIFO_WIDTH      ( ID_WD + 2 + 2 + 16           ), // + BUSER
     .FIFO_DEPTH      ( 2                            )
 ) u_aou_b_rs
 (
@@ -1054,11 +1096,11 @@ AOU_SYNC_FIFO_REG #(
     .I_RESETN        ( I_RESETN                     ),
 
     .I_SVALID        ( I_SPLIT_BVALID               ),
-    .I_SDATA         ( {I_SPLIT_BRESP, I_SPLIT_BID} ),
+    .I_SDATA         ( {I_SPLIT_BUSER, I_SPLIT_BRESP, I_SPLIT_BID} ),
     .O_SREADY        ( O_SPLIT_BREADY               ),
 
     .I_MREADY        ( O_SPLIT_BREADY_RS            ),
-    .O_MDATA         ( {I_SPLIT_BRESP_RS, I_SPLIT_BID_RS} ),
+    .O_MDATA         ( {I_SPLIT_BUSER_RS, I_SPLIT_BRESP_RS, I_SPLIT_BID_RS} ),
     .O_MVALID        ( I_SPLIT_BVALID_RS            ),
 
     .O_EMPTY_CNT     ( ),
@@ -1096,6 +1138,7 @@ AOU_AXI_SPLIT_TR #(
     .O_S_RID          ( I_SPLIT_RID      ),
     .O_S_RDATA        ( I_SPLIT_RDATA    ),
     .O_S_RRESP        ( I_SPLIT_RRESP    ),
+    .O_S_RUSER        ( I_SPLIT_RUSER    ),
     .O_S_RLAST        ( I_SPLIT_RLAST    ),
     .O_S_ADDR_CNT     ( I_SPLIT_ADDR_CNT ),
     .O_S_RVALID       ( I_SPLIT_RVALID   ),
@@ -1121,6 +1164,7 @@ AOU_AXI_SPLIT_TR #(
 
     .O_S_BID          ( I_SPLIT_BID      ),
     .O_S_BRESP        ( I_SPLIT_BRESP    ),
+    .O_S_BUSER        ( I_SPLIT_BUSER    ),
     .O_S_BVALID       ( I_SPLIT_BVALID   ),
     .I_S_BREADY       ( O_SPLIT_BREADY   ),
 
@@ -1139,6 +1183,7 @@ AOU_AXI_SPLIT_TR #(
     .I_M_RID          ( i_m_rid          ),
     .I_M_RDATA        ( i_m_rdata        ),
     .I_M_RRESP        ( i_m_rresp        ),
+    .I_M_RUSER        ( w_m_ruser_sel    ),
     .I_M_RLAST        ( i_m_rlast        ),
     .I_M_RVALID       ( i_m_rvalid       ),
     .O_M_RREADY       ( o_m_rready       ),
@@ -1163,6 +1208,7 @@ AOU_AXI_SPLIT_TR #(
 
     .I_M_BID          ( I_M_BID          ),
     .I_M_BRESP        ( I_M_BRESP        ),
+    .I_M_BUSER        ( I_M_BUSER        ),
     .I_M_BVALID       ( I_M_BVALID       ),
     .O_M_BREADY       ( O_M_BREADY       ),
 
@@ -1260,6 +1306,7 @@ AOU_AGGREGATOR # (
     .O_S_RID                ( w_aggregator_rid          ),
     .O_S_RDATA              ( w_aggregator_rdata        ),
     .O_S_RRESP              ( w_aggregator_rresp        ),
+    .O_S_RUSER              ( w_aggregator_ruser        ),
     .O_S_RLAST              ( w_aggregator_rlast        ),
     .O_S_RVALID             ( w_aggregator_s_rvalid     ),
     .I_S_RREADY             ( w_aggregator_s_rready     ),
@@ -1279,6 +1326,7 @@ AOU_AGGREGATOR # (
     .I_M_RID                ( I_M_RID                   ),
     .I_M_RDATA              ( I_M_RDATA                 ),
     .I_M_RRESP              ( I_M_RRESP                 ),
+    .I_M_RUSER              ( I_M_RUSER                 ),
     .I_M_RLAST              ( I_M_RLAST                 ),
     .I_M_RVALID             ( w_aggregator_m_rvalid     ),
     .O_M_RREADY             ( w_aggregator_m_rready     ),
@@ -1326,6 +1374,7 @@ assign w_aggregator_m_arready = I_AXI_AGGREGATOR_EN ? I_M_ARREADY : 1'b0;
 assign i_m_rid      = I_AXI_AGGREGATOR_EN ? w_aggregator_rid        : I_M_RID    ;
 assign i_m_rdata    = I_AXI_AGGREGATOR_EN ? w_aggregator_rdata      : I_M_RDATA  ;
 assign i_m_rresp    = I_AXI_AGGREGATOR_EN ? w_aggregator_rresp      : I_M_RRESP  ;
+assign w_m_ruser_sel = I_AXI_AGGREGATOR_EN ? w_aggregator_ruser      : I_M_RUSER  ;
 assign i_m_rlast    = I_AXI_AGGREGATOR_EN ? w_aggregator_rlast      : I_M_RLAST  ;
 assign i_m_rvalid   = I_AXI_AGGREGATOR_EN ? w_aggregator_s_rvalid   : I_M_RVALID ; 
 assign O_M_RREADY   = I_AXI_AGGREGATOR_EN ? w_aggregator_m_rready : o_m_rready;

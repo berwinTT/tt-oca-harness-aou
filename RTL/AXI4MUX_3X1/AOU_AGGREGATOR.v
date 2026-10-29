@@ -95,6 +95,7 @@ module AOU_AGGREGATOR #(
     output reg [ID_WD-1:0]          O_S_RID,
     output reg [DATA_WD-1:0]        O_S_RDATA,
     output reg [1:0]                O_S_RRESP,
+    output reg [15:0]               O_S_RUSER,
     output reg                      O_S_RLAST,
     output reg                      O_S_RVALID,
     input                           I_S_RREADY,
@@ -114,6 +115,7 @@ module AOU_AGGREGATOR #(
     input [ID_WD-1:0]               I_M_RID,
     input [DATA_WD-1:0]             I_M_RDATA,
     input [1:0]                     I_M_RRESP,
+    input [15:0]                    I_M_RUSER,
     input                           I_M_RLAST,
     input                           I_M_RVALID,
     output reg                      O_M_RREADY,
@@ -163,6 +165,7 @@ reg                                 r_rob_s_rlast_send;
 
 reg  [DATA_WD-1:0]                  r_m_rdata;
 reg  [1:0]                          r_m_rresp;
+reg  [15:0]                         r_m_ruser;
 
 //----------------------------------------------------
 //internal memory
@@ -434,6 +437,7 @@ always @(posedge I_CLK or negedge I_RESETN) begin
         r_rob_s_rlast_send <= 'd0;
         r_m_rdata <= 'd0;
         r_m_rresp <= 'd0;
+        r_m_ruser <= 'd0;
     end else begin
         if (|r_rob_cur_burst_len) begin
             if(I_S_RREADY)
@@ -450,6 +454,7 @@ always @(posedge I_CLK or negedge I_RESETN) begin
                 
                 r_m_rdata <= I_M_RDATA;
                 r_m_rresp <= I_M_RRESP;
+                r_m_ruser <= I_M_RUSER;
             end else begin
                 r_rob_cur_burst_len <= 'd0;
                 r_rob_s_rlast_send  <= 'd0;
@@ -616,6 +621,9 @@ assign  O_S_ARREADY = I_M_ARREADY & w_rob_ar_slot_avail_flag;
 assign  O_S_RID    = (|r_rob_cur_burst_len) ? r_rob_rid : I_M_RID;
 assign  O_S_RDATA  = (|r_rob_cur_burst_len) ? r_m_rdata : I_M_RDATA;
 assign  O_S_RRESP  = (|r_rob_cur_burst_len) ? r_m_rresp : I_M_RRESP;
+// One merged local beat is split back into the beats the requester asked for:
+// each of them carries that beat's RUSER, as it carries its RRESP.
+assign  O_S_RUSER  = (|r_rob_cur_burst_len) ? r_m_ruser : I_M_RUSER;
 assign  O_S_RLAST  = ((r_rob_cur_burst_len == 1) & r_rob_s_rlast_send) ? 1'b1: 
                      ((r_rob_cur_burst_len == 0) & ~((w_rob_arsize > w_rob_org_arsize) & (|w_rob_org_arlen))) ? I_M_RLAST :
                      ((r_rob_cur_burst_len == 0) & ((w_rob_arsize > w_rob_org_arsize) & (|w_rob_org_arlen)) & (w_rob_cur_burst_len == 0)) ? w_rob_s_rlast_send  : 1'b0;

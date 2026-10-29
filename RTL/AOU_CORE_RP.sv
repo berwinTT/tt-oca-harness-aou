@@ -326,6 +326,7 @@ import packet_def_pkg::*;
     logic [AXI_ID_WD-1:0]       w_aou_err_info_axi_rid;
     logic [AXI_DATA_WD-1:0]     w_aou_err_info_axi_rdata;
     logic [1:0]                 w_aou_err_info_axi_rresp;
+    logic [15:0]                w_aou_err_info_axi_ruser;
     logic                       w_aou_err_info_axi_rlast;
     logic                       w_aou_err_info_axi_rvalid;
     logic                       w_aou_err_info_axi_rready;
@@ -350,6 +351,7 @@ import packet_def_pkg::*;
     
     logic [AXI_ID_WD-1:0]       w_aou_err_info_axi_bid;
     logic [1:0]                 w_aou_err_info_axi_bresp;
+    logic [15:0]                w_aou_err_info_axi_buser;
     logic                       w_aou_err_info_axi_bvalid;
     logic                       w_aou_err_info_axi_bready;
 
@@ -412,11 +414,12 @@ import packet_def_pkg::*;
     logic                       w_err_info_bready;
     
 //----------------------------------------------------------------------------    
-    localparam AXIM_RCH_PAYLOAD_WD = AXI_ID_WD + AXI_DATA_WD + 2 + 1; //RESP + LAST
+    localparam AXIM_RCH_PAYLOAD_WD = AXI_ID_WD + AXI_DATA_WD + 2 + 16 + 1; //RESP + USER + LAST
     
     logic [AXI_ID_WD-1:0]               w_aou_tx_axi_m_rid_rs;
     logic [AXI_DATA_WD-1:0]             w_aou_tx_axi_m_rdata_rs;
     logic [1:0]                         w_aou_tx_axi_m_rresp_rs;
+    logic [15:0]                        w_aou_tx_axi_m_ruser_rs;
     logic                               w_aou_tx_axi_m_rlast_rs;
     logic                               w_aou_tx_axi_m_rvalid_rs;
     logic                               w_aou_tx_axi_m_rready_rs;
@@ -456,11 +459,13 @@ import packet_def_pkg::*;
     assign w_aou_tx_axi_m_rch_sdata = {I_AOU_TX_AXI_M_RID,
                                        I_AOU_TX_AXI_M_RDATA,
                                        I_AOU_TX_AXI_M_RRESP,
+                                       I_AOU_TX_AXI_M_RUSER,
                                        I_AOU_TX_AXI_M_RLAST};
     
     assign {w_aou_tx_axi_m_rid_rs,
             w_aou_tx_axi_m_rdata_rs,
             w_aou_tx_axi_m_rresp_rs,
+            w_aou_tx_axi_m_ruser_rs,
             w_aou_tx_axi_m_rlast_rs} = w_aou_tx_axi_m_rch_mdata;
     
     generate
@@ -529,6 +534,7 @@ import packet_def_pkg::*;
         .O_S_RID                    ( w_aou_err_info_axi_rid            ),
         .O_S_RDATA                  ( w_aou_err_info_axi_rdata          ),
         .O_S_RRESP                  ( w_aou_err_info_axi_rresp          ),
+        .O_S_RUSER                  ( w_aou_err_info_axi_ruser          ),
         .O_S_RLAST                  ( w_aou_err_info_axi_rlast          ),
         .O_S_RVALID                 ( w_aou_err_info_axi_rvalid         ),
         .I_S_RREADY                 ( w_aou_err_info_axi_rready         ),
@@ -553,6 +559,7 @@ import packet_def_pkg::*;
     
         .O_S_BID                    ( w_aou_err_info_axi_bid            ),
         .O_S_BRESP                  ( w_aou_err_info_axi_bresp          ),
+        .O_S_BUSER                  ( w_aou_err_info_axi_buser          ),
         .O_S_BVALID                 ( w_aou_err_info_axi_bvalid         ),
         .I_S_BREADY                 ( w_aou_err_info_axi_bready         ),
 
@@ -572,6 +579,7 @@ import packet_def_pkg::*;
         .I_M_RID                    ( {w_err_info_rid   , w_aou_tx_axi_m_rid_rs   } ),
         .I_M_RDATA                  ( {w_err_info_rdata , w_aou_tx_axi_m_rdata_rs } ),
         .I_M_RRESP                  ( {w_err_info_rresp , w_aou_tx_axi_m_rresp_rs } ),
+        .I_M_RUSER                  ( {16'd0            , w_aou_tx_axi_m_ruser_rs } ), // error-info responses carry FLEX = 0
         .I_M_RLAST                  ( {w_err_info_rlast , w_aou_tx_axi_m_rlast_rs } ),
         .I_M_RVALID                 ( {w_err_info_rvalid, w_aou_tx_axi_m_rvalid_rs} ),
         .O_M_RREADY                 ( {w_err_info_rready, w_aou_tx_axi_m_rready_rs} ),
@@ -596,6 +604,7 @@ import packet_def_pkg::*;
     
         .I_M_BID                    ( {w_err_info_bid   , I_AOU_TX_AXI_M_BID   }    ),
         .I_M_BRESP                  ( {w_err_info_bresp , I_AOU_TX_AXI_M_BRESP }    ),
+        .I_M_BUSER                  ( {16'd0            , I_AOU_TX_AXI_M_BUSER }    ), // error-info responses carry FLEX = 0
         .I_M_BVALID                 ( {w_err_info_bvalid, I_AOU_TX_AXI_M_BVALID}    ),
         .O_M_BREADY                 ( {w_err_info_bready, O_AOU_TX_AXI_M_BREADY}    ),
      
@@ -813,14 +822,11 @@ import packet_def_pkg::*;
     // AXI USER signals, carried as the FLEX field of the messages the DUT sends
     // (AoU v0.8 Basic Profile: FLEX = USER[15:0]). The early write response block
     // passes AW and W through unchanged, so USER goes beside them here. The M-port
-    // BUSER/RUSER are not yet carried through the width converter: FLEX of
-    // WriteResp and ReadData stays 0 until that path is added.
+    // BUSER/RUSER go through the width converter below beside BRESP/RRESP; where
+    // several local transfers become one message it keeps the USER of the
+    // transaction's first beat, where one beat becomes several it repeats it.
     assign O_EARLY_BRESP_CTRL_AWUSER = I_AOU_TX_AXI_S_AWUSER;
     assign O_EARLY_BRESP_CTRL_WUSER  = I_AOU_TX_AXI_S_WUSER;
-    assign O_AOU_TX_AXI_BUSER_256    = 16'd0;
-    assign O_AOU_TX_AXI_BUSER_512    = 16'd0;
-    assign O_AOU_TX_AXI_BUSER_1024   = 16'd0;
-    assign O_AOU_TX_AXI_RUSER        = 16'd0;
 
 //----------------------------------------------------------------------------
     AOU_AXI4MUX_3X1_TOP #(
@@ -840,6 +846,7 @@ import packet_def_pkg::*;
         .O_S_RID                        ( O_AOU_TX_AXI_RID                  ),
         .O_S_RDATA                      ( O_AOU_TX_AXI_RDATA                ),
         .O_S_RRESP                      ( O_AOU_TX_AXI_RRESP                ),
+        .O_S_RUSER                      ( O_AOU_TX_AXI_RUSER                ),
         .O_S_RLAST                      ( O_AOU_TX_AXI_RLAST                ),
         .O_S_RVALID                     ( O_AOU_TX_AXI_RVALID               ),
         .I_S_RREADY                     ( I_AOU_TX_AXI_RREADY               ),
@@ -876,6 +883,7 @@ import packet_def_pkg::*;
     
         .O_S_BID_0                      ( O_AOU_TX_AXI_BID_256              ),
         .O_S_BRESP_0                    ( O_AOU_TX_AXI_BRESP_256            ),
+        .O_S_BUSER_0                    ( O_AOU_TX_AXI_BUSER_256            ),
         .O_S_BVALID_0                   ( O_AOU_TX_AXI_BVALID_256           ),
         .I_S_BREADY_0                   ( I_AOU_TX_AXI_BREADY_256           ),
     
@@ -911,6 +919,7 @@ import packet_def_pkg::*;
     
         .O_S_BID_1                      ( O_AOU_TX_AXI_BID_512              ),
         .O_S_BRESP_1                    ( O_AOU_TX_AXI_BRESP_512            ),
+        .O_S_BUSER_1                    ( O_AOU_TX_AXI_BUSER_512            ),
         .O_S_BVALID_1                   ( O_AOU_TX_AXI_BVALID_512           ),
         .I_S_BREADY_1                   ( I_AOU_TX_AXI_BREADY_512           ),
     
@@ -946,6 +955,7 @@ import packet_def_pkg::*;
     
         .O_S_BID_2                      ( O_AOU_TX_AXI_BID_1024             ),
         .O_S_BRESP_2                    ( O_AOU_TX_AXI_BRESP_1024           ),
+        .O_S_BUSER_2                    ( O_AOU_TX_AXI_BUSER_1024           ),
         .O_S_BVALID_2                   ( O_AOU_TX_AXI_BVALID_1024          ),
         .I_S_BREADY_2                   ( I_AOU_TX_AXI_BREADY_1024          ),
     
@@ -964,6 +974,7 @@ import packet_def_pkg::*;
         .I_M_RID                        ( w_aou_err_info_axi_rid            ),
         .I_M_RDATA                      ( w_aou_err_info_axi_rdata          ),
         .I_M_RRESP                      ( w_aou_err_info_axi_rresp          ),
+        .I_M_RUSER                      ( w_aou_err_info_axi_ruser          ),
         .I_M_RLAST                      ( w_aou_err_info_axi_rlast          ),
         .I_M_RVALID                     ( w_aou_err_info_axi_rvalid         ),
         .O_M_RREADY                     ( w_aou_err_info_axi_rready         ),
@@ -988,6 +999,7 @@ import packet_def_pkg::*;
     
         .I_M_BID                        ( w_aou_err_info_axi_bid            ),
         .I_M_BRESP                      ( w_aou_err_info_axi_bresp          ),
+        .I_M_BUSER                      ( w_aou_err_info_axi_buser          ),
         .I_M_BVALID                     ( w_aou_err_info_axi_bvalid         ),
         .O_M_BREADY                     ( w_aou_err_info_axi_bready         ),
        
