@@ -44,13 +44,6 @@ class aou_l3_cfg extends uvm_object;
   bit [4:0]          profile_id[AOU_RP_MAX];
   bit [4:0]          profile_rev[AOU_RP_MAX];
   bit [15:0]         profile_opt[AOU_RP_MAX];
-  // What the DUT's ActivateReq must announce per RP (AOU-R12): its
-  // PROFILE_CFG_RPn registers as programmed when the message leaves; 0 for RPs
-  // it does not have. The test keeps them in step with the registers it writes
-  // (aou_base_test_seq::program_profile).
-  bit [4:0]          dut_profile_id[AOU_RP_MAX];
-  bit [4:0]          dut_profile_rev[AOU_RP_MAX];
-  bit [15:0]         dut_profile_opt[AOU_RP_MAX];
   // AOU_CON0.DEACTIVATE_FORCE (implementation-defined, MAS software-operation
   // 7.1): when software last started writing it while the DUT could deactivate
   // (aou_t1_force_deact_chk sets it; -1: never), and how long after that the

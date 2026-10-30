@@ -3,24 +3,24 @@
 
 // Profile exchange in the ActivateReq (AoU v0.8 Ch. 11; MAS software-operation
 // 7.1 PROFILE_CFG_RPn / PROFILE_RMT_RPn). Both dies announce a ProfileID/Rev/Opt
-// per RP; nothing is negotiated and nothing acts on the values, so what is
-// checked is that each side's ActivateReq carries what it was configured with
-// and that the DUT stores what it received.
-//   (a) Random profiles on both sides for all four RPs (the registers of RPs
-//       the DUT does not have are writable; its ActivateReq carries 0 for
-//       them, AOU-R12 in aou_unpacker), activation by a random initiator,
-//       then PROFILE_RMT_RP0-3 read back: the remote die's fields for the RPs
-//       it has, 0 for the others, RCVD 1 (T1-L53).
+// per RP; nothing is negotiated and nothing acts on the values. The DUT
+// implements the Basic Profile only: PROFILE_CFG_RPn are read-only 0/0/0 and
+// its ActivateReq carries 0 for every RP (AOU-R12 in aou_unpacker). What is
+// checked here is the DUT's side of the exchange as software sees it.
+//   (a) PROFILE_CFG_RP0-3 read 0 and ignore a write of all ones (T1-L56); the
+//       remote die takes random profiles for all four RPs; activation by a
+//       random initiator; then PROFILE_RMT_RP0-3 read back: the remote die's
+//       fields for the RPs it has, 0 for the others, RCVD 1 (T1-L53).
 //   (b) Deactivation; PROFILE_RMT_RPn still hold the first values (T1-L54);
-//       both sides reprogrammed; re-activation; PROFILE_RMT_RPn hold the new
-//       values.
+//       the remote reprogrammed and PROFILE_CFG_RPn written again (ignored);
+//       re-activation; PROFILE_RMT_RPn hold the new values.
 //   (c) The remote die changes its profile again and sends an ActivateReq
 //       while the link is ENABLED: the DUT flags it (INVALID_ACTMSG_ERR, a
 //       LinkReset request) and PROFILE_RMT_RPn keep the stored values
 //       (T1-L54). Software recovers with AOU_SW_RESET, after which all eight
-//       registers read 0 (T1-L54): the DUT's next ActivateReq announces the
-//       Basic Profile (AOU-R12) and PROFILE_RMT_RPn take the remote die's
-//       latest values.
+//       registers read 0 (T1-L54, T1-L56): the DUT's next ActivateReq is the
+//       Basic Profile as always (AOU-R12) and PROFILE_RMT_RPn take the remote
+//       die's latest values.
 // Every ActivateReq is four granules, the other Activation messages one
 // (T1-L55, aou_unpacker / AOU_FDI_CHECKER). Knobs: +loops=N (default 1) runs
 // (a)+(b) N times before (c); +skip_reset=1 ends after (b).
@@ -44,6 +44,7 @@ class aou_act_profile_vseq extends aou_link_base_vseq;
     bit skip_reset = arg_int("skip_reset", 0) != 0;
     link_up();
     check_rmt("T1-L54", "after reset, before any activation");
+    check_cfg("T1-L56", "after reset");
     for (int i = 0; i < loops; i++) begin
       if (i > 0) begin
         sw_deactivate(AOU_T1_BY_RANDOM);
@@ -56,27 +57,22 @@ class aou_act_profile_vseq extends aou_link_base_vseq;
     sw_deactivate(AOU_T1_BY_RANDOM);
   endtask
 
-  // Random fields on both sides, for every RP the registers have.
-  task program_both(string why);
+  // Random fields on the remote die for every RP; a write to the DUT's
+  // read-only PROFILE_CFG_RPn, which must change nothing.
+  task program_remote(string why);
     for (int unsigned r = 0; r < AOU_RP_MAX; r++) begin
-      bit [4:0] id = 5'($urandom);
-      bit [4:0] rev = 5'($urandom);
-      bit [15:0] opt = 16'($urandom);
-      // Some RPs keep the Basic Profile, so zero fields are seen beside
-      // non-zero ones.
-      if ($urandom_range(3) == 0) {id, rev, opt} = '0;
-      program_profile(r, id, rev, opt);
       rmt_id[r] = 5'($urandom);
       rmt_rev[r] = 5'($urandom);
       rmt_opt[r] = 16'($urandom);
+      // Some RPs keep the Basic Profile, so zero fields are seen beside
+      // non-zero ones.
       if ($urandom_range(3) == 0) {rmt_id[r], rmt_rev[r], rmt_opt[r]} = '0;
       remote_profile(r, rmt_id[r], rmt_rev[r], rmt_opt[r]);
       `uvm_info(get_type_name(), $sformatf(
-                "%s: RP%0d DUT %0d/%0d/0x%04h%s, remote %0d/%0d/0x%04h%s", why, r, id, rev, opt,
-                (r < cfg.n_rp) ? "" : " (RP absent on the DUT)", rmt_id[r], rmt_rev[r],
-                rmt_opt[r], (r < cfg.l3_cfg.rp_count) ? "" : " (RP absent on the remote)"),
-                UVM_LOW)
+                "%s: RP%0d remote %0d/%0d/0x%04h%s", why, r, rmt_id[r], rmt_rev[r], rmt_opt[r],
+                (r < cfg.l3_cfg.rp_count) ? "" : " (RP absent on the remote)"), UVM_LOW)
     end
+    write_cfg_ignored("T1-L56", why);
   endtask
 
   // The remote die's ActivateReq the DUT accepts next stores these.
@@ -113,9 +109,10 @@ class aou_act_profile_vseq extends aou_link_base_vseq;
     end
   endtask
 
-  // PROFILE_CFG_RP0-3 read back as 0 (after a reset).
-  task check_cfg_cleared(string rule, string why);
+  // PROFILE_CFG_RP0-3 read 0: the Basic Profile, the only one the DUT has.
+  task check_cfg(string rule, string why);
     aou_core rm = p_sequencer.regs;
+    aou_rule_log::check(rule, get_type_name());
     for (int unsigned r = 0; r < AOU_RP_MAX; r++) begin
       uvm_reg rg = rm.get_reg_by_name($sformatf("profile_cfg_rp%0d", r));
       check_field(rg.get_field_by_name("profile_id"), 0, rule, why);
@@ -124,12 +121,26 @@ class aou_act_profile_vseq extends aou_link_base_vseq;
     end
   endtask
 
+  // Writes random non-zero values to PROFILE_CFG_RP0-3 (read-only) and reads
+  // 0 back.
+  task write_cfg_ignored(string rule, string why);
+    aou_core rm = p_sequencer.regs;
+    for (int unsigned r = 0; r < AOU_RP_MAX; r++) begin
+      uvm_reg rg = rm.get_reg_by_name($sformatf("profile_cfg_rp%0d", r));
+      wr(rg.get_field_by_name("profile_id"), $urandom_range(1, 31));
+      wr(rg.get_field_by_name("profile_rev"), $urandom_range(1, 31));
+      wr(rg.get_field_by_name("profile_opt"), $urandom_range(1, 65535));
+    end
+    check_cfg(rule, {why, ": PROFILE_CFG_RPn written, read-only"});
+  endtask
+
   // (a)
   task exchange_once();
-    program_both("(a) programming");
+    program_remote("(a) programming the remote");
     sw_activate(AOU_T1_BY_RANDOM, AOU_T1_ORDER_RANDOM);
     expect_stored();
     check_rmt("T1-L53", "ENABLED, after the remote die's ActivateReq");
+    check_cfg("T1-L56", "ENABLED");
     check_traffic(num_txns);
   endtask
 
@@ -137,7 +148,7 @@ class aou_act_profile_vseq extends aou_link_base_vseq;
   task hold_and_change();
     sw_deactivate(AOU_T1_BY_RANDOM);
     check_rmt("T1-L54", "DISABLED after a deactivation: the stored profile is kept");
-    program_both("(b) reprogramming while DISABLED");
+    program_remote("(b) reprogramming the remote while DISABLED");
     check_rmt("T1-L54", "PROFILE_CFG_RPn written: PROFILE_RMT_RPn unaffected");
     sw_activate(AOU_T1_BY_RANDOM, AOU_T1_ORDER_RANDOM);
     expect_stored();
@@ -180,9 +191,9 @@ class aou_act_profile_vseq extends aou_link_base_vseq;
     recover(null, 1'b0);
     expect_cleared();
     check_rmt("T1-L54", "after AOU_SW_RESET");
-    check_cfg_cleared("T1-L54", "after AOU_SW_RESET");
-    // Not reprogrammed: the DUT announces the Basic Profile (AOU-R12 holds it
-    // to the cleared registers), the remote die its latest configuration.
+    check_cfg("T1-L56", "after AOU_SW_RESET");
+    // The DUT announces the Basic Profile (AOU-R12), the remote die its latest
+    // configuration.
     sw_activate(AOU_T1_BY_RANDOM, AOU_T1_ORDER_RANDOM);
     expect_stored();
     check_rmt("T1-L53", "ENABLED after the recovery");

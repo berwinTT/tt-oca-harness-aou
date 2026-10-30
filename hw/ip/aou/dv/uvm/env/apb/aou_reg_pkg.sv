@@ -36,6 +36,5 @@ package aou_reg_pkg;
   `include "aou_reg_int_mask_seq.svh"
   `include "aou_reg_error_info_seq.svh"
   `include "aou_reg_timeout_seq.svh"
-  `include "aou_reg_profile_seq.svh"
   `include "aou_reg_feature_vseq.svh"
 endpackage

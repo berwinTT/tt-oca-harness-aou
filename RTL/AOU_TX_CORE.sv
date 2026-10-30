@@ -196,9 +196,10 @@ import packet_def_pkg::*;
     input  logic                                                I_AOU_ACTIVATION_PROP_REQ,
     input  logic                                                I_AOU_ACTIVATION_VALID,
     output logic                                                O_AOU_ACTIVATION_READY,
-    // Configured profile per RP ({ProfileID, ProfileRev, ProfileOpt}, SFR
-    // PROFILE_CFG_RPn), sent in granules 0-3 of the ActivateReq (AoU v0.8
-    // Table "Activation Req Message Format"); RPs beyond RP_CNT send 0.
+    // Profile announced per RP ({ProfileID, ProfileRev, ProfileOpt}, SFR
+    // PROFILE_CFG_RPn: constant 0, the Basic Profile, in this design), sent in
+    // granules 0-3 of the ActivateReq (AoU v0.8 Table "Activation Req Message
+    // Format"); RPs beyond RP_CNT send 0.
     input  logic     [3:0][PROFILE_WD-1:0]                      I_AOU_PROFILE_CFG,
 
     // State for TX_CORE fifo

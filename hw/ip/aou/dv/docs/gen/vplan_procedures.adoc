@@ -1804,7 +1804,7 @@ release sends a backlog of requests: up to 8 WriteReq starts per half flit.
 * 11.5: CrdtGrant (2 granules)
 * 11.6: WriteReq/ReadReq (3 granules)
 * 11.9: Fill flit with 48 WriteResp messages
-* 11.14: ProfileID/ProfileRev/ProfileOpt values in the ActivateReq, the Basic Profile 0/0/0 beside non-zero fields and RPs the sender does not have
+* 11.14: ProfileID/ProfileRev/ProfileOpt values in the ActivateReq: the Basic Profile 0/0/0 (the DUT, always) beside the remote die's non-zero fields and RPs the sender does not have
 
 [[aou-proc-aou_pattern_test]]
 ===== 36. `aou_pattern_test`
@@ -2567,36 +2567,37 @@ within a flit time. g sweeps 9..12 (default 12 loops).
 ===== 49. `aou_act_profile_test`
 Class `aou_act_profile_test` extends `aou_base_test` (`uvm/tests/link/aou_act_profile_test.svh`).
 
-*Purpose.* Profile exchange in the ActivateReq (AoU v0.8 Ch. 11): PROFILE_CFG_RPn sent,
-PROFILE_RMT_RPn stored (aou_act_profile_vseq).
+*Purpose.* Profile exchange in the ActivateReq (AoU v0.8 Ch. 11): the DUT announces the
+Basic Profile (PROFILE_CFG_RPn read-only 0/0/0), PROFILE_RMT_RPn store the
+remote die's (aou_act_profile_vseq).
 
 *Procedure.* Virtual sequence `aou_act_profile_vseq` (`uvm/seq_lib/link/aou_act_profile_vseq.svh`):
 
 Profile exchange in the ActivateReq (AoU v0.8 Ch. 11; MAS software-operation
 7.1 PROFILE_CFG_RPn / PROFILE_RMT_RPn). Both dies announce a ProfileID/Rev/Opt
-per RP; nothing is negotiated and nothing acts on the values, so what is
-checked is that each side's ActivateReq carries what it was configured with
-and that the DUT stores what it received.
-(a) Random profiles on both sides for all four RPs (the registers of RPs
-the DUT does not have are writable; its ActivateReq carries 0 for
-them, AOU-R12 in aou_unpacker), activation by a random initiator,
-then PROFILE_RMT_RP0-3 read back: the remote die's fields for the RPs
-it has, 0 for the others, RCVD 1 (T1-L53).
+per RP; nothing is negotiated and nothing acts on the values. The DUT
+implements the Basic Profile only: PROFILE_CFG_RPn are read-only 0/0/0 and
+its ActivateReq carries 0 for every RP (AOU-R12 in aou_unpacker). What is
+checked here is the DUT's side of the exchange as software sees it.
+(a) PROFILE_CFG_RP0-3 read 0 and ignore a write of all ones (T1-L56); the
+remote die takes random profiles for all four RPs; activation by a
+random initiator; then PROFILE_RMT_RP0-3 read back: the remote die's
+fields for the RPs it has, 0 for the others, RCVD 1 (T1-L53).
 (b) Deactivation; PROFILE_RMT_RPn still hold the first values (T1-L54);
-both sides reprogrammed; re-activation; PROFILE_RMT_RPn hold the new
-values.
+the remote reprogrammed and PROFILE_CFG_RPn written again (ignored);
+re-activation; PROFILE_RMT_RPn hold the new values.
 (c) The remote die changes its profile again and sends an ActivateReq
 while the link is ENABLED: the DUT flags it (INVALID_ACTMSG_ERR, a
 LinkReset request) and PROFILE_RMT_RPn keep the stored values
 (T1-L54). Software recovers with AOU_SW_RESET, after which all eight
-registers read 0 (T1-L54): the DUT's next ActivateReq announces the
-Basic Profile (AOU-R12) and PROFILE_RMT_RPn take the remote die's
-latest values.
+registers read 0 (T1-L54, T1-L56): the DUT's next ActivateReq is the
+Basic Profile as always (AOU-R12) and PROFILE_RMT_RPn take the remote
+die's latest values.
 Every ActivateReq is four granules, the other Activation messages one
 (T1-L55, aou_unpacker / AOU_FDI_CHECKER). Knobs: +loops=N (default 1) runs
 (a)+(b) N times before (c); +skip_reset=1 ends after (b).
 
-*Rules named.* `AOU-R12`, `T1-L53`, `T1-L54`, `T1-L55`
+*Rules named.* `AOU-R12`, `T1-L53`, `T1-L54`, `T1-L55`, `T1-L56`
 
 *Pass criteria.* The base test's end-of-test checks: scoreboard drained, every declared expectation met, no unexpected `UVM_ERROR`/`UVM_FATAL`, the FDI checker clean; `scripts/check_run.py` judges the log against `expected_fail.yaml`.
 
@@ -2611,8 +2612,8 @@ Every ActivateReq is four granules, the other Activation messages one
 
 *Plan items.*
 
-* 1.14: ActivateReq profile exchange: the DUT announces PROFILE_CFG_RPn per RP (0 for an RP it does not have) and stores the received ProfileID/Rev/Opt in PROFILE_RMT_RPn with RCVD; kept through a deactivation, unchanged by an ActivateReq rejected in ENABLED, cleared by AOU_SW_RESET
-* 11.14: ProfileID/ProfileRev/ProfileOpt values in the ActivateReq, the Basic Profile 0/0/0 beside non-zero fields and RPs the sender does not have
+* 1.14: ActivateReq profile exchange: the DUT announces the Basic Profile per RP (PROFILE_CFG_RPn read-only 0/0/0; 0 for an RP it does not have) and stores the received ProfileID/Rev/Opt in PROFILE_RMT_RPn with RCVD; kept through a deactivation, unchanged by an ActivateReq rejected in ENABLED, cleared by AOU_SW_RESET
+* 11.14: ProfileID/ProfileRev/ProfileOpt values in the ActivateReq: the Basic Profile 0/0/0 (the DUT, always) beside the remote die's non-zero fields and RPs the sender does not have
 
 [[aou-proc-aou_invalid_actmsg_test]]
 ===== 50. `aou_invalid_actmsg_test`

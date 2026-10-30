@@ -1158,26 +1158,26 @@ Don't override. Generated from: aou_core
 - Base Offset: 0x84
 - Size: 0x4
 
-<p>Profile announced for RP0 in the ActivateReq this die sends (AoU v0.8 Ch. 11). Program before setting aou_init.activate_start; the value is sampled when the ActivateReq is launched, so a later write only takes effect at the next activation. For an RP the design does not implement the register is writable but the ActivateReq granule carries zeros. Reset 0/0/0 is the Basic Profile. Cleared by aou_con0.aou_sw_reset.</p>
+<p>Profile announced for RP0 in the ActivateReq this die sends (AoU v0.8 Ch. 11). Read-only: this design implements the Basic Profile only, so the register reads 0/0/0 for every RP and the ActivateReq carries 0/0/0 for every RP it has (and zeros for one it does not). Writes are ignored. A profile-capable design makes these fields writable.</p>
 
 | Bits|  Identifier  |Access|Reset|Name|
 |-----|--------------|------|-----|----|
-| 4:0 |  profile_id  |  rw  | 0x0 |  — |
-| 9:5 |  profile_rev |  rw  | 0x0 |  — |
-|25:10|  profile_opt |  rw  | 0x0 |  — |
+| 4:0 |  profile_id  |   r  | 0x0 |  — |
+| 9:5 |  profile_rev |   r  | 0x0 |  — |
+|25:10|  profile_opt |   r  | 0x0 |  — |
 |31:26|reserved_31_26|   r  | 0x0 |  — |
 
 #### profile_id field
 
-<p>ProfileID sent for RP0. 0 = Basic Profile (AoU v0.8 Ch. 11).</p>
+<p>ProfileID sent for RP0. Constant 0 = Basic Profile (AoU v0.8 Ch. 11).</p>
 
 #### profile_rev field
 
-<p>ProfileRev sent for RP0: revision of the profile identified by profile_id.</p>
+<p>ProfileRev sent for RP0: revision of the profile identified by profile_id. Constant 0 (Basic Profile).</p>
 
 #### profile_opt field
 
-<p>ProfileOpt sent for RP0: profile-specific option bits, meaning defined by the profile identified by profile_id.</p>
+<p>ProfileOpt sent for RP0: profile-specific option bits, meaning defined by the profile identified by profile_id. Constant 0 (Basic Profile).</p>
 
 ### profile_cfg_rp1 register
 
@@ -1185,26 +1185,26 @@ Don't override. Generated from: aou_core
 - Base Offset: 0x88
 - Size: 0x4
 
-<p>Profile announced for RP1 in the ActivateReq this die sends (AoU v0.8 Ch. 11). Program before setting aou_init.activate_start; the value is sampled when the ActivateReq is launched, so a later write only takes effect at the next activation. For an RP the design does not implement the register is writable but the ActivateReq granule carries zeros. Reset 0/0/0 is the Basic Profile. Cleared by aou_con0.aou_sw_reset.</p>
+<p>Profile announced for RP1 in the ActivateReq this die sends (AoU v0.8 Ch. 11). Read-only: this design implements the Basic Profile only, so the register reads 0/0/0 for every RP and the ActivateReq carries 0/0/0 for every RP it has (and zeros for one it does not). Writes are ignored. A profile-capable design makes these fields writable.</p>
 
 | Bits|  Identifier  |Access|Reset|Name|
 |-----|--------------|------|-----|----|
-| 4:0 |  profile_id  |  rw  | 0x0 |  — |
-| 9:5 |  profile_rev |  rw  | 0x0 |  — |
-|25:10|  profile_opt |  rw  | 0x0 |  — |
+| 4:0 |  profile_id  |   r  | 0x0 |  — |
+| 9:5 |  profile_rev |   r  | 0x0 |  — |
+|25:10|  profile_opt |   r  | 0x0 |  — |
 |31:26|reserved_31_26|   r  | 0x0 |  — |
 
 #### profile_id field
 
-<p>ProfileID sent for RP1. 0 = Basic Profile (AoU v0.8 Ch. 11).</p>
+<p>ProfileID sent for RP1. Constant 0 = Basic Profile (AoU v0.8 Ch. 11).</p>
 
 #### profile_rev field
 
-<p>ProfileRev sent for RP1: revision of the profile identified by profile_id.</p>
+<p>ProfileRev sent for RP1: revision of the profile identified by profile_id. Constant 0 (Basic Profile).</p>
 
 #### profile_opt field
 
-<p>ProfileOpt sent for RP1: profile-specific option bits, meaning defined by the profile identified by profile_id.</p>
+<p>ProfileOpt sent for RP1: profile-specific option bits, meaning defined by the profile identified by profile_id. Constant 0 (Basic Profile).</p>
 
 ### profile_cfg_rp2 register
 
@@ -1212,26 +1212,26 @@ Don't override. Generated from: aou_core
 - Base Offset: 0x8C
 - Size: 0x4
 
-<p>Profile announced for RP2 in the ActivateReq this die sends (AoU v0.8 Ch. 11). Program before setting aou_init.activate_start; the value is sampled when the ActivateReq is launched, so a later write only takes effect at the next activation. For an RP the design does not implement the register is writable but the ActivateReq granule carries zeros. Reset 0/0/0 is the Basic Profile. Cleared by aou_con0.aou_sw_reset.</p>
+<p>Profile announced for RP2 in the ActivateReq this die sends (AoU v0.8 Ch. 11). Read-only: this design implements the Basic Profile only, so the register reads 0/0/0 for every RP and the ActivateReq carries 0/0/0 for every RP it has (and zeros for one it does not). Writes are ignored. A profile-capable design makes these fields writable.</p>
 
 | Bits|  Identifier  |Access|Reset|Name|
 |-----|--------------|------|-----|----|
-| 4:0 |  profile_id  |  rw  | 0x0 |  — |
-| 9:5 |  profile_rev |  rw  | 0x0 |  — |
-|25:10|  profile_opt |  rw  | 0x0 |  — |
+| 4:0 |  profile_id  |   r  | 0x0 |  — |
+| 9:5 |  profile_rev |   r  | 0x0 |  — |
+|25:10|  profile_opt |   r  | 0x0 |  — |
 |31:26|reserved_31_26|   r  | 0x0 |  — |
 
 #### profile_id field
 
-<p>ProfileID sent for RP2. 0 = Basic Profile (AoU v0.8 Ch. 11).</p>
+<p>ProfileID sent for RP2. Constant 0 = Basic Profile (AoU v0.8 Ch. 11).</p>
 
 #### profile_rev field
 
-<p>ProfileRev sent for RP2: revision of the profile identified by profile_id.</p>
+<p>ProfileRev sent for RP2: revision of the profile identified by profile_id. Constant 0 (Basic Profile).</p>
 
 #### profile_opt field
 
-<p>ProfileOpt sent for RP2: profile-specific option bits, meaning defined by the profile identified by profile_id.</p>
+<p>ProfileOpt sent for RP2: profile-specific option bits, meaning defined by the profile identified by profile_id. Constant 0 (Basic Profile).</p>
 
 ### profile_cfg_rp3 register
 
@@ -1239,26 +1239,26 @@ Don't override. Generated from: aou_core
 - Base Offset: 0x90
 - Size: 0x4
 
-<p>Profile announced for RP3 in the ActivateReq this die sends (AoU v0.8 Ch. 11). Program before setting aou_init.activate_start; the value is sampled when the ActivateReq is launched, so a later write only takes effect at the next activation. For an RP the design does not implement the register is writable but the ActivateReq granule carries zeros. Reset 0/0/0 is the Basic Profile. Cleared by aou_con0.aou_sw_reset.</p>
+<p>Profile announced for RP3 in the ActivateReq this die sends (AoU v0.8 Ch. 11). Read-only: this design implements the Basic Profile only, so the register reads 0/0/0 for every RP and the ActivateReq carries 0/0/0 for every RP it has (and zeros for one it does not). Writes are ignored. A profile-capable design makes these fields writable.</p>
 
 | Bits|  Identifier  |Access|Reset|Name|
 |-----|--------------|------|-----|----|
-| 4:0 |  profile_id  |  rw  | 0x0 |  — |
-| 9:5 |  profile_rev |  rw  | 0x0 |  — |
-|25:10|  profile_opt |  rw  | 0x0 |  — |
+| 4:0 |  profile_id  |   r  | 0x0 |  — |
+| 9:5 |  profile_rev |   r  | 0x0 |  — |
+|25:10|  profile_opt |   r  | 0x0 |  — |
 |31:26|reserved_31_26|   r  | 0x0 |  — |
 
 #### profile_id field
 
-<p>ProfileID sent for RP3. 0 = Basic Profile (AoU v0.8 Ch. 11).</p>
+<p>ProfileID sent for RP3. Constant 0 = Basic Profile (AoU v0.8 Ch. 11).</p>
 
 #### profile_rev field
 
-<p>ProfileRev sent for RP3: revision of the profile identified by profile_id.</p>
+<p>ProfileRev sent for RP3: revision of the profile identified by profile_id. Constant 0 (Basic Profile).</p>
 
 #### profile_opt field
 
-<p>ProfileOpt sent for RP3: profile-specific option bits, meaning defined by the profile identified by profile_id.</p>
+<p>ProfileOpt sent for RP3: profile-specific option bits, meaning defined by the profile identified by profile_id. Constant 0 (Basic Profile).</p>
 
 ### profile_rmt_rp0 register
 

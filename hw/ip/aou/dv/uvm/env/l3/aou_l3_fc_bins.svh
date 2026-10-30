@@ -139,8 +139,9 @@
 `define AOU_L3_FC_X_FLEX(B) \
   `B``_XIGN("all_ones,*,tx")
 // ActivateReq profile fields per RP (cg_act_profile; AoU v0.8 Ch. 11): on rx
-// the DUT's PROFILE_CFG_RPn registers, on tx the model's cfg.profile_*. An RP
-// the sender does not have carries 0 (its fields are reserved).
+// the DUT's, always the Basic Profile (PROFILE_CFG_RPn read-only 0/0/0), on
+// tx the model's cfg.profile_*. An RP the sender does not have carries 0 (its
+// fields are reserved); the non-zero bins are reached on tx only.
 `define AOU_L3_FC_PROFILE_ID(B) `B``_BIN(basic, 0, 0) `B``_BIN(low, 1, 15) `B``_BIN(high, 16, 31)
 `define AOU_L3_FC_PROFILE_NZ(B) `B``_BIN(zero, 0, 0) `B``_BIN(nonzero, 1, 1)
 `define AOU_L3_FC_PRESENT(B) `B``_BIN(absent, 0, 0) `B``_BIN(present, 1, 1)

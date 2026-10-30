@@ -438,48 +438,49 @@ addrmap aou_core {
     // -------------------------------------------------------------------------
     // Profile exchange (AoU v0.8 Ch. 11): the ActivateReq carries ProfileID,
     // ProfileRev and ProfileOpt for each of RP0..RP3. PROFILE_CFG_RPn is what
-    // this die sends; PROFILE_RMT_RPn is what the peer sent. The fields are
+    // this die sends: read-only 0/0/0, the Basic Profile, the only profile this
+    // design implements. PROFILE_RMT_RPn is what the peer sent. The fields are
     // informational: hardware does not act on them, and no negotiation is
-    // performed. Reset 0/0/0 is the Basic Profile.
+    // performed.
     // -------------------------------------------------------------------------
     reg {
         regwidth = 32;
         name = "Profile Config RP0";
-        desc = "Profile announced for RP0 in the ActivateReq this die sends (AoU v0.8 Ch. 11). Program before setting aou_init.activate_start; the value is sampled when the ActivateReq is launched, so a later write only takes effect at the next activation. For an RP the design does not implement the register is writable but the ActivateReq granule carries zeros. Reset 0/0/0 is the Basic Profile. Cleared by aou_con0.aou_sw_reset.";
+        desc = "Profile announced for RP0 in the ActivateReq this die sends (AoU v0.8 Ch. 11). Read-only: this design implements the Basic Profile only, so the register reads 0/0/0 for every RP and the ActivateReq carries 0/0/0 for every RP it has (and zeros for one it does not). Writes are ignored. A profile-capable design makes these fields writable.";
         field { sw = r; } reserved_31_26[31:26] = 0;
-        field { sw = rw; desc = "ProfileOpt sent for RP0: profile-specific option bits, meaning defined by the profile identified by profile_id."; } profile_opt[25:10] = 0;
-        field { sw = rw; desc = "ProfileRev sent for RP0: revision of the profile identified by profile_id."; } profile_rev[9:5] = 0;
-        field { sw = rw; desc = "ProfileID sent for RP0. 0 = Basic Profile (AoU v0.8 Ch. 11)."; } profile_id[4:0] = 0;
+        field { sw = r; desc = "ProfileOpt sent for RP0: profile-specific option bits, meaning defined by the profile identified by profile_id. Constant 0 (Basic Profile)."; } profile_opt[25:10] = 0;
+        field { sw = r; desc = "ProfileRev sent for RP0: revision of the profile identified by profile_id. Constant 0 (Basic Profile)."; } profile_rev[9:5] = 0;
+        field { sw = r; desc = "ProfileID sent for RP0. Constant 0 = Basic Profile (AoU v0.8 Ch. 11)."; } profile_id[4:0] = 0;
     } profile_cfg_rp0 @ 0x0084;
 
     reg {
         regwidth = 32;
         name = "Profile Config RP1";
-        desc = "Profile announced for RP1 in the ActivateReq this die sends (AoU v0.8 Ch. 11). Program before setting aou_init.activate_start; the value is sampled when the ActivateReq is launched, so a later write only takes effect at the next activation. For an RP the design does not implement the register is writable but the ActivateReq granule carries zeros. Reset 0/0/0 is the Basic Profile. Cleared by aou_con0.aou_sw_reset.";
+        desc = "Profile announced for RP1 in the ActivateReq this die sends (AoU v0.8 Ch. 11). Read-only: this design implements the Basic Profile only, so the register reads 0/0/0 for every RP and the ActivateReq carries 0/0/0 for every RP it has (and zeros for one it does not). Writes are ignored. A profile-capable design makes these fields writable.";
         field { sw = r; } reserved_31_26[31:26] = 0;
-        field { sw = rw; desc = "ProfileOpt sent for RP1: profile-specific option bits, meaning defined by the profile identified by profile_id."; } profile_opt[25:10] = 0;
-        field { sw = rw; desc = "ProfileRev sent for RP1: revision of the profile identified by profile_id."; } profile_rev[9:5] = 0;
-        field { sw = rw; desc = "ProfileID sent for RP1. 0 = Basic Profile (AoU v0.8 Ch. 11)."; } profile_id[4:0] = 0;
+        field { sw = r; desc = "ProfileOpt sent for RP1: profile-specific option bits, meaning defined by the profile identified by profile_id. Constant 0 (Basic Profile)."; } profile_opt[25:10] = 0;
+        field { sw = r; desc = "ProfileRev sent for RP1: revision of the profile identified by profile_id. Constant 0 (Basic Profile)."; } profile_rev[9:5] = 0;
+        field { sw = r; desc = "ProfileID sent for RP1. Constant 0 = Basic Profile (AoU v0.8 Ch. 11)."; } profile_id[4:0] = 0;
     } profile_cfg_rp1 @ 0x0088;
 
     reg {
         regwidth = 32;
         name = "Profile Config RP2";
-        desc = "Profile announced for RP2 in the ActivateReq this die sends (AoU v0.8 Ch. 11). Program before setting aou_init.activate_start; the value is sampled when the ActivateReq is launched, so a later write only takes effect at the next activation. For an RP the design does not implement the register is writable but the ActivateReq granule carries zeros. Reset 0/0/0 is the Basic Profile. Cleared by aou_con0.aou_sw_reset.";
+        desc = "Profile announced for RP2 in the ActivateReq this die sends (AoU v0.8 Ch. 11). Read-only: this design implements the Basic Profile only, so the register reads 0/0/0 for every RP and the ActivateReq carries 0/0/0 for every RP it has (and zeros for one it does not). Writes are ignored. A profile-capable design makes these fields writable.";
         field { sw = r; } reserved_31_26[31:26] = 0;
-        field { sw = rw; desc = "ProfileOpt sent for RP2: profile-specific option bits, meaning defined by the profile identified by profile_id."; } profile_opt[25:10] = 0;
-        field { sw = rw; desc = "ProfileRev sent for RP2: revision of the profile identified by profile_id."; } profile_rev[9:5] = 0;
-        field { sw = rw; desc = "ProfileID sent for RP2. 0 = Basic Profile (AoU v0.8 Ch. 11)."; } profile_id[4:0] = 0;
+        field { sw = r; desc = "ProfileOpt sent for RP2: profile-specific option bits, meaning defined by the profile identified by profile_id. Constant 0 (Basic Profile)."; } profile_opt[25:10] = 0;
+        field { sw = r; desc = "ProfileRev sent for RP2: revision of the profile identified by profile_id. Constant 0 (Basic Profile)."; } profile_rev[9:5] = 0;
+        field { sw = r; desc = "ProfileID sent for RP2. Constant 0 = Basic Profile (AoU v0.8 Ch. 11)."; } profile_id[4:0] = 0;
     } profile_cfg_rp2 @ 0x008C;
 
     reg {
         regwidth = 32;
         name = "Profile Config RP3";
-        desc = "Profile announced for RP3 in the ActivateReq this die sends (AoU v0.8 Ch. 11). Program before setting aou_init.activate_start; the value is sampled when the ActivateReq is launched, so a later write only takes effect at the next activation. For an RP the design does not implement the register is writable but the ActivateReq granule carries zeros. Reset 0/0/0 is the Basic Profile. Cleared by aou_con0.aou_sw_reset.";
+        desc = "Profile announced for RP3 in the ActivateReq this die sends (AoU v0.8 Ch. 11). Read-only: this design implements the Basic Profile only, so the register reads 0/0/0 for every RP and the ActivateReq carries 0/0/0 for every RP it has (and zeros for one it does not). Writes are ignored. A profile-capable design makes these fields writable.";
         field { sw = r; } reserved_31_26[31:26] = 0;
-        field { sw = rw; desc = "ProfileOpt sent for RP3: profile-specific option bits, meaning defined by the profile identified by profile_id."; } profile_opt[25:10] = 0;
-        field { sw = rw; desc = "ProfileRev sent for RP3: revision of the profile identified by profile_id."; } profile_rev[9:5] = 0;
-        field { sw = rw; desc = "ProfileID sent for RP3. 0 = Basic Profile (AoU v0.8 Ch. 11)."; } profile_id[4:0] = 0;
+        field { sw = r; desc = "ProfileOpt sent for RP3: profile-specific option bits, meaning defined by the profile identified by profile_id. Constant 0 (Basic Profile)."; } profile_opt[25:10] = 0;
+        field { sw = r; desc = "ProfileRev sent for RP3: revision of the profile identified by profile_id. Constant 0 (Basic Profile)."; } profile_rev[9:5] = 0;
+        field { sw = r; desc = "ProfileID sent for RP3. Constant 0 = Basic Profile (AoU v0.8 Ch. 11)."; } profile_id[4:0] = 0;
     } profile_cfg_rp3 @ 0x0090;
 
     reg {

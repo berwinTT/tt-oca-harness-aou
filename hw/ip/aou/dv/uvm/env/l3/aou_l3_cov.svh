@@ -204,9 +204,9 @@ class aou_l3_cov extends uvm_object;
     x_flex_kind_dir: cross cp_flex, cp_kind, cp_dir;
   endgroup
 
-  // The profile each ActivateReq announces per RP (v0.8 Ch. 11): on rx what
-  // the DUT's PROFILE_CFG_RPn held, on tx the model's configuration; an RP the
-  // sender does not have carries 0.
+  // The profile each ActivateReq announces per RP (v0.8 Ch. 11): on rx the
+  // DUT's, always the Basic Profile (PROFILE_CFG_RPn read-only 0/0/0), on tx
+  // the model's configuration; an RP the sender does not have carries 0.
   covergroup cg_act_profile;
     cp_rp: coverpoint s_rp {
       `AOU_L3_FC_RP(AOU_FC_CG)

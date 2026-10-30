@@ -1344,15 +1344,16 @@ it is set before the assertion, the activation process will
 automatically proceed after I_INT_FSM_IN_ACTIVE becomes asserted.
 * AOU_INIT.ACTIVATE_START SFR is automatically cleared to 0 once the
 activation is completed and AOU_ACTIVATE_STATE transitions to ENABLED.
-* Profile exchange (AoU v0.8 chapter 11). Before ACTIVATE_START, program
-PROFILE_CFG_RP0..3 (0x0084 to 0x0090) with the ProfileID, ProfileRev and
-ProfileOpt this die announces per RP; reset 0 is the Basic Profile, the
-one AOU_CORE implements. The four-granule ActivateReq carries them. The
-remote die's values, from the last ActivateReq AOU_CORE accepted, are read
-from PROFILE_RMT_RP0..3 (0x0094 to 0x00A0; RCVD set once one has been
-accepted; a v0.7 remote die reads as 0). Hardware does not compare or
-negotiate: software reads both sets once ENABLED and decides. AOU_SW_RESET
-clears all eight registers.
+* Profile exchange (AoU v0.8 chapter 11). The four-granule ActivateReq
+AOU_CORE sends announces the Basic Profile (ProfileID, ProfileRev,
+ProfileOpt 0/0/0) for every RP, the only profile it implements;
+PROFILE_CFG_RP0..3 (0x0084 to 0x0090) read those values and are read-only,
+so nothing is programmed before ACTIVATE_START. The remote die's values,
+from the last ActivateReq AOU_CORE accepted, are read from
+PROFILE_RMT_RP0..3 (0x0094 to 0x00A0; RCVD set once one has been accepted;
+a remote die sending zeros reads as the Basic Profile). Hardware does not
+compare or negotiate: software reads PROFILE_RMT_RPn once ENABLED and
+decides. AOU_SW_RESET clears PROFILE_RMT_RP0..3.
 
 [[aou-ig-deactivation-start]]
 === 6.3 Deactivation Start

@@ -913,11 +913,11 @@ package aou_core_csr_uvm_pkg;
 
         virtual function void build();
             this.profile_id = new("profile_id");
-            this.profile_id.configure(this, 5, 0, "RW", 1, 'h0, 1, 1, 0);
+            this.profile_id.configure(this, 5, 0, "RO", 1, 'h0, 1, 1, 0);
             this.profile_rev = new("profile_rev");
-            this.profile_rev.configure(this, 5, 5, "RW", 1, 'h0, 1, 1, 0);
+            this.profile_rev.configure(this, 5, 5, "RO", 1, 'h0, 1, 1, 0);
             this.profile_opt = new("profile_opt");
-            this.profile_opt.configure(this, 16, 10, "RW", 1, 'h0, 1, 1, 0);
+            this.profile_opt.configure(this, 16, 10, "RO", 1, 'h0, 1, 1, 0);
             this.reserved_31_26 = new("reserved_31_26");
             this.reserved_31_26.configure(this, 6, 26, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
@@ -936,11 +936,11 @@ package aou_core_csr_uvm_pkg;
 
         virtual function void build();
             this.profile_id = new("profile_id");
-            this.profile_id.configure(this, 5, 0, "RW", 1, 'h0, 1, 1, 0);
+            this.profile_id.configure(this, 5, 0, "RO", 1, 'h0, 1, 1, 0);
             this.profile_rev = new("profile_rev");
-            this.profile_rev.configure(this, 5, 5, "RW", 1, 'h0, 1, 1, 0);
+            this.profile_rev.configure(this, 5, 5, "RO", 1, 'h0, 1, 1, 0);
             this.profile_opt = new("profile_opt");
-            this.profile_opt.configure(this, 16, 10, "RW", 1, 'h0, 1, 1, 0);
+            this.profile_opt.configure(this, 16, 10, "RO", 1, 'h0, 1, 1, 0);
             this.reserved_31_26 = new("reserved_31_26");
             this.reserved_31_26.configure(this, 6, 26, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
@@ -959,11 +959,11 @@ package aou_core_csr_uvm_pkg;
 
         virtual function void build();
             this.profile_id = new("profile_id");
-            this.profile_id.configure(this, 5, 0, "RW", 1, 'h0, 1, 1, 0);
+            this.profile_id.configure(this, 5, 0, "RO", 1, 'h0, 1, 1, 0);
             this.profile_rev = new("profile_rev");
-            this.profile_rev.configure(this, 5, 5, "RW", 1, 'h0, 1, 1, 0);
+            this.profile_rev.configure(this, 5, 5, "RO", 1, 'h0, 1, 1, 0);
             this.profile_opt = new("profile_opt");
-            this.profile_opt.configure(this, 16, 10, "RW", 1, 'h0, 1, 1, 0);
+            this.profile_opt.configure(this, 16, 10, "RO", 1, 'h0, 1, 1, 0);
             this.reserved_31_26 = new("reserved_31_26");
             this.reserved_31_26.configure(this, 6, 26, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
@@ -982,11 +982,11 @@ package aou_core_csr_uvm_pkg;
 
         virtual function void build();
             this.profile_id = new("profile_id");
-            this.profile_id.configure(this, 5, 0, "RW", 1, 'h0, 1, 1, 0);
+            this.profile_id.configure(this, 5, 0, "RO", 1, 'h0, 1, 1, 0);
             this.profile_rev = new("profile_rev");
-            this.profile_rev.configure(this, 5, 5, "RW", 1, 'h0, 1, 1, 0);
+            this.profile_rev.configure(this, 5, 5, "RO", 1, 'h0, 1, 1, 0);
             this.profile_opt = new("profile_opt");
-            this.profile_opt.configure(this, 16, 10, "RW", 1, 'h0, 1, 1, 0);
+            this.profile_opt.configure(this, 16, 10, "RO", 1, 'h0, 1, 1, 0);
             this.reserved_31_26 = new("reserved_31_26");
             this.reserved_31_26.configure(this, 6, 26, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build

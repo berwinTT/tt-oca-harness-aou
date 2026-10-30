@@ -259,8 +259,8 @@
 - id: '1.14'
   added: 'AoU v0.8 Ch. 11; MAS software-operation 7.1 PROFILE_CFG_RPn / PROFILE_RMT_RPn'
   priority: P1
-  title: 'ActivateReq profile exchange: the DUT announces PROFILE_CFG_RPn per RP (0 for an RP it does not have) and stores the received ProfileID/Rev/Opt in PROFILE_RMT_RPn with RCVD; kept through a deactivation, unchanged by an ActivateReq rejected in ENABLED, cleared by AOU_SW_RESET'
-  note: 'v0.8 replaces PropertyReq (1.4, dropped) with a four-granule ActivateReq carrying a profile per RP; nothing is negotiated and nothing acts on the values (aou_act_profile_test).'
+  title: 'ActivateReq profile exchange: the DUT announces the Basic Profile per RP (PROFILE_CFG_RPn read-only 0/0/0; 0 for an RP it does not have) and stores the received ProfileID/Rev/Opt in PROFILE_RMT_RPn with RCVD; kept through a deactivation, unchanged by an ActivateReq rejected in ENABLED, cleared by AOU_SW_RESET'
+  note: 'v0.8 replaces PropertyReq (1.4, dropped) with a four-granule ActivateReq carrying a profile per RP; nothing is negotiated and nothing acts on the values; the DUT implements the Basic Profile only, so its own side is fixed (aou_act_profile_test).'
 - id: '2.11'
   added: 'AoU 8.2/8.4'
   priority: P2
@@ -542,5 +542,5 @@
 # Profiles: v0.8 removes PROF/PROFEXTLEN from the AXI messages (FLEX, 5.2) and
 # announces a profile per RP in the ActivateReq (Ch. 11).
 - id: '11.14'
-  title: 'ProfileID/ProfileRev/ProfileOpt values in the ActivateReq, the Basic Profile 0/0/0 beside non-zero fields and RPs the sender does not have'
+  title: 'ProfileID/ProfileRev/ProfileOpt values in the ActivateReq: the Basic Profile 0/0/0 (the DUT, always) beside the remote die''s non-zero fields and RPs the sender does not have'
   note: 'The old item varied v0.7 PROF/PROFEXTLEN in the AXI messages, which v0.8 removes; the profile now travels in the ActivateReq (1.14, aou_act_profile_test).'

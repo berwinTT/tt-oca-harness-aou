@@ -368,27 +368,10 @@ class aou_base_test_seq extends ocah_sequence;
     end
   endtask
 
-  // The profile the DUT announces for RP rp in its next ActivateReq (AoU v0.8
-  // Ch. 11): PROFILE_CFG_RPn, and the expectation AOU-R12 holds the DUT's
-  // ActivateReq to. Call it while the DUT is DISABLED: the register is read
-  // when the ActivateReq leaves. Registers of RPs the DUT does not have are
-  // writable, but the message carries 0 for them (the unpacker expects that).
-  task program_profile(int unsigned rp, bit [4:0] id, bit [4:0] rev, bit [15:0] opt);
-    aou_reg_profile_seq s = aou_reg_profile_seq::type_id::create("profile");
-    prep_reg(s);
-    s.rp = rp;
-    s.profile_id = int'(id);
-    s.profile_rev = int'(rev);
-    s.profile_opt = int'(opt);
-    s.start(null);
-    cfg.l3_cfg.dut_profile_id[rp] = id;
-    cfg.l3_cfg.dut_profile_rev[rp] = rev;
-    cfg.l3_cfg.dut_profile_opt[rp] = opt;
-  endtask
-
   // The profile the remote die announces for its RP rp (its own configuration;
   // the DUT stores it in PROFILE_RMT_RPn on each accepted ActivateReq). Takes
-  // effect at the remote's next ActivateReq.
+  // effect at the remote's next ActivateReq. The DUT's own side has no knob:
+  // it announces the Basic Profile (PROFILE_CFG_RPn read-only 0/0/0, AOU-R12).
   function void remote_profile(int unsigned rp, bit [4:0] id, bit [4:0] rev, bit [15:0] opt);
     cfg.l3_cfg.profile_id[rp] = id;
     cfg.l3_cfg.profile_rev[rp] = rev;
@@ -749,19 +732,8 @@ class aou_base_test_seq extends ocah_sequence;
       end
     join
     wait_cycles(20);
-    regs_reset();
-  endtask
-
-  // The register mirror after a reset of the SFRs, and with it the profile
-  // the DUT now announces (PROFILE_CFG_RPn back to the Basic Profile).
-  function void regs_reset();
     p_sequencer.regs.reset();
-    foreach (cfg.l3_cfg.dut_profile_id[r]) begin
-      cfg.l3_cfg.dut_profile_id[r] = '0;
-      cfg.l3_cfg.dut_profile_rev[r] = '0;
-      cfg.l3_cfg.dut_profile_opt[r] = '0;
-    end
-  endfunction
+  endtask
 
   // L3 error injection. kind: bad_type (arg: kind of bad granule), rsvd
   // (arg: RsvdZero value in a zero CrdtGrant), act_ack / act_req / deact_req / deact_ack
@@ -821,7 +793,7 @@ class aou_base_test_seq extends ocah_sequence;
     // The reset agent's on_reset makes the env flush (reset_flush(which)).
     env.rst.do_reset(which);
     // The SFRs are on the core reset (integration guide 3.1.1): I_PRESETN alone keeps them.
-    if (which != AOU_T1_RST_APB) regs_reset();
+    if (which != AOU_T1_RST_APB) p_sequencer.regs.reset();
     // I_PRESETN alone leaves the core and the AoU link running.
     if (!reactivate || which == AOU_T1_RST_APB) return;
     link_up();

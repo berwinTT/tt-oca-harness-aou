@@ -549,7 +549,7 @@ args = ["+mode=deact_rsp", "+v0p9draft"]
 
 [[groups]]
 name = "link"
-expected_count = 53
+expected_count = 55
 tests = [
   "aou_link_act_deact_test",
   "aou_link_act_deact_test.who-both.order-simul.deact_who-both.busy-0",
@@ -604,6 +604,8 @@ tests = [
   "aou_act_flit_test.mode-act_req.v0p9draft",
   "aou_act_flit_test.mode-deact_rsp.v0p9draft",
   "aou_rx_credit_test.loops-3.4xmix-sp256-rxf",
+  "aou_act_profile_test",
+  "aou_act_profile_test.loops-3.skip_reset-1",
 ]
 
 [[tests]]

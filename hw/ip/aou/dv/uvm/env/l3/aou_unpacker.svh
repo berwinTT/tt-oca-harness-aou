@@ -25,6 +25,10 @@ class aou_unpacker extends uvm_object;
   int unsigned    st_pos[$];
   int unsigned    st_len[$];
 
+  // The Basic Profile (0/0/0) for every RP: what the DUT's ActivateReq carries.
+  const bit [4:0]  zero5[AOU_RP_MAX] = '{default: '0};
+  const bit [15:0] zero16[AOU_RP_MAX] = '{default: '0};
+
   function new(string name = "aou_unpacker");
     super.new(name);
   endfunction
@@ -99,12 +103,12 @@ class aou_unpacker extends uvm_object;
     if ($cast(cg, m) && cg.unsupported_rp_nonzero(sender_rp_count()))
       viol("AOU-R11", f, spos, $sformatf("CrdtGrant grants an RP >= %0d", sender_rp_count()));
     // v0.8 Ch. 11: the ActivateReq announces the sender's configured profile
-    // per RP it has (the DUT's PROFILE_CFG_RPn registers; our cfg.profile_*)
-    // and 0 for an RP it has not.
+    // per RP it has and 0 for an RP it has not. The DUT implements the Basic
+    // Profile only (PROFILE_CFG_RPn read-only 0/0/0), so its ActivateReq
+    // carries 0 in every granule; ours carries cfg.profile_*.
     if ($cast(a, m) && a.v08_req()) begin
       string pm = (dir == AOU_L3_RX) ?
-          a.profile_mismatch(cfg.dut_profile_id, cfg.dut_profile_rev, cfg.dut_profile_opt,
-                             sender_rp_count()) :
+          a.profile_mismatch(zero5, zero5, zero16, sender_rp_count()) :
           a.profile_mismatch(cfg.profile_id, cfg.profile_rev, cfg.profile_opt,
                              sender_rp_count());
       ledger_chk("AOU-R12");
