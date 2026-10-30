@@ -405,7 +405,8 @@ class aou_rx_lat_mon extends uvm_component;
     foreach (wresp_q[r]) left += wresp_q[r].size();
     foreach (rdata_q[r, i]) left += rdata_q[r][i].size();
     `uvm_info(get_type_name(), $sformatf(
-              "%0d remote messages timed at the FDI, %0d paired with an AXI handshake, %0d not timed, %0d never paired, %0d source flits not delivered",
+              {"%0d remote messages timed at the FDI, %0d paired with an AXI handshake, ",
+               "%0d not timed, %0d never paired, %0d source flits not delivered"},
               n_msgs, n_paired, n_unpaired, left, n_dropped_flits), UVM_LOW)
   endfunction
 endclass

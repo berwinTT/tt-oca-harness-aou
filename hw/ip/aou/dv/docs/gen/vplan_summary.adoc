@@ -157,7 +157,7 @@
 | `aou_wdt_test.wdt_case-multi_rp.4x512-sp64` | `aou_wdt_test` | `+wdt_case=multi_rp` | 1-2 | `4x512-sp64` | 16.18,16.22,16.23 | 
 | `aou_wdt_test.wdt_case-multi_rp.4xmix4211-sp128` | `aou_wdt_test` | `+wdt_case=multi_rp` | 1-2 | `4xmix4211-sp128` | 16.18,16.22,16.23 | 
 |===
-===== `testlists/stress.toml` (58 scenarios)
+===== `testlists/stress.toml` (61 scenarios)
 [cols="3,2,2,1,1,2,2",options="header"]
 |===
 | Scenario | Test class | Arguments | Seeds | Target | Plan items | Expected failure
@@ -173,6 +173,9 @@
 | `aou_pack_test.pk-crdt` | `aou_pack_test` | `+pk=crdt` | 1-2 |  | 11.5 | 
 | `aou_pack_test.pk-b2b` | `aou_pack_test` | `+pk=b2b` | 1-2 |  | 11.1,11.2 | 
 | `aou_pack_test.pk-prof` | `aou_pack_test` | `+pk=prof` | 1-2 |  | 11.14 | 
+| `aou_pack_test.pk-edge.pk_start-23` | `aou_pack_test` | `+pk=edge +pk_start=23` | 1-2 |  | 6.9,6.4,6.5,6.6,6.7,6.8,11.3 | 
+| `aou_pack_test.pk-edge.pk_start-47` | `aou_pack_test` | `+pk=edge +pk_start=47` | 1-2 |  | 6.9,6.4,6.5,6.6,6.7,6.8 | 
+| `aou_pack_test.pk-wreq8` | `aou_pack_test` | `+pk=wreq8` | 1-2 |  | 6.18,11.6 | 
 | `aou_pattern_test.dp_pattern-walk1` | `aou_pattern_test` | `+dp_pattern=walk1` | 1-2 |  | 7.4 | 
 | `aou_pattern_test.dp_pattern-walk0` | `aou_pattern_test` | `+dp_pattern=walk0` | 1-2 |  | 7.5 | 
 | `aou_pattern_test.dp_pattern-ones` | `aou_pattern_test` | `+dp_pattern=ones` | 1-2 |  | 7.6 | 
@@ -388,7 +391,7 @@
 | `aou_reset_test.reset-apb.when-traffic.pclk_ps-1013` | `aou_reset_test` | `+reset=apb +when=traffic +pclk_ps=1013` | 1 |  | 11.17 | 
 | `aou_dft_scan_test` | `aou_dft_scan_test` |  | 1-2 |  | 11.19 | 
 |===
-===== `testlists/matrix.toml` (120 scenarios)
+===== `testlists/matrix.toml` (126 scenarios)
 [cols="3,2,2,1,1,2,2",options="header"]
 |===
 | Scenario | Test class | Arguments | Seeds | Target | Plan items | Expected failure
@@ -438,11 +441,14 @@
 | `aou_dw_test.remote_bytes-32_64_128_64` | `aou_dw_test` | `+remote_bytes=32,64,128,64` | 1 | `4x512-sp64` | 14.1,14.6,14.8,14.10,14.11,14.14,14.15,14.16 | 
 | `aou_perf_test.perf_mode-lat.1x512-sp64` | `aou_perf_test` | `+perf_mode=lat +aou_config=1x512-sp64` | 1 | `1x512-sp64` | 10.4,10.5,10.9 | 
 | `aou_perf_test.perf_mode-drain.1x512-sp64` | `aou_perf_test` | `+perf_mode=drain +aou_config=1x512-sp64` | 1 | `1x512-sp64` | 10.7 | 
+| `aou_perf_test.perf_mode-rxlat.1x512-sp64` | `aou_perf_test` | `+perf_mode=rxlat +aou_config=1x512-sp64` | 1 | `1x512-sp64` | 10.4,10.5,10.6,10.14 | 
 | `aou_perf_test.perf_mode-lat.4x512-sp64` | `aou_perf_test` | `+perf_mode=lat +aou_config=4x512-sp64` | 1 | `4x512-sp64` | 10.4,10.5,10.9 | 
 | `aou_perf_test.perf_mode-drain.4x512-sp64` | `aou_perf_test` | `+perf_mode=drain +aou_config=4x512-sp64` | 1 | `4x512-sp64` | 10.7 | 
+| `aou_perf_test.perf_mode-rxlat.4x512-sp64` | `aou_perf_test` | `+perf_mode=rxlat +aou_config=4x512-sp64` | 1 | `4x512-sp64` | 10.4,10.5,10.6,10.14 | 
 | `aou_perf_test.perf_mode-lat.4xmix4211-sp128` | `aou_perf_test` | `+perf_mode=lat +aou_config=4xmix4211-sp128` | 1 | `4xmix4211-sp128` | 10.4,10.5,10.9 | 
 | `aou_perf_test.perf_mode-lat.4xmix2144-sp64` | `aou_perf_test` | `+perf_mode=lat +aou_config=4xmix2144-sp64` | 1 | `4xmix2144-sp64` | 10.4,10.5,10.9 | 
 | `aou_perf_test.perf_mode-drain.4xmix4211-sp128` | `aou_perf_test` | `+perf_mode=drain +aou_config=4xmix4211-sp128` | 1 | `4xmix4211-sp128` | 10.7 | 
+| `aou_perf_test.perf_mode-rxlat.4xmix4211-sp128` | `aou_perf_test` | `+perf_mode=rxlat +aou_config=4xmix4211-sp128` | 1 | `4xmix4211-sp128` | 10.4,10.5,10.6,10.14 | 
 | `aou_perf_test.perf_mode-drain.4xmix2144-sp64` | `aou_perf_test` | `+perf_mode=drain +aou_config=4xmix2144-sp64` | 1 | `4xmix2144-sp64` | 10.7 | 
 | `aou_perf_test.perf_mode-lat.1x256-sp32` | `aou_perf_test` | `+perf_mode=lat +aou_config=1x256-sp32` | 1 | `1x256-sp32` | 10.4,10.5,10.9 | 
 | `aou_perf_test.perf_mode-drain.1x256-sp32` | `aou_perf_test` | `+perf_mode=drain +aou_config=1x256-sp32` | 1 | `1x256-sp32` | 10.7 | 
@@ -473,6 +479,7 @@
 | `aou_stress_test.st_bp-all.1x512-sp64-nxt` | `aou_stress_test` | `+st_bp=all` | 1-2 | `1x512-sp64-nxt` | 7.16,10.15 | 
 | `aou_perf_test.perf_mode-lat.1x1024-sp128` | `aou_perf_test` | `+perf_mode=lat +aou_config=1x1024-sp128` | 1 | `1x1024-sp128` | 10.4,10.5,10.9 | 
 | `aou_perf_test.perf_mode-drain.1x1024-sp128` | `aou_perf_test` | `+perf_mode=drain +aou_config=1x1024-sp128` | 1 | `1x1024-sp128` | 10.7 | 
+| `aou_perf_test.perf_mode-rxlat.1x1024-sp128` | `aou_perf_test` | `+perf_mode=rxlat +aou_config=1x1024-sp128` | 1 | `1x1024-sp128` | 10.4,10.5,10.6,10.14 | 
 | `aou_pack_test.pk-crossflit.1x1024-sp256` | `aou_pack_test` | `+pk=crossflit` | 1-2 | `1x1024-sp256` | 6.5,6.7,6.9 | 
 | `aou_pack_test.pk-mixed.1x1024-sp256` | `aou_pack_test` | `+pk=mixed` | 1-2 | `1x1024-sp256` | 6.3 | 
 | `aou_pack_test.pk-full.1x1024-sp256` | `aou_pack_test` | `+pk=full` | 1-2 | `1x1024-sp256` | 6.18 | 
@@ -480,8 +487,10 @@
 | `aou_stress_test.st_bp-all.1x1024-sp256` | `aou_stress_test` | `+st_bp=all` | 1-2 | `1x1024-sp256` | 7.16,10.15 | 
 | `aou_perf_test.perf_mode-lat.1x1024-sp256` | `aou_perf_test` | `+perf_mode=lat +aou_config=1x1024-sp256` | 1 | `1x1024-sp256` | 10.4,10.5,10.9 | 
 | `aou_perf_test.perf_mode-drain.1x1024-sp256` | `aou_perf_test` | `+perf_mode=drain +aou_config=1x1024-sp256` | 1 | `1x1024-sp256` | 10.7 | 
+| `aou_perf_test.perf_mode-rxlat.1x1024-sp256` | `aou_perf_test` | `+perf_mode=rxlat +aou_config=1x1024-sp256` | 1 | `1x1024-sp256` | 10.4,10.5,10.6,10.14 | 
 | `aou_mrp_test.mrp_scn-interleave.4xmix-sp256` | `aou_mrp_test` | `+mrp_scn=interleave` | 1-2 | `4xmix-sp256` | 12.6,12.19 | 
 | `aou_mrp_test.mrp_scn-crd_rr.4xmix-sp256` | `aou_mrp_test` | `+mrp_scn=crd_rr` | 1-2 | `4xmix-sp256` | 3.19 | 
+| `aou_perf_test.perf_mode-rxlat.4xmix-sp256` | `aou_perf_test` | `+perf_mode=rxlat +aou_config=4xmix-sp256` | 1 | `4xmix-sp256` | 10.4,10.5,10.6,10.14 | 
 | `aou_dw_test.remote_bytes-32_64_128_32.4xmix-sp256` | `aou_dw_test` | `+remote_bytes=32,64,128,32` | 1-2 | `4xmix-sp256` | 14.2,14.4,14.6,14.7,14.12,14.13,12.18,14.10,14.11,14.14,14.15,14.16 | 
 | `aou_dw_test.remote_bytes-128_128_64_64.4xmix-sp256` | `aou_dw_test` | `+remote_bytes=128,128,64,64` | 1-2 | `4xmix-sp256` | 14.4,14.6,14.9,14.12,12.18,14.10,14.11,14.14,14.15,14.16 | 
 | `aou_dp_random_test.dp_dir-both.4xmix-sp256-rxf` | `aou_dp_random_test` | `+dp_dir=both` | 1-2 | `4xmix-sp256-rxf` | 10.3,7.16,8.9,8.10 | 

@@ -363,7 +363,8 @@ class aou_t1_attr_chk extends uvm_component;
                                       bit [15:0] got, bit [15:0] exp);
     aou_rule_log::fire("DP-R12", get_type_name());
     `uvm_error(get_type_name(), $sformatf(
-               "DP-R12: %s: the remote die's %s on RP%0d carries FLEX %04h, the DUT's %s port presents %s %04h: %s",
+               {"DP-R12: %s: the remote die's %s on RP%0d carries FLEX %04h, ",
+                "the DUT's %s port presents %s %04h: %s"},
                path_name(p), msg, n.rp, exp, (p == 0) ? "S" : "M", sig, got,
                n.convert2string()))
   endfunction
@@ -570,7 +571,8 @@ class aou_t1_attr_chk extends uvm_component;
     `uvm_info(get_type_name(), $sformatf(
               {"matched L2R/R2L %0d/%0d, exclusive responses compared %0d/%0d, unmatched far ",
                "%0d/%0d requester %0d/%0d; FLEX values checked: DUT messages %0d, USER the DUT ",
-               "presented %0d; WriteReq sizes checked %0d, unmatched WriteReq %0d S-port write %0d"},
+               "presented %0d; WriteReq sizes checked %0d, unmatched WriteReq %0d ",
+               "S-port write %0d"},
               n_match[0], n_match[1], n_excl_cmp[0], n_excl_cmp[1], left[0][0], left[1][0],
               left[0][1], left[1][1], n_flex_chk, n_rx_flex_chk, n_wsize_chk, w_left[0],
               w_left[1]), UVM_LOW)

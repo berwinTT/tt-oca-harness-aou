@@ -1729,6 +1729,18 @@ a quarter of the flits the grant starts at G47 and ends in G0
 of the next flit
 b2b        no idle cycles on FDI either way (trdy always, no gaps)
 prof       random PROF (FLEX[11:0]) in AXI messages to the DUT
+edge       the first message of every flit to the DUT starts at granule
+
+----
++pk_start (default 23, the last granule of the first half; 47,
+----
+
+the last of the flit): data messages straddle the half-flit
+boundary at every width (fdi-rx-plan 8: tagger carry, store
+writes split across halves)
+wreq8      remote writes only, WriteReqs held back in windows and then
+released as a backlog: halves holding the spec maximum of 8
+WriteReq starts (fdi-rx-plan 8: request lanes per half flit)
 
 *Procedure.* Virtual sequence `aou_pack_vseq` (`uvm/seq_lib/stress/aou_pack_vseq.svh`):
 
@@ -1736,7 +1748,9 @@ Data-path traffic for the packing tests (aou_pack_test, +pk=), with two
 twists some modes use: `bursts` makes L3 hold its credited messages back in random windows
 while traffic runs, so they leave as dense backlogs (full flits, mixed
 types); `act_cycles` deactivates and reactivates the link between traffic
-phases, so Activation messages meet traffic and credit grants.
+phases, so Activation messages meet traffic and credit grants. `wreq_bursts`
+holds only the remote WriteReqs (their WriteData still goes), so each
+release sends a backlog of requests: up to 8 WriteReq starts per half flit.
 
 *Pass criteria.* The base test's end-of-test checks: scoreboard drained, every declared expectation met, no unexpected `UVM_ERROR`/`UVM_FATAL`, the FDI checker clean; `scripts/check_run.py` judges the log against `expected_fail.yaml`.
 
@@ -1757,6 +1771,9 @@ phases, so Activation messages meet traffic and credit grants.
 | `aou_pack_test.pk-crdt` | `+pk=crdt` | 1-2 |  | 11.5
 | `aou_pack_test.pk-b2b` | `+pk=b2b` | 1-2 |  | 11.1,11.2
 | `aou_pack_test.pk-prof` | `+pk=prof` | 1-2 |  | 11.14
+| `aou_pack_test.pk-edge.pk_start-23` | `+pk=edge +pk_start=23` | 1-2 |  | 6.9,6.4,6.5,6.6,6.7,6.8,11.3
+| `aou_pack_test.pk-edge.pk_start-47` | `+pk=edge +pk_start=47` | 1-2 |  | 6.9,6.4,6.5,6.6,6.7,6.8
+| `aou_pack_test.pk-wreq8` | `+pk=wreq8` | 1-2 |  | 6.18,11.6
 | `aou_pack_test.pk-crossflit.1x512-sp64-nxt` | `+pk=crossflit` | 1-2 | `1x512-sp64-nxt` | 6.5,6.7,6.9
 | `aou_pack_test.pk-mixed.1x512-sp64-nxt` | `+pk=mixed` | 1-2 | `1x512-sp64-nxt` | 6.3
 | `aou_pack_test.pk-full.1x512-sp64-nxt` | `+pk=full` | 1-2 | `1x512-sp64-nxt` | 6.18
@@ -1783,7 +1800,9 @@ phases, so Activation messages meet traffic and credit grants.
 * 6.21: Verify rules for misc messages
 * 11.1: Continuous flit transmission with no gaps
 * 11.2: Continuous flit reception with no gaps
+* 11.3: Message ends exactly at granule 47 (flit boundary)
 * 11.5: CrdtGrant (2 granules)
+* 11.6: WriteReq/ReadReq (3 granules)
 * 11.9: Fill flit with 48 WriteResp messages
 * 11.14: Test various `prof` and `profextlen` values
 
@@ -3564,10 +3583,12 @@ Class `aou_perf_test` extends `aou_dp_base_test` (`uvm/tests/matrix/aou_perf_tes
 *Purpose.* Performance (plan 2.10): aou_perf_vseq's windows (+perf_scn=S1..S5, or
 
 ----
-+perf_mode=lat|bw|drain) measured by aou_perf_mon into perf.txt and
++perf_mode=lat|bw|drain|rxlat) measured by aou_perf_mon into perf.txt and
 ----
 
-perf.json (docs/PERF_JSON.md) in the run directory. aou_perf_chk gates every
+perf.json (docs/PERF_JSON.md) in the run directory. +perf_mode=rxlat adds
+aou_rx_lat_mon: per-message RX latency from the FDI pins to the AXI
+handshake (fdi-rx-plan 13), report only, rxlat.* lines in perf.txt. aou_perf_chk gates every
 bandwidth window against the committed d2d_model targets (T1-P02..P04); the
 latency and drain windows are report only. The scoreboard still checks every
 byte. aou_perf_seq replaces the random traffic with each window's exact
@@ -3622,6 +3643,14 @@ bw     S1's both-sides windows bw_wr, bw_rd, bw_mix; with +perf_dir=l2r|r2l
 S1's one-sided windows of that side instead.
 drain  the remote die advertises no ReadReq credit; local reads queue in
 the DUT; then one grant per RP releases them (10.7)
+rxlat  RX per-message latency windows for aou_rx_lat_mon (fdi-rx-plan 13),
+on RP0 unless said: idle_* one transaction at a time, each
+direction and each data size the RP allows (every RX message
+class: WriteReq/WriteData r2l, ReadReq r2l, WriteResp l2r, ReadData
+l2r); stream_* 16-beat bursts back to back, one direction and
+size; loaded_* the same with the AXI side accepting about half the
+cycles (M-port AW/W/AR ready, S-port B/R ready random 0-2 cycles);
+mixed every RP, both directions, half writes.
 
 ----
 +perf_slots=<n> sets the transactions each manager keeps outstanding
@@ -3640,11 +3669,14 @@ the DUT; then one grant per RP releases them (10.7)
 | Scenario | Arguments | Seeds | Target | Plan items
 | `aou_perf_test.perf_mode-lat.1x512-sp64` | `+perf_mode=lat +aou_config=1x512-sp64` | 1 | `1x512-sp64` | 10.4,10.5,10.9
 | `aou_perf_test.perf_mode-drain.1x512-sp64` | `+perf_mode=drain +aou_config=1x512-sp64` | 1 | `1x512-sp64` | 10.7
+| `aou_perf_test.perf_mode-rxlat.1x512-sp64` | `+perf_mode=rxlat +aou_config=1x512-sp64` | 1 | `1x512-sp64` | 10.4,10.5,10.6,10.14
 | `aou_perf_test.perf_mode-lat.4x512-sp64` | `+perf_mode=lat +aou_config=4x512-sp64` | 1 | `4x512-sp64` | 10.4,10.5,10.9
 | `aou_perf_test.perf_mode-drain.4x512-sp64` | `+perf_mode=drain +aou_config=4x512-sp64` | 1 | `4x512-sp64` | 10.7
+| `aou_perf_test.perf_mode-rxlat.4x512-sp64` | `+perf_mode=rxlat +aou_config=4x512-sp64` | 1 | `4x512-sp64` | 10.4,10.5,10.6,10.14
 | `aou_perf_test.perf_mode-lat.4xmix4211-sp128` | `+perf_mode=lat +aou_config=4xmix4211-sp128` | 1 | `4xmix4211-sp128` | 10.4,10.5,10.9
 | `aou_perf_test.perf_mode-lat.4xmix2144-sp64` | `+perf_mode=lat +aou_config=4xmix2144-sp64` | 1 | `4xmix2144-sp64` | 10.4,10.5,10.9
 | `aou_perf_test.perf_mode-drain.4xmix4211-sp128` | `+perf_mode=drain +aou_config=4xmix4211-sp128` | 1 | `4xmix4211-sp128` | 10.7
+| `aou_perf_test.perf_mode-rxlat.4xmix4211-sp128` | `+perf_mode=rxlat +aou_config=4xmix4211-sp128` | 1 | `4xmix4211-sp128` | 10.4,10.5,10.6,10.14
 | `aou_perf_test.perf_mode-drain.4xmix2144-sp64` | `+perf_mode=drain +aou_config=4xmix2144-sp64` | 1 | `4xmix2144-sp64` | 10.7
 | `aou_perf_test.perf_mode-lat.1x256-sp32` | `+perf_mode=lat +aou_config=1x256-sp32` | 1 | `1x256-sp32` | 10.4,10.5,10.9
 | `aou_perf_test.perf_mode-drain.1x256-sp32` | `+perf_mode=drain +aou_config=1x256-sp32` | 1 | `1x256-sp32` | 10.7
@@ -3656,8 +3688,11 @@ the DUT; then one grant per RP releases them (10.7)
 | `aou_perf_test.perf_mode-drain.2x512-tp32_64` | `+perf_mode=drain +aou_config=2x512-tp32_64` | 1 | `2x512-tp32_64` | 10.7
 | `aou_perf_test.perf_mode-lat.1x1024-sp128` | `+perf_mode=lat +aou_config=1x1024-sp128` | 1 | `1x1024-sp128` | 10.4,10.5,10.9
 | `aou_perf_test.perf_mode-drain.1x1024-sp128` | `+perf_mode=drain +aou_config=1x1024-sp128` | 1 | `1x1024-sp128` | 10.7
+| `aou_perf_test.perf_mode-rxlat.1x1024-sp128` | `+perf_mode=rxlat +aou_config=1x1024-sp128` | 1 | `1x1024-sp128` | 10.4,10.5,10.6,10.14
 | `aou_perf_test.perf_mode-lat.1x1024-sp256` | `+perf_mode=lat +aou_config=1x1024-sp256` | 1 | `1x1024-sp256` | 10.4,10.5,10.9
 | `aou_perf_test.perf_mode-drain.1x1024-sp256` | `+perf_mode=drain +aou_config=1x1024-sp256` | 1 | `1x1024-sp256` | 10.7
+| `aou_perf_test.perf_mode-rxlat.1x1024-sp256` | `+perf_mode=rxlat +aou_config=1x1024-sp256` | 1 | `1x1024-sp256` | 10.4,10.5,10.6,10.14
+| `aou_perf_test.perf_mode-rxlat.4xmix-sp256` | `+perf_mode=rxlat +aou_config=4xmix-sp256` | 1 | `4xmix-sp256` | 10.4,10.5,10.6,10.14
 | `aou_perf_test.perf_scn-S1.1x512-sp64` | `+perf_scn=S1 +aou_config=1x512-sp64` | 1 | `1x512-sp64` | 10.1,10.2,10.3,10.6,10.8
 | `aou_perf_test.perf_scn-S1.4x512-sp64` | `+perf_scn=S1 +aou_config=4x512-sp64` | 1 | `4x512-sp64` | 10.1,10.2,10.3,10.6,10.8
 | `aou_perf_test.perf_scn-S1.3x512-sp64` | `+perf_scn=S1 +aou_config=3x512-sp64` | 1 | `3x512-sp64` | 10.1,10.2,10.3,10.6,10.8
@@ -3698,6 +3733,7 @@ the DUT; then one grant per RP releases them (10.7)
 * 10.11: Partial-strobe writes (S3, WriteData) at least 97% of the d2d_model bytes/cycle per link; the full-strobe reference is 10.1
 * 10.12: Burst-length sweep (S4) 1 to 256 beats, AxSIZE narrowed to stay within 4 KB: at least 97% of the d2d_model bytes/cycle per link; bursts cross the link whole, the DUT dividing the ones it receives at its manager port (MAX_AxBURSTLEN)
 * 10.13: All RPs at once (S5) with 0, 50 and 100% of the transactions on the widest RP: at least 97% of the d2d_model bytes/cycle per link
+* 10.14: Numeric performance bounds: latency and efficiency per FDI width from the PPA tables
 * 18.1: Configure `FDI_CFG_SP_32B`; verify 32-byte chunks
 * 18.3: Configure `FDI_CFG_SP_128B`; verify 128-byte chunks
 * 18.4: Configure `FDI_CFG_TP_32B_64B` with `+define+TWO_PHY`

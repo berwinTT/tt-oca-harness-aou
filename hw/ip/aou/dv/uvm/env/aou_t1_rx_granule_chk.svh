@@ -129,7 +129,8 @@ class aou_t1_rx_granule_chk extends uvm_component;
     end
     foreach (e[i]) begin
       if (got[i] != e[i]) begin
-        fail($sformatf("RP%0d %s store hands on granule %0d as %010h, the remote die sent %010h (stored [%s], sent [%s])",
+        fail($sformatf({"RP%0d %s store hands on granule %0d as %010h, the remote die sent %010h ",
+                        "(stored [%s], sent [%s])"},
                        r, store_name(k), i, got[i], e[i], gran_str(got), gran_str(e)));
         return;
       end
@@ -167,7 +168,8 @@ class aou_t1_rx_granule_chk extends uvm_component;
     int unsigned left;
     foreach (exp_q[k, r]) left += exp_q[k][r].size();
     `uvm_info(get_type_name(), $sformatf(
-              "%0d RX store messages matched the wire granules, %0d mismatched, %0d dropped at resets, %0d not popped%s",
+              {"%0d RX store messages matched the wire granules, %0d mismatched, ",
+               "%0d dropped at resets, %0d not popped%s"},
               n_ok, n_err, n_dropped, left, off ? " (check stopped)" : ""), UVM_LOW)
   endfunction
 endclass
