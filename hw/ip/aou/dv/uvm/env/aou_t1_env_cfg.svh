@@ -259,12 +259,12 @@ class aou_t1_env_cfg extends uvm_object;
 
   function string convert2string();
     return $sformatf({"n_rp=%0d remote_rp_count=%0d rp_bytes=%p remote_bytes=%0d ",
-                      "rp_remote_bytes=%p phy=%0d/%0d ",
+                      "rp_remote_bytes=%p phy=%0d/%0d fdi_beat_bytes=%0d ",
                       "spec=%s timing=%s remote_lat<=%0d resp_fork=%0b ",
                       "l1 cancel/bubble=%0d/%0d"},
                      n_rp, remote_rp_count, rp_bytes, remote_bytes, rp_remote_bytes,
                      lsm_cfg.active_phy,
-                     lsm_cfg.n_phy, spec_rev.name(),
+                     lsm_cfg.n_phy, fdi_cfg[lsm_cfg.active_phy].beat_bytes, spec_rev.name(),
                      local_timing.name(), remote_lat_max, l3_cfg.resp_fork, l1_cancel_pct,
                      l1_bubble_pct);
   endfunction
