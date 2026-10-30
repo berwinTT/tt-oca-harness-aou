@@ -204,6 +204,21 @@ class aou_t1_attr_chk extends uvm_component;
     return (t.addr & ~(64'(t.beat_bytes()) - 64'd1)) + 64'(t.beats()) * t.beat_bytes();
   endfunction
 
+  // Do the pieces, taken together, cover every byte of the INCR request n from
+  // its address to its end? Walks the pieces in address order; a piece that
+  // starts at or below the point reached so far extends it (sub-bursts may
+  // overlap in the first beat, see take_near).
+  static function bit covers(aou_axi_txn n, aou_axi_txn got[$]);
+    bit [63:0] reached = n.addr;
+    aou_axi_txn s[$] = got;
+    s.sort() with (item.addr);
+    foreach (s[i]) begin
+      if (s[i].addr > reached) return 1'b0;
+      if (end_of(s[i]) > reached) reached = end_of(s[i]);
+    end
+    return reached >= end_of(n);
+  endfunction
+
   // A later same-ID request can start inside an earlier one's bytes and reach
   // the far side before the earlier response gets back, so pieces (queued in
   // far-side order) are taken oldest first only until they cover n.
@@ -213,16 +228,18 @@ class aou_t1_attr_chk extends uvm_component;
   // inside the previous sub-burst's last wide beat (AXI4 A3.4.1: only a burst's
   // first beat is partial). The spans then add up to more than n's, and the
   // address a piece reaches overstates what it served. So an INCR request
-  // counts as covered when a piece reaches its end, and a further same-ID
-  // piece that starts inside the last taken piece's final beat is still its
-  // continuation and is taken too. Other bursts go by the span sum.
+  // counts as covered when the pieces taken so far cover every byte from its
+  // address to its end (the remote die may complete the pieces in any order,
+  // so this is the union of their ranges, not the furthest end reached), and
+  // a further same-ID piece that starts inside the last taken piece's final
+  // beat is still its continuation and is taken too. Other bursts go by the
+  // span sum.
   function void take_near(int p, aou_axi_txn n);
     string k = key(n, p == 1);
     aou_axi_txn got[$];
     aou_axi_txn rest[$];
     aou_axi_txn last;
     longint unsigned have = 0;
-    bit [63:0] reached = n.addr;
     bit covered = 1'b0;
     bit incr = (n.burst == AOU_AXI_INCR);
     if (n.aborted || n.reset_outstanding) return;
@@ -236,8 +253,7 @@ class aou_t1_attr_chk extends uvm_component;
           got.push_back(f);
           have += span(f);
           last = f;
-          if (end_of(f) > reached) reached = end_of(f);
-          covered = incr ? (reached >= end_of(n)) : (have >= span(n));
+          covered = incr ? covers(n, got) : (have >= span(n));
         end else rest.push_back(f);
       end
       far_q[p][k] = rest;
@@ -435,15 +451,21 @@ class aou_t1_attr_chk extends uvm_component;
     return n.cache[0] || early.always_en(n.rp);
   endfunction
 
-  // The remote WriteResp's FLEX on the S port's B: the first sub-burst's
-  // BUSER, as aou_t1_l4a_adapter merged it.
+  // The remote WriteResp's FLEX on the S port's B: the lowest-addressed
+  // piece's BUSER, as aou_t1_l4a_adapter merged it (the pieces reach this
+  // checker in the remote die's completion order, which take_near's coverage
+  // test tolerates).
   protected function void rx_wresp(aou_axi_txn n, aou_axi_txn got[$]);
     bit [15:0] exp = first_piece(got).buser;
+    string cands = "";
     if (n.buser == 16'h0 && may_be_early(n)) return;
     n_rx_flex_chk++;
-    if (n.buser != exp)
-      rx_flex_err(0, n, "WriteResp", (got.size() > 1) ? "BUSER (of the first sub-burst's B)" :
-                                                        "BUSER", n.buser, exp);
+    if (n.buser == exp) return;
+    foreach (got[i]) cands = {cands, (i == 0) ? "" : ",", $sformatf("%04h@%0h", got[i].buser,
+                                                                     got[i].addr)};
+    rx_flex_err(0, n, "WriteResp",
+                (got.size() > 1) ? $sformatf("BUSER (first of the sub-bursts' %s)", cands) :
+                                   "BUSER", n.buser, exp);
   endfunction
 
   // Each ReadData beat's FLEX on the S port's R beat: the RUSER of the remote
