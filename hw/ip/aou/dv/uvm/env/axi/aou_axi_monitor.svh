@@ -26,6 +26,7 @@ class aou_axi_monitor extends uvm_monitor;
   protected bit [1023:0]     wd_q[$];   // W burst in progress
   protected bit [127:0]      ws_q[$];
   protected bit [15:0]       wu_q[$];
+  protected time             wt_q[$];
   protected aou_axi_mon_item b_q[$];    // waiting for B
   protected aou_axi_mon_item r_q[$];    // waiting for R
   // Responses still owed for transactions a reset aborted (reset_flush):
@@ -233,6 +234,7 @@ class aou_axi_monitor extends uvm_monitor;
     wd_q.delete();
     ws_q.delete();
     wu_q.delete();
+    wt_q.delete();
     b_q.delete();
     r_q.delete();
     rst_w_first = 0;
@@ -412,6 +414,7 @@ class aou_axi_monitor extends uvm_monitor;
     wd_q.push_back(vif.mon_cb.wdata & data_mask);
     ws_q.push_back(vif.mon_cb.wstrb);
     wu_q.push_back(vif.mon_cb.wuser);
+    wt_q.push_back($time);
     // The burst in progress belongs to the first AW still without W data.
     if (cfg.checks_en && aw_q.size() > wb_q.size() && wb_q.size() == 0 &&
         wd_q.size() == aw_q[0].txn.beats() + 1)
@@ -423,15 +426,18 @@ class aou_axi_monitor extends uvm_monitor;
       it.txn.data  = new[wd_q.size()];
       it.txn.strb  = new[ws_q.size()];
       it.txn.wuser = new[wu_q.size()];
+      it.txn.t_w   = new[wt_q.size()];
       foreach (wd_q[k]) begin
         it.txn.data[k]  = wd_q[k];
         it.txn.strb[k]  = ws_q[k];
         it.txn.wuser[k] = wu_q[k];
+        it.txn.t_w[k]   = wt_q[k];
       end
       it.w_cyc = cyc;
       wd_q.delete();
       ws_q.delete();
       wu_q.delete();
+      wt_q.delete();
       wb_q.push_back(it);
     end
   endfunction
@@ -445,6 +451,7 @@ class aou_axi_monitor extends uvm_monitor;
       it.txn.data  = w.txn.data;
       it.txn.strb  = w.txn.strb;
       it.txn.wuser = w.txn.wuser;
+      it.txn.t_w   = w.txn.t_w;
       it.w_cyc     = w.w_cyc;
       if (cfg.checks_en) begin
         if (it.txn.data.size() != it.txn.beats())

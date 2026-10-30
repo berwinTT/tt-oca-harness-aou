@@ -475,6 +475,15 @@ run_modes = ["matrix"]
 args = ["+perf_mode=drain", "+aou_config=1x512-sp64"]
 
 [[tests]]
+name = "aou_perf_test.perf_mode-rxlat.1x512-sp64"
+module = { uvm = "aou_perf_test" }
+target = "1x512-sp64"
+seed = 1
+tags = ["matrix"]
+run_modes = ["matrix"]
+args = ["+perf_mode=rxlat", "+aou_config=1x512-sp64"]
+
+[[tests]]
 name = "aou_perf_test.perf_mode-lat.4x512-sp64"
 module = { uvm = "aou_perf_test" }
 target = "4x512-sp64"
@@ -491,6 +500,15 @@ seed = 1
 tags = ["matrix"]
 run_modes = ["matrix"]
 args = ["+perf_mode=drain", "+aou_config=4x512-sp64"]
+
+[[tests]]
+name = "aou_perf_test.perf_mode-rxlat.4x512-sp64"
+module = { uvm = "aou_perf_test" }
+target = "4x512-sp64"
+seed = 1
+tags = ["matrix"]
+run_modes = ["matrix"]
+args = ["+perf_mode=rxlat", "+aou_config=4x512-sp64"]
 
 [[tests]]
 name = "aou_perf_test.perf_mode-lat.4xmix4211-sp128"
@@ -518,6 +536,15 @@ seed = 1
 tags = ["matrix"]
 run_modes = ["matrix"]
 args = ["+perf_mode=drain", "+aou_config=4xmix4211-sp128"]
+
+[[tests]]
+name = "aou_perf_test.perf_mode-rxlat.4xmix4211-sp128"
+module = { uvm = "aou_perf_test" }
+target = "4xmix4211-sp128"
+seed = 1
+tags = ["matrix"]
+run_modes = ["matrix"]
+args = ["+perf_mode=rxlat", "+aou_config=4xmix4211-sp128"]
 
 [[tests]]
 name = "aou_perf_test.perf_mode-drain.4xmix2144-sp64"
@@ -814,6 +841,15 @@ tags = ["matrix"]
 run_modes = ["matrix"]
 args = ["+perf_mode=drain", "+aou_config=1x1024-sp128"]
 
+[[tests]]
+name = "aou_perf_test.perf_mode-rxlat.1x1024-sp128"
+module = { uvm = "aou_perf_test" }
+target = "1x1024-sp128"
+seed = 1
+tags = ["matrix"]
+run_modes = ["matrix"]
+args = ["+perf_mode=rxlat", "+aou_config=1x1024-sp128"]
+
 # 256 B FDI (FDI_CONFIG 5): one flit per cycle into the RX decoder (48 granules),
 # whole-flit cancel, the one-message-per-cycle TX packer (docs/fdi-rx-plan.md 7).
 # Packing across flits, cancels, random traffic both ways, back-pressure, the
@@ -889,6 +925,15 @@ run_modes = ["matrix"]
 args = ["+perf_mode=drain", "+aou_config=1x1024-sp256"]
 
 [[tests]]
+name = "aou_perf_test.perf_mode-rxlat.1x1024-sp256"
+module = { uvm = "aou_perf_test" }
+target = "1x1024-sp256"
+seed = 1
+tags = ["matrix"]
+run_modes = ["matrix"]
+args = ["+perf_mode=rxlat", "+aou_config=1x1024-sp256"]
+
+[[tests]]
 name = "aou_mrp_test.mrp_scn-interleave.4xmix-sp256"
 module = { uvm = "aou_mrp_test" }
 target = "4xmix-sp256"
@@ -907,6 +952,15 @@ reseed = 2
 tags = ["matrix"]
 run_modes = ["matrix"]
 args = ["+mrp_scn=crd_rr"]
+
+[[tests]]
+name = "aou_perf_test.perf_mode-rxlat.4xmix-sp256"
+module = { uvm = "aou_perf_test" }
+target = "4xmix-sp256"
+seed = 1
+tags = ["matrix"]
+run_modes = ["matrix"]
+args = ["+perf_mode=rxlat", "+aou_config=4xmix-sp256"]
 
 [[tests]]
 name = "aou_dw_test.remote_bytes-32_64_128_32.4xmix-sp256"
@@ -1233,7 +1287,7 @@ args = ["+attr_excl=1", "+remote_max_burst=1", "+remote_bytes=32"]
 
 [[groups]]
 name = "matrix"
-expected_count = 120
+expected_count = 126
 tests = [
   "aou_attr_test.attr_excl-1.remote_max_burst-1.4xmix4211-sp128",
   "aou_dp_random_test.small_size_pct-5.remote_bytes-32_128_64_32",
@@ -1286,11 +1340,14 @@ tests = [
   "aou_dw_test.remote_bytes-32_64_128_64",
   "aou_perf_test.perf_mode-lat.1x512-sp64",
   "aou_perf_test.perf_mode-drain.1x512-sp64",
+  "aou_perf_test.perf_mode-rxlat.1x512-sp64",
   "aou_perf_test.perf_mode-lat.4x512-sp64",
   "aou_perf_test.perf_mode-drain.4x512-sp64",
+  "aou_perf_test.perf_mode-rxlat.4x512-sp64",
   "aou_perf_test.perf_mode-lat.4xmix4211-sp128",
   "aou_perf_test.perf_mode-lat.4xmix2144-sp64",
   "aou_perf_test.perf_mode-drain.4xmix4211-sp128",
+  "aou_perf_test.perf_mode-rxlat.4xmix4211-sp128",
   "aou_perf_test.perf_mode-drain.4xmix2144-sp64",
   "aou_perf_test.perf_mode-lat.1x256-sp32",
   "aou_perf_test.perf_mode-drain.1x256-sp32",
@@ -1342,6 +1399,7 @@ tests = [
   "aou_dw_test.remote_bytes-128.remote_wreq-dut_like.4xmix2144-sp64",
   "aou_perf_test.perf_mode-lat.1x1024-sp128",
   "aou_perf_test.perf_mode-drain.1x1024-sp128",
+  "aou_perf_test.perf_mode-rxlat.1x1024-sp128",
   "aou_pack_test.pk-crossflit.1x1024-sp256",
   "aou_pack_test.pk-mixed.1x1024-sp256",
   "aou_pack_test.pk-full.1x1024-sp256",
@@ -1349,8 +1407,10 @@ tests = [
   "aou_stress_test.st_bp-all.1x1024-sp256",
   "aou_perf_test.perf_mode-lat.1x1024-sp256",
   "aou_perf_test.perf_mode-drain.1x1024-sp256",
+  "aou_perf_test.perf_mode-rxlat.1x1024-sp256",
   "aou_mrp_test.mrp_scn-interleave.4xmix-sp256",
   "aou_mrp_test.mrp_scn-crd_rr.4xmix-sp256",
+  "aou_perf_test.perf_mode-rxlat.4xmix-sp256",
   "aou_dw_test.remote_bytes-32_64_128_32.4xmix-sp256",
   "aou_dw_test.remote_bytes-128_128_64_64.4xmix-sp256",
   "aou_dp_random_test.dp_dir-both.4xmix-sp256-rxf",

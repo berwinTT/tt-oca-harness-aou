@@ -186,7 +186,9 @@ class aou_l3_cov extends uvm_object;
 
   // FLEX of each AXI message, by message kind and direction: rx is the DUT
   // forwarding the AXI USER its port got (aou_t1_attr_chk DP-R08 checks the
-  // value), tx the model's FLEX to the DUT (random, never all ones).
+  // value), tx the model's FLEX to the DUT: the remote AXI agents' USER
+  // (aou_t1_attr_chk DP-R12 checks the DUT presents it) or, on messages
+  // without one, the packer's random low 12 bits.
   covergroup cg_flex;
     cp_flex: coverpoint s_flex {
       `AOU_L3_FC_FLEX(AOU_FC_CG)

@@ -25,7 +25,8 @@
 // downsized when the DUT's port is narrower than the remote's, so several
 // local R beats merge into one ReadData whose FLEX is the first beat's), eight
 // 4-byte beats, and a one-beat read. aou_t1_attr_chk compares the FLEX of
-// every DUT message with the USER value (DP-R08).
+// every DUT message with the USER value (DP-R08) and the USER the DUT's ports
+// present for the remote die's messages with their FLEX (DP-R12).
 class aou_attr_vseq extends aou_dp_vseq;
   `uvm_object_utils(aou_attr_vseq)
 

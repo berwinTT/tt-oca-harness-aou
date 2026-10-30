@@ -206,6 +206,7 @@ package aou_t1_env_pkg;
   `include "aou_t1_attr_chk.svh"
   `include "aou_t1_rx_fifo_chk.svh"
   `include "aou_t1_rx_align_chk.svh"
+  `include "aou_t1_rx_granule_chk.svh"
   // Checkers and performance model classes the virtual sequences compose
   // (uvm/env/chk, uvm/env/perf); the tests that configure them live in uvm/tests.
   `include "chk/aou_early_bresp_chk.svh"
@@ -218,6 +219,7 @@ package aou_t1_env_pkg;
   `include "perf/aou_perf_windows.svh"
   `include "perf/aou_perf_targets.svh"
   `include "perf/aou_perf_mon.svh"
+  `include "perf/aou_rx_lat_mon.svh"
   `include "perf/aou_perf_chk.svh"
   typedef class aou_t1_env;
   `include "aou_t1_vseqr.svh"

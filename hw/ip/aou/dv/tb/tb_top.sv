@@ -416,6 +416,25 @@ module tb_top;
 `undef AOU_WDT_SFR
 `undef AOU_WDT_CTRL
 
+  // RX granule store taps (aou_rx_gs_if): each RP's WriteData and ReadData
+  // store handing a complete message, as raw granules, to its output buffer.
+`define AOU_GS_RP(R) u_dut.u_aou_core_top.gen_aou_fifo_rp[R].u_aou_fifo_rp
+  aou_rx_gs_if gs (.clk(clk));
+  for (genvar r = 0; r < 4; r++) begin : g_gs
+    if (r < RP_COUNT) begin : g_rp
+      assign gs.valid[0][r] = `AOU_GS_RP(r).u_aou_rx_w_store.w_out_svalid;
+      assign gs.g[0][r]     = `AOU_GS_RP(r).u_aou_rx_w_store.w_msg_g;
+      assign gs.valid[1][r] = `AOU_GS_RP(r).u_aou_rx_r_store.w_out_svalid;
+      assign gs.g[1][r]     = `AOU_GS_RP(r).u_aou_rx_r_store.w_msg_g;
+    end else begin : g_none
+      assign gs.valid[0][r] = 1'b0;
+      assign gs.g[0][r]     = '0;
+      assign gs.valid[1][r] = 1'b0;
+      assign gs.g[1][r]     = '0;
+    end
+  end
+`undef AOU_GS_RP
+
   AOU_TOP #(
       .RP_COUNT       (RP_COUNT),
       .FDI_CONFIG     (FDI_CFG),
@@ -738,6 +757,7 @@ module tb_top;
     uvm_config_db #(virtual aou_status_if)::set(null, "*", "status", status);
     uvm_config_db #(virtual aou_irq_if)::set(null, "*", "irq", irq);
     uvm_config_db #(virtual aou_wdt_if)::set(null, "*", "wdt", wdt);
+    uvm_config_db #(virtual aou_rx_gs_if)::set(null, "*", "gs", gs);
     uvm_config_db #(virtual aou_rst_if)::set(null, "*", "rst", rst);
     uvm_config_db #(virtual aou_axi4pc_ctl_if)::set(null, "*", "axi4pc_ctl", axi4pc_ctl);
     uvm_config_db #(virtual aou_fdi_checker_if)::set(null, "*", "fdi_chk", fdi_chk);

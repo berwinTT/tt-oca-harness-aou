@@ -29,6 +29,14 @@ class aou_axi_txn extends uvm_sequence_item;
   bit [15:0]         wuser[];
   bit [15:0]         buser;
   bit [15:0]         ruser[];
+  // How a write went on the link when the remote manager repacked it as a
+  // WriteReq of another size (AoU lets a writer raise the size above AWSIZE):
+  // the WriteReq's size and length, from addr, and the FLEX of each WriteData
+  // beat in message order. link_wuser is empty when the WriteData beats are
+  // the W beats (size, len and wuser[] then describe the link too).
+  bit [2:0]          link_size;
+  bit [7:0]          link_len;
+  bit [15:0]         link_wuser[];
   int unsigned       data_bytes = 64;
   bit [1023:0]       data[];
   bit [127:0]        strb[];
@@ -37,6 +45,8 @@ class aou_axi_txn extends uvm_sequence_item;
   time               t_addr, t_done;
   // Write: WLAST handshake (set by aou_axi_mgr_driver; 0 until then).
   time               t_wlast;
+  // Write: handshake of each W beat (set by aou_axi_monitor; empty otherwise).
+  time               t_w[];
   // Read: handshake of each R beat (set by aou_axi_monitor; empty otherwise).
   time               t_r[];
   // Set when a reset ended the transaction before its response (reset_flush);
@@ -209,6 +219,9 @@ class aou_axi_txn extends uvm_sequence_item;
     if (dir == AOU_AXI_WR) s = {s, $sformatf(" bresp=%0d buser=%04h", bresp, buser)};
     if (wuser.size() > 0) s = {s, " wuser=", user_list(wuser)};
     if (ruser.size() > 0) s = {s, " ruser=", user_list(ruser)};
+    if (link_wuser.size() > 0)
+      s = {s, $sformatf(" link: size=%0d len=%0d wuser=", link_size, link_len),
+           user_list(link_wuser)};
     return s;
   endfunction
 
@@ -246,6 +259,9 @@ class aou_axi_txn extends uvm_sequence_item;
     wuser      = t.wuser;
     buser      = t.buser;
     ruser      = t.ruser;
+    link_size  = t.link_size;
+    link_len   = t.link_len;
+    link_wuser = t.link_wuser;
     data_bytes = t.data_bytes;
     data       = t.data;
     strb       = t.strb;
@@ -254,6 +270,7 @@ class aou_axi_txn extends uvm_sequence_item;
     t_addr     = t.t_addr;
     t_done     = t.t_done;
     t_wlast    = t.t_wlast;
+    t_w        = t.t_w;
     t_r        = t.t_r;
     aborted    = t.aborted;
     reset_outstanding = t.reset_outstanding;

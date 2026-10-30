@@ -7,7 +7,9 @@
 // EXOKAY, and FLEX is USER[15:0] (5.2 / 11.1): the DUT takes AWUSER, ARUSER
 // and WUSER on its S port and BUSER and RUSER on its M port (16 bits each)
 // and sends them as the FLEX of WriteReq, ReadReq, WriteData, WriteResp and
-// ReadData. It has no USER outputs, so the receive direction is not checked.
+// ReadData (DP-R08); it presents the FLEX of each message it receives as the
+// USER of the AXI transfer it makes of it: AWUSER, ARUSER and WUSER on its M
+// port, BUSER and RUSER on its S port (DP-R12).
 //
 // A request seen at the far side (the remote model for local requests, the M
 // port for remote ones) is matched to the requester's transaction by RP,
@@ -41,6 +43,23 @@
 // DP-R09: the size of each WriteReq the DUT sends is at least the AWSIZE of
 //   the S-port write it came from (a writer may raise the size, never lower it),
 //   matched by RP, ID and address as above.
+// DP-R12: the USER the DUT's AXI port presents for a received message is that
+//   message's FLEX: every M-port sub-burst of a remote WriteReq/ReadReq carries
+//   its FLEX as AWUSER/ARUSER; each M-port W beat carries as WUSER the FLEX of
+//   the first WriteData beat whose bytes it holds (one to one at equal width,
+//   repeated on every narrow beat the DUT's downsizer makes of a wide
+//   WriteData beat, the first merged beat's when its upsizer joins several;
+//   AOU_AXI_DOWN/AOU_AGGREGATOR); the S-port B of a local write carries the
+//   remote WriteResp's FLEX as BUSER, unless the DUT answered it early (then 0,
+//   AOU_EARLY_BRESP_CTRL_AWCACHE: EARLY_BRESP_EN set on the RP, bufferable or
+//   EARLY_ALWAYS_EN, not exclusive); each S-port R beat carries its ReadData
+//   beat's FLEX as RUSER. The remote die's values come from the remote
+//   manager's AXI USER (aou_t1_remote_mgr_driver, which keeps the link view of
+//   a write it repacked in link_size/link_len/link_wuser) and the remote
+//   subordinate's BUSER/RUSER (aou_remote_axi_model, merged by
+//   aou_t1_l4a_adapter: the first sub-burst's BUSER, the RUSER of the native
+//   beat holding each ReadData beat's first byte). An early B whose BUSER is 0
+//   is not compared (it may or may not have been the DUT's own).
 class aou_t1_attr_chk extends uvm_component;
   `uvm_component_utils(aou_t1_attr_chk)
 
@@ -50,15 +69,18 @@ class aou_t1_attr_chk extends uvm_component;
   uvm_tlm_analysis_fifo #(aou_axi_txn) sub_fifo;   // M-port subordinates (far, R2L)
   uvm_tlm_analysis_fifo #(aou_msg)     dut_fifo;   // DUT -> remote die
 
-  aou_t1_xfer_cov cov;
-  aou_l3_cfg      l3_cfg;   // dest_rp: the remote die's plane -> the DUT's RP
+  aou_t1_xfer_cov      cov;
+  aou_l3_cfg           l3_cfg;   // dest_rp: the remote die's plane -> the DUT's RP
+  aou_t1_early_tbl_chk early;    // EARLY_BRESP_EN/EARLY_ALWAYS_EN mirror; null: never early
 
   protected aou_axi_txn far_q[2][string][$];    // [path 0 L2R, 1 R2L][rp/dir/id]
   protected aou_axi_txn near_q[2][string][$];   // completed, nothing matched yet
   int unsigned n_match[2];
   int unsigned n_excl_cmp[2];
-  int unsigned n_flex_chk;
+  int unsigned n_flex_chk;      // DP-R08: FLEX values of DUT messages
+  int unsigned n_rx_flex_chk;   // DP-R12: USER values the DUT presented
   int unsigned n_wsize_chk;
+  protected aou_axi_txn wire_w;  // scratch: a repacked write's link geometry
 
   protected aou_msg_wreq wreq_q[string][$];   // DUT WriteReqs not yet matched
   protected aou_axi_txn  aw_q[string][$];     // S-port writes not yet matched
@@ -248,7 +270,12 @@ class aou_t1_attr_chk extends uvm_component;
     if (got.size() == 0) return;
     f = got[0];
     aou_rule_log::check("DP-R08", get_type_name());
+    aou_rule_log::check("DP-R12", get_type_name());
     if (p == 0) begin
+      // What the DUT received for this request: the remote WriteResp or
+      // ReadData FLEX on the S port's B or R (DP-R12).
+      if (n.dir == AOU_AXI_WR) rx_wresp(n, got);
+      else rx_rdata(n, got);
       // The DUT's request: every far piece carries the one WriteReq/ReadReq FLEX.
       n_flex_chk++;
       foreach (got[i]) begin
@@ -277,6 +304,8 @@ class aou_t1_attr_chk extends uvm_component;
       end
       return;
     end
+    // The remote request as the M port presented it (DP-R12).
+    rx_req(n, got);
     if (n.dir == AOU_AXI_WR) begin
       // WriteResp: the B of the first sub-burst (the only one when unsplit).
       n_flex_chk++;
@@ -324,6 +353,118 @@ class aou_t1_attr_chk extends uvm_component;
                  $sformatf("RUSER on beat %0d of its burst at %0h", j, got[sel].addr),
                  got[sel].ruser[j]);
         break;
+      end
+    end
+  endfunction
+
+  // Reports one DP-R12 mismatch: the DUT presented got as sig for the remote
+  // die's message msg, whose FLEX is exp.
+  protected function void rx_flex_err(int p, aou_axi_txn n, string msg, string sig,
+                                      bit [15:0] got, bit [15:0] exp);
+    aou_rule_log::fire("DP-R12", get_type_name());
+    `uvm_error(get_type_name(), $sformatf(
+               "DP-R12: %s: the remote die's %s on RP%0d carries FLEX %04h, the DUT's %s port presents %s %04h: %s",
+               path_name(p), msg, n.rp, exp, (p == 0) ? "S" : "M", sig, got,
+               n.convert2string()))
+  endfunction
+
+  // Last byte of the AxSIZE container of beat i of t.
+  static function bit [63:0] beat_hi(aou_axi_txn t, int unsigned i);
+    bit [63:0] bb = 64'(t.beat_bytes());
+    return (t.beat_addr(i) & ~(bb - 64'd1)) + bb - 64'd1;
+  endfunction
+
+  // A remote request at the M port: every sub-burst carries the request's
+  // FLEX as AWUSER/ARUSER, and each W beat the FLEX of the first WriteData
+  // beat whose bytes it holds (the header's DP-R12).
+  protected function void rx_req(aou_axi_txn n, aou_axi_txn got[$]);
+    aou_axi_txn w;
+    n_rx_flex_chk++;
+    foreach (got[i]) begin
+      if (got[i].user != n.user) begin
+        rx_flex_err(1, n, (n.dir == AOU_AXI_WR) ? "WriteReq" : "ReadReq",
+                    (n.dir == AOU_AXI_WR) ? $sformatf("AWUSER on its burst at %0h", got[i].addr) :
+                                            $sformatf("ARUSER on its burst at %0h", got[i].addr),
+                    got[i].user, n.user);
+        break;
+      end
+    end
+    if (n.dir != AOU_AXI_WR || n.burst != AOU_AXI_INCR) return;
+    // The link view: the WriteReq's geometry and one FLEX per WriteData beat.
+    if (wire_w == null) wire_w = aou_axi_txn::type_id::create("wire_w");
+    w = wire_w;
+    w.addr = n.addr;
+    w.burst = AOU_AXI_INCR;
+    if (n.link_wuser.size() > 0) begin
+      w.size = n.link_size;
+      w.len = n.link_len;
+      w.wuser = n.link_wuser;
+    end else begin
+      w.size = n.size;
+      w.len = n.len;
+      w.wuser = n.wuser;
+    end
+    w.data_bytes = w.beat_bytes();
+    if (w.wuser.size() != w.beats()) return;
+    foreach (got[g]) begin
+      aou_axi_txn f = got[g];
+      if (f.wuser.size() != f.beats()) continue;   // W beats not captured
+      for (int unsigned j = 0; j < f.beats(); j++) begin
+        bit [63:0] lo = f.beat_addr(j);
+        bit [63:0] hi = beat_hi(f, j);
+        int k = w.beat_index_of(lo);
+        // A burst the DUT started below the WriteReq's address still holds
+        // its first beat.
+        if (k < 0 && lo < w.addr && hi >= w.addr) k = 0;
+        if (k < 0) continue;
+        n_rx_flex_chk++;
+        if (f.wuser[j] != w.wuser[k]) begin
+          rx_flex_err(1, n, $sformatf("WriteData beat %0d", k),
+                      $sformatf("WUSER on beat %0d of its burst at %0h", j, f.addr), f.wuser[j],
+                      w.wuser[k]);
+          return;
+        end
+      end
+    end
+  endfunction
+
+  // A write the DUT answered early carries BUSER 0 (the header's DP-R12).
+  protected function bit may_be_early(aou_axi_txn n);
+    if (early == null || n.lock || !early.early_en(n.rp)) return 1'b0;
+    return n.cache[0] || early.always_en(n.rp);
+  endfunction
+
+  // The remote WriteResp's FLEX on the S port's B: the first sub-burst's
+  // BUSER, as aou_t1_l4a_adapter merged it.
+  protected function void rx_wresp(aou_axi_txn n, aou_axi_txn got[$]);
+    bit [15:0] exp = first_piece(got).buser;
+    if (n.buser == 16'h0 && may_be_early(n)) return;
+    n_rx_flex_chk++;
+    if (n.buser != exp)
+      rx_flex_err(0, n, "WriteResp", (got.size() > 1) ? "BUSER (of the first sub-burst's B)" :
+                                                        "BUSER", n.buser, exp);
+  endfunction
+
+  // Each ReadData beat's FLEX on the S port's R beat: the RUSER of the remote
+  // beat that held the beat's first byte (aou_t1_l4a_adapter).
+  protected function void rx_rdata(aou_axi_txn n, aou_axi_txn got[$]);
+    if (n.ruser.size() != n.beats()) return;
+    foreach (n.ruser[i]) begin
+      bit [63:0] a = n.beat_addr(i);
+      int j;
+      int sel = -1;
+      foreach (got[g]) begin
+        j = got[g].beat_index_of(a);
+        if (j >= 0 && j < got[g].ruser.size() && (sel < 0 || got[g].addr > got[sel].addr)) sel = g;
+      end
+      if (sel < 0) continue;
+      j = got[sel].beat_index_of(a);
+      n_rx_flex_chk++;
+      if (n.ruser[i] != got[sel].ruser[j]) begin
+        rx_flex_err(0, n, $sformatf("ReadData beat %0d", i),
+                    $sformatf("RUSER on beat %0d (remote beat %0d of its burst at %0h)", i, j,
+                              got[sel].addr), n.ruser[i], got[sel].ruser[j]);
+        return;
       end
     end
   endfunction
@@ -428,9 +569,10 @@ class aou_t1_attr_chk extends uvm_component;
     foreach (aw_q[k]) w_left[1] += aw_q[k].size();
     `uvm_info(get_type_name(), $sformatf(
               {"matched L2R/R2L %0d/%0d, exclusive responses compared %0d/%0d, unmatched far ",
-               "%0d/%0d requester %0d/%0d; DUT message FLEX values checked %0d; WriteReq ",
-               "sizes checked %0d, unmatched WriteReq %0d S-port write %0d"}, n_match[0],
-              n_match[1], n_excl_cmp[0], n_excl_cmp[1], left[0][0], left[1][0], left[0][1],
-              left[1][1], n_flex_chk, n_wsize_chk, w_left[0], w_left[1]), UVM_LOW)
+               "%0d/%0d requester %0d/%0d; FLEX values checked: DUT messages %0d, USER the DUT ",
+               "presented %0d; WriteReq sizes checked %0d, unmatched WriteReq %0d S-port write %0d"},
+              n_match[0], n_match[1], n_excl_cmp[0], n_excl_cmp[1], left[0][0], left[1][0],
+              left[0][1], left[1][1], n_flex_chk, n_rx_flex_chk, n_wsize_chk, w_left[0],
+              w_left[1]), UVM_LOW)
   endfunction
 endclass

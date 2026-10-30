@@ -214,8 +214,11 @@ class aou_packer extends uvm_object;
     aou_cred_class_e c = m.cred_class();
     m.dir = AOU_L3_TX;
     // Random FLEX to the DUT (aou_packer_policy::prof_pct): the low 12 bits,
-    // FLEX[15:12] 0 for a v0.7 receiver.
-    if (c != AOU_CC_NONE && cfg.pol.prof_pct != 0 && $urandom_range(99) < cfg.pol.prof_pct)
+    // FLEX[15:12] 0 for a v0.7 receiver. Not on a message whose sender chose
+    // the FLEX (flex_fixed: the remote AXI agents' USER, checked at the DUT's
+    // AXI ports by aou_t1_attr_chk).
+    if (c != AOU_CC_NONE && !m.flex_fixed && cfg.pol.prof_pct != 0 &&
+        $urandom_range(99) < cfg.pol.prof_pct)
       m.flex[11:0] = 12'($urandom());
     m.to_granules(g);
     f.msg_start[gp] = 1'b1;

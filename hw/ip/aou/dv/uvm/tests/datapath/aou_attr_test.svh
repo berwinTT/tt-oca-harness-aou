@@ -4,14 +4,14 @@
 // Stimulus for AXI request attributes across the link, both directions (plan
 // 4.26-4.28, 5.24-5.26, 4.30): every transfer steps AxQOS 0-15, AxPROT 0-7 and
 // the legal AxCACHE encodings, separately for writes and reads
-// (+dp_attr_sweep), the local agents give every transaction a random 16-bit
-// AXI USER (the env default, +user_mode=const_per_txn), and the remote die puts
-// a random FLEX in half its AXI messages. The env's aou_t1_attr_chk checks the
-// attributes on both ends of the link and that the FLEX of every message the
-// DUT sends is the USER its AXI port got (AoU v0.8 5.2 / 11.1: FLEX =
-// USER[15:0] in the Basic Profile), the scoreboard the data (the DUT has no
-// USER outputs, so the FLEX it receives goes nowhere), and xfer_cov.attr_cg
-// shows every value was carried.
+// (+dp_attr_sweep), and the AXI agents on both dies give every transaction a
+// random 16-bit AXI USER (the env default, +user_mode=const_per_txn), which
+// the remote die sends as the FLEX of its messages. The env's aou_t1_attr_chk
+// checks the attributes on both ends of the link, that the FLEX of every
+// message the DUT sends is the USER its AXI port got (AoU v0.8 5.2 / 11.1:
+// FLEX = USER[15:0] in the Basic Profile; DP-R08) and that the USER its ports
+// present for the remote die's messages is their FLEX (DP-R12), the
+// scoreboard the data, and xfer_cov.attr_cg shows every value was carried.
 // +attr_user=1 (plan 4.30) sets USER per beat (+user_mode=per_beat) and lowers
 // MAX_AxBURSTLEN to 4 beats on every RP, then runs the USER rounds of
 // aou_attr_vseq first: all ones, a walking bit, random values and 0 on every

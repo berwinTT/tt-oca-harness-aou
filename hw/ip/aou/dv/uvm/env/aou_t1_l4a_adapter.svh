@@ -23,6 +23,10 @@
 //   current maximum (b1, whole for a 2-beat exclusive at a maximum of 1).
 // - ReadData is packed at the requester's ARSIZE (spec §5.7: the responder
 //   converts), each beat with the worst response of the native beats under it.
+// - FLEX = USER[15:0] (AoU v0.8 Basic Profile): the WriteResp carries the
+//   BUSER of the first sub-burst's B, each ReadData beat the RUSER of the
+//   native beat holding its first byte (the remote model draws them from its
+//   cfg.user_mode); aou_t1_attr_chk checks the DUT's S port presents them.
 // - +remote_max_burst_rand=1 (off by default) picks a new maximum from the
 //   legal set when the remote is idle, so one run sees several.
 // WriteData DLENGTH is self-describing: a writer may send any DLENGTH of at
@@ -162,7 +166,7 @@ class aou_t1_l4a_adapter extends aou_l4a_if_c;
   endfunction
 
   virtual task handle_write(input aou_msg_wreq req, input aou_msg_wdata data[$],
-                            output bit [1:0] bresp);
+                            output bit [1:0] bresp, output bit [15:0] bflex);
     aou_axi_txn t;
     aou_axi_txn rsp;
     aou_axi_txn q[$];
@@ -194,20 +198,23 @@ class aou_t1_l4a_adapter extends aou_l4a_if_c;
     n_conv[0][k]++;
     to_native(t, nb, mb, q);
     bresp = 2'b00;
+    bflex = '0;
     foreach (q[i]) begin
       remote.execute(q[i], rsp);
       if (rsp.bresp > bresp) bresp = rsp.bresp;
+      if (i == 0) bflex = rsp.buser;  // the first sub-burst's B (q is in address order)
     end
     leave(mb);
     n_wr++;
   endtask
 
   virtual task handle_read(input aou_msg_rreq req, output bit [1023:0] data[$],
-                           output bit [1:0] resp[$]);
+                           output bit [1:0] resp[$], output bit [15:0] flex[$]);
     aou_axi_txn t;
     aou_axi_txn q[$];
     bit [7:0] b[bit [63:0]];
     bit [1:0] r_of[bit [63:0]];
+    bit [15:0] u_of[bit [63:0]];
     int unsigned nb;
     int unsigned k;
     int unsigned mb = enter();
@@ -224,14 +231,18 @@ class aou_t1_l4a_adapter extends aou_l4a_if_c;
           bit [63:0] a = rsp.beat_base(j) + 64'(l);
           b[a] = rsp.data[j][8*l +: 8];
           r_of[a] = rsp.rresp[j];
+          u_of[a] = (j < rsp.ruser.size()) ? rsp.ruser[j] : 16'h0;
         end
     end
-    // Pack into ReadData beats of the requester's ARSIZE.
+    // Pack into ReadData beats of the requester's ARSIZE; a beat's FLEX is the
+    // RUSER of the native beat that supplied its first byte.
     data.delete();
     resp.delete();
+    flex.delete();
     for (int unsigned i = 0; i < t.beats(); i++) begin
       bit [1023:0] d = '0;
       bit [1:0] r = 2'b00;
+      bit [63:0] a0 = t.beat_base(i) + 64'(t.lane_lo(i));
       for (int unsigned l = t.lane_lo(i); l <= t.lane_hi(i); l++) begin
         bit [63:0] a = t.beat_base(i) + 64'(l);
         d[8*l +: 8] = b[a];
@@ -239,6 +250,7 @@ class aou_t1_l4a_adapter extends aou_l4a_if_c;
       end
       data.push_back(d);
       resp.push_back(r);
+      flex.push_back(u_of.exists(a0) ? u_of[a0] : 16'h0);
     end
     leave(mb);
     n_rd++;
