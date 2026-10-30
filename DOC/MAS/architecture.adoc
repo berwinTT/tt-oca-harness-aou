@@ -108,9 +108,11 @@ As illustrated in the figure above, the granularity of data transmitted from the
 [[figure-9]]
 image::image9.png[Figure 9. Architecture of Chunk Decoder]
 
-xref:figure-9[Figure 9] shows the architecture of the Chunk Decoder which is central submodule of RX_CORE. It consists of shift registers and multiple decoders that decode each message, based on the received valid chunk along with its associated msg_idx and msg_valid information. Since AXI messages differ in the number of granules, the time required for decoding also varies.
+xref:figure-9[Figure 9] shows the architecture of the Chunk Decoder which is central submodule of RX_CORE. RX_FDI_IF assembles the received chunks into half flits of 24 granules (a whole flit of 48 at the 256 B FDI width) and presents one per cycle, so the decoder works on the same quantum whatever the FDI width. From the half flit's MsgStart bits it determines where each message begins, and for each granule which RP and message class it belongs to. Requests (3 granules) and write responses (1 granule) are decoded in that cycle and written to their FIFOs; a request that straddles two half flits is completed in the next cycle. Data messages (8 to 30 granules) are not decoded here: their granules are tagged and handed to the RP's granule store (xref:aou-34-message-fifo[Section 3.4]), which decodes a message when it is popped.
 
-For example, a B message has a size of 1 granule and can therefore be decoded immediately once a valid chunk is received from RX_FDI_IF. In contrast, Rdata or Wdata, which have a data width of 1024 bits, require 27-30 granules, and thus cannot be decoded immediately. Instead, they are decoded after approximately three cycles. Because messages of 27-30 granules may span up to four flits during transmission.
+The uniform quantum has a latency cost at the 64 B FDI width: a half flit is two 64 B chunks, so a message that ends in the first chunk waits one cycle for the second before it is decoded. Measured on the bench (FDI beat of the message's last granule to the AXI handshake, FIFOs empty, AXI ready) this is +1 cycle for the classes that end in the first chunk (ReadData 256, WriteResp, WriteReq and WriteDataFull 256) and +0 for the 15-granule ones; at 128 B every class is +1 (the tagging register) or +2 (last granule in the second half flit). Throughput is unchanged at every width.
+
+A message may therefore begin in any granule and span up to two flits (a WriteData1024 of 30 granules at most crosses one flit boundary); the store reassembles it from consecutive decode cycles without a separate reassembly window.
 
 [[aou-34-message-fifo]]
 === 3.4. Message FIFO
@@ -127,23 +129,17 @@ image::image11.png[Figure 11. Req / Resp FIFO]
 
 The Turn-Around-Time(TAT) of AOU_CORE, including the D2D adaptor, is approximately 40 ns (equivalent to 40 cycles at 1 GHz). Therefore, the depth of the AW, AR, and B FIFOs is set to 44 regarding the margin.
 
-The width of the Req and Resp FIFOs is equal to the length of the corresponding message. Since 12 granules are currently being decoded at once, up to 4 AW/AR requests and up to 12 B responses can be written into the FIFO in a single cycle. Therefore, the AW/AR FIFO is implemented as a 4S1M FIFO and B FIFO is implemented as a 12S1M FIFO.
+RX_CORE decodes one half flit (24 granules) per cycle for the 64 B and 128 B FDI widths and a whole flit (48 granules) per cycle for the 256 B width, so up to 8 (16) AW/AR requests and up to 24 (48) B responses can arrive in one cycle. The AW/AR FIFOs are therefore implemented as multi-source FIFOs with one write lane per possible request start in the decode quantum plus one for a request carried over from the previous half (9S1M at 64/128 B, 17S1M at 256 B), and the B FIFO with one lane per granule (24S1M, 48S1M at 256 B), all widened by 16 bits so that the message's FLEX field travels with the request or response and leaves the core on [.monospaced]#++O_AOU_RX_AXI_M_AWUSER++#, [.monospaced]#++O_AOU_RX_AXI_M_ARUSER++# and [.monospaced]#++O_AOU_RX_AXI_S_BUSER++# (an early write response, xref:aou-37-write-early-response-controller[Section 3.7], carries BUSER 0 because no WriteResp has arrived yet). The width of a Req or Resp FIFO entry is the length of the corresponding message.
 
-In contrast, for the Wdata and Rdata FIFOs, the FIFO width and depth is defined differently.
+The Wdata and Rdata paths do not decode messages on arrival. Each RP has one *granule store* ([.monospaced]#++AOU_RX_GRANULE_STORE++#) for WriteData/WriteDataFull and one for ReadData. RX_CORE only tags each granule of the half flit with the RP and class it belongs to and whether a message starts there; the store compacts the tagged granules and appends them, in arrival order and in their raw 40-bit wire form, to a ring of SRAM words of [.monospaced]#++WG++# granules (8 granules, 320 bits, by default). Reserved message bits are stored verbatim, so a future profile that assigns a meaning to a reserved field changes only the extraction at the pop side, not the store. A message that straddles two half flits, or two flits, simply continues at the next cycle's first tagged granule; a message starting in the last granule of a half flit is carried into the next decode cycle by RX_CORE.
 
-The width of a data message varies depending on the bus data width. Therefore, the width of the Data FIFO corresponds to the message width in the case of the minimum bus data width.
+Messages are tracked in a small control FIFO pushed at the start granule with the message's word, offset, running granule count, DLENGTH and WriteDataFull flag. When the head message's last granule has been written it is read back (up to five consecutive words, one per SRAM bank, one cycle of SRAM latency), aligned to its start offset and decoded by DLENGTH into the AXI fields, WDATA/WSTRB (or RDATA/RID/RRESP/RLAST) and the FLEX field, which leaves as [.monospaced]#++O_AOU_RX_AXI_M_WUSER++# or [.monospaced]#++O_AOU_RX_AXI_S_RUSER++#. The decoded message waits in a two-entry output buffer for the width converter. Every word touched in a cycle is written, the partial last word being rewritten (its residue kept in flops) when later granules append to it; the ring holds at least [.monospaced]#++DEPTH_G + WG - 1++# granules so that rewrite can never reach the word holding the oldest unread message.
 
-For example, the width of the RDATA FIFO is 279 bits, which consists of 256 bits for the minimum bus data width, 10 bits for RID, 2 bits for RRESP, 1 bit for RLAST, and additional sdlen 2 bits to identify message width.
+The store's SRAM is [.monospaced]#++NBANK++# instances of [.monospaced]#++AOU_TPSRAM++# of [.monospaced]#++WG x 40++# bits, where [.monospaced]#++NBANK++# is the larger of the words a decode cycle can touch and the words one message can cover: 5 banks of 16 words at the 64 B and 128 B widths with the default depth, 7 banks of 18 words at 256 B.
 
-In aspect of WDATA FIFO, the width is 290bit. It contains 256 bits for the minimum bus data widths, 32bits for the minimum strb data widths, and additional sdlen 2bits to identify message width.
+The depth of a granule store, [.monospaced]#++RP*_RX_W_FIFO_DEPTH++# / [.monospaced]#++RP*_RX_R_FIFO_DEPTH++#, is given in *granules* and is the credit advertised for that class (xref:aou-39-credit-controller[Section 3.9]). The default of 600 granules keeps the credit the earlier 88-slice data FIFO advertised (22 x 27 = 594 granules; 40 WriteData512 messages, 50 cycles of TAT at the 64 B FDI rate of 12 granules per cycle). When [.monospaced]#++FDI_CONFIG++# selects the 256 B interface ([.monospaced]#++FDI_CFG_SP_256B++#, 48 granules per cycle) the default is 960 granules, the credit of the earlier 140-slice default (35 x 27 = 945). See xref:{aou-integration-xref}#aou-ig-parameter-list[Section 2] for the parameter defaults and the conversion from the earlier slice counts.
 
-If the data received from the remote die has sdlen of 0(256bit data), the message will be stored in a single entry of the DATA FIFO. If the data received from the remote die has sdlen of 1(512bit data), the message will be stored across two entries of the Data FIFO. Similarly, if the data received from the remote die has sdlen of 2(1024bit), the message will be stored across four entries of the Data FIFO.
-
-In addition, the depth of the Data FIFO is not 44. The depth has been determined under the assumption that the current bus data width is 512 bits. When the bus data width is 512 bits, a W message occupies 15 granules. Since the decoder in RX_CORE can decode 12 granules per cycle, the maximum W message can reach the FIFO once every 1.25 cycles (15G ÷ 12G/cycle = 1.25 cycles). Furthermore, as mentioned above, when the bus data width is 512 bits, each message is stored across two FIFO entries. Therefore, if the maximum turnaround time (TAT) to be covered is 50 ns (50 cycles), the depth can be set to 80 (50 / 1.25 x 2 = 80). Regarding the margin, Data FIFOpass:[']s depth is set to 88.
-
-When [.monospaced]#++FDI_CONFIG++# selects a 1024b (128B) FDI interface ([.monospaced]#++FDI_CFG_SP_128B++# or [.monospaced]#++FDI_CFG_TP_64B_128B++#), the per-chunk granule rate roughly doubles, so the per-RP [.monospaced]#++RP*_RX_W_FIFO_DEPTH++# / [.monospaced]#++RP*_RX_R_FIFO_DEPTH++# parameter defaults are bumped to 140 entries to keep the same effective TAT margin. See xref:{aou-integration-xref}#aou-ig-parameter-list[Section 2] for the parameter defaults.
-
-FIFOs are allocated for each RP, and the depth of the FIFOs for each RP is configurable.
+FIFOs and stores are allocated for each RP, and their depths are configurable per RP.
 
 [[aou-35-data-width-converter]]
 === 3.5. Data width converter
@@ -512,71 +508,50 @@ RX AR MAX CREDIT = RX AR FIFO DEPTH x ReadReq Granules
 RX B  MAX CREDIT = RX B  FIFO DEPTH x WriteResp Granules
 ....
 
-*In the case of WDATA*, data widths of 256, 512 or 1024 may be received. Separate FIFOs are provided for data and for strobe, each with the same FIFO depth. Each FIFO entry is 256 bits wide for DATA and 32 bits wide for STRB, ensuring efficient utilization of the FIFO. Accordingly, 512-bit width data occupies two entries, while 1024-bit width data occupies four entries. As illustrated in xref:figure-14[Figure 14], for non-Writefull message types, WDATA is stored in the DATA FIFO and WSTRB is stored in the STRB FIFO.
-
-[caption=""]
-.Figure 15. Example of WDATA and WSTRB FIFO Operation
-[[figure-15]]
-image::image14.png[Figure 15. Example of WDATA and WSTRB FIFO Operation]
+*In the case of WDATA and RDATA*, the granule stores (xref:aou-34-message-fifo[Section 3.4]) hold the messages' raw granules, so an entry is one granule whatever the message's width or type. The advertised credit is therefore the store's depth, with no worst-case width assumption:
 
 ....
-Occupying Data entry per message = WDATA Width / DATA FIFO Width
+RX W MAX CREDIT = RX W FIFO DEPTH   (granules)
+RX R MAX CREDIT = RX R FIFO DEPTH   (granules)
 ....
 
 [[table-1]]
 
-[width="99%",cols="20%,16%,16%,16%,16%,16%",options="header",]
-|============================================================================================================================================================
-|WDATA width |Granule size per message |Occupying Data entry per message |Granules per Data FIFO entry |Granules per Strb FIFO entry |Granules per FIFO entry
-|256b |8 |1 |8 |pass:[-] |8
-|512b |15 |2 |7.5 |pass:[-] |7.5
-|1024b |30 |4 |7.5 |pass:[-] |7.5
-|============================================================================================================================================================
+[width="99%",cols="20%,20%,20%,20%,20%",options="header",]
+|==========================================================================================================
+|Message |256b |512b |1024b |Store entries (granules) per message
+|WriteData |8 |15 |30 |8 / 15 / 30
+|WriteDataFull |7 |14 |27 |7 / 14 / 27
+|ReadData |8 |14 |27 |8 / 14 / 27
+|==========================================================================================================
 
-_Table 1. WriteData Credit Calculation_
+_Table 1. Data message sizes; one credit and one store entry per granule_
 
 [[table-2]]
 
-[width="99%",cols="20%,16%,16%,16%,16%,16%",options="header",]
-|============================================================================================================================================================
-|WDATA width |Granule size per message |Occupying Data entry per message |Granules per Data FIFO entry |Granules per Strb FIFO entry |Granules per FIFO entry
-|256b |7 |1 |7 |pass:[-] |7
-|512b |14 |2 |7 |pass:[-] |7
-|1024b |27 |4 |6.75 |pass:[-] |6.75
-|============================================================================================================================================================
+[width="99%",cols="25%,25%,25%,25%",options="header",]
+|==========================================================================================================
+|FDI width |Granules decoded per cycle |Default W / R store depth (granules) |WriteData512 messages held
+|64 B ([.monospaced]#++FDI_CFG_SP_64B++#, [.monospaced]#++FDI_CFG_TP_32B_64B++#) |24 (one half flit; a half every two cycles) |600 |40
+|128 B ([.monospaced]#++FDI_CFG_SP_128B++#, [.monospaced]#++FDI_CFG_TP_64B_128B++#) |24 (one half flit per cycle) |600 |40
+|256 B ([.monospaced]#++FDI_CFG_SP_256B++#) |48 (one flit per cycle) |960 |64
+|==========================================================================================================
 
-_Table 2. WriteDataFull Credit Calculation_
-
-xref:table-1[Table 1] and xref:table-2[Table 2] illustrates all possible writedata, writedatafull message types and the credit calculation when messages consist solely of one type. The minimum advertised credit occurs when only 1024bit writedatafull messages are received. According the maximum available credit for WDATA is defined as follows:
-
-....
-RX W MAX CREDIT = (RX W FIFO DEPTH / 4) x WriteData Full1024bit Granules
-....
-
-*In the case of RDATA,* Receiving RDATA from the remote die implies that the local die has already issued a ReadReq message. The ARSIZE used when sending is determined by the AXI_DATA_WD of the local die. For example, if AXI_DATA_WD is 512, the AR will request RDATA of 512 bits or less, and the received RDATA will therefore be 512 or 256 bits wide.
-
-[caption=""]
-.Figure 16. Example of RDATA FIFO Operation
-[[figure-16]]
-image::image15.png[Figure 16. Example of RDATA FIFO Operation]
+_Table 2. Default store depths per FDI width_
 
 [[table-3]]
 
-[width="100%",cols="25%,25%,25%,25%",options="header",]
+[width="100%",cols="34%,33%,33%",options="header",]
 |===============================================================================================================================
-|RDATA Width |Granule size |Occupying entry (RDATA width / FIFO width) |Granules per FIFO entry (Granule size / Occupying entry)
-|256 |8 |1 |8
-|512 |14 |2 |7
-|1024 |27 |4 |6.75
+|Earlier parameter (slices) |Credit it advertised |Granule-store depth with the same credit
+|88-slice W FIFO (64 B default) |22 x 27 = 594 |600
+|140-slice W FIFO (128 B default) |35 x 27 = 945 |960
+|88-slice R FIFO, AXI_DATA_WD 512 |44 x 14 = 616 |600 (or 616)
 |===============================================================================================================================
 
-_Table 3. ReadData Credit Calculation_
+_Table 3. Converting the earlier slice-count depths to granules_
 
-Similarly, for RDATA, credits must be advertised conservatively by considering the maximum data width associated with AXI_DATA_WD. As AXI_DATA_WD increases, the maximum credit that can be advertised decreases. Therefore, credit shall always be calculated based on AXI_DATA_WD. For example, if AXI_DATA_WD is 512, the possible RDATA widths are 256, 512, and credit must be determined under the conservative assumption that all RDATA widths are 512bits. Likewise, if AXI_DATA_WD is 1024, the possible RDATA widths are 256, 512, and 1024, and credits must be determined under the conservative assumption that all RDATA are 1024bits.
-
-....
-RX R MAX CREDIT = {RX R FIFO DEPTH / (AXI_DATA_WD / 256)} x AXI_DATA_WD RDATA Granule Size
-....
+A credit is returned when the store pops a message, as many credits as the message had granules; the store's occupancy can therefore never exceed the credit advertised (the RTL's [.monospaced]#++ASSERTION_ON++# check [.monospaced]#++occupancy_within_credit++#). Because RDATA credit no longer depends on AXI_DATA_WD, a ReadReq of any ARSIZE consumes the credit of the ReadData it will receive, and the remote die's ReadData width (its own bus width, up to the local AXI_DATA_WD) does not change the store's capacity in granules.
 
 *Tx Max Credit*
 

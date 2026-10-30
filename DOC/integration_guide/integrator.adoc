@@ -222,12 +222,17 @@ sends a message until the credit is received back from the remote die.
 
 |RP0_RX_AR_FIFO_DEPTH |parameter |44 |RX AR FIFO depth for RP0.
 
-|RP0_RX_W_FIFO_DEPTH |parameter |88 / 140 |RX W FIFO depth for RP0.
-Default is 140 when [.monospaced]#++FDI_CONFIG++# selects a 1024b interface
-([.monospaced]#++FDI_CFG_SP_128B++# / [.monospaced]#++FDI_CFG_TP_64B_128B++#); 88 otherwise.
+|RP0_RX_W_FIFO_DEPTH |parameter |600 / 960 |RX WriteData granule-store
+depth for RP0, in *granules*; it is also the WDATA credit advertised to
+the remote die (one credit per granule). Default is 960 when
+[.monospaced]#++FDI_CONFIG++# selects the 2048b interface ([.monospaced]#++FDI_CFG_SP_256B++#); 600
+otherwise. Earlier releases gave this parameter in 256-bit slices
+(88 / 140); the equivalent granule depth is the credit those slices
+advertised, 22 x 27 = 594 and 35 x 27 = 945 (MAS Section 3.9, Table 3).
 
-|RP0_RX_R_FIFO_DEPTH |parameter |88 / 140 |RX R FIFO depth for RP0. Same
-FDI-aware default as [.monospaced]#++RP0_RX_W_FIFO_DEPTH++#.
+|RP0_RX_R_FIFO_DEPTH |parameter |600 / 960 |RX ReadData granule-store
+depth for RP0, in granules (the RDATA credit advertised). Same FDI-aware
+default as [.monospaced]#++RP0_RX_W_FIFO_DEPTH++#.
 
 |RP0_RX_B_FIFO_DEPTH |parameter |44 |RX B FIFO depth for RP0.
 
@@ -235,11 +240,9 @@ FDI-aware default as [.monospaced]#++RP0_RX_W_FIFO_DEPTH++#.
 
 |RP1_RX_AR_FIFO_DEPTH |parameter |44 |RX AR FIFO depth for RP1.
 
-|RP1_RX_W_FIFO_DEPTH |parameter |88 / 140 |RX W FIFO depth for RP1
-(FDI-aware default; see RP0).
+|RP1_RX_W_FIFO_DEPTH |parameter |600 / 960 |RX WriteData granule-store depth for RP1, in granules (see RP0).
 
-|RP1_RX_R_FIFO_DEPTH |parameter |88 / 140 |RX R FIFO depth for RP1
-(FDI-aware default; see RP0).
+|RP1_RX_R_FIFO_DEPTH |parameter |600 / 960 |RX ReadData granule-store depth for RP1, in granules (see RP0).
 
 |RP1_RX_B_FIFO_DEPTH |parameter |44 |RX B FIFO depth for RP1.
 
@@ -247,11 +250,9 @@ FDI-aware default as [.monospaced]#++RP0_RX_W_FIFO_DEPTH++#.
 
 |RP2_RX_AR_FIFO_DEPTH |parameter |44 |RX AR FIFO depth for RP2.
 
-|RP2_RX_W_FIFO_DEPTH |parameter |88 / 140 |RX W FIFO depth for RP2
-(FDI-aware default; see RP0).
+|RP2_RX_W_FIFO_DEPTH |parameter |600 / 960 |RX WriteData granule-store depth for RP2, in granules (see RP0).
 
-|RP2_RX_R_FIFO_DEPTH |parameter |88 / 140 |RX R FIFO depth for RP2
-(FDI-aware default; see RP0).
+|RP2_RX_R_FIFO_DEPTH |parameter |600 / 960 |RX ReadData granule-store depth for RP2, in granules (see RP0).
 
 |RP2_RX_B_FIFO_DEPTH |parameter |44 |RX B FIFO depth for RP2.
 
@@ -259,11 +260,9 @@ FDI-aware default as [.monospaced]#++RP0_RX_W_FIFO_DEPTH++#.
 
 |RP3_RX_AR_FIFO_DEPTH |parameter |44 |RX AR FIFO depth for RP3.
 
-|RP3_RX_W_FIFO_DEPTH |parameter |88 / 140 |RX W FIFO depth for RP3
-(FDI-aware default; see RP0).
+|RP3_RX_W_FIFO_DEPTH |parameter |600 / 960 |RX WriteData granule-store depth for RP3, in granules (see RP0).
 
-|RP3_RX_R_FIFO_DEPTH |parameter |88 / 140 |RX R FIFO depth for RP3
-(FDI-aware default; see RP0).
+|RP3_RX_R_FIFO_DEPTH |parameter |600 / 960 |RX ReadData granule-store depth for RP3, in granules (see RP0).
 
 |RP3_RX_B_FIFO_DEPTH |parameter |44 |RX B FIFO depth for RP3.
 
@@ -274,14 +273,9 @@ for timing closure.
 |RX_AR_FIFO_RS_EN |parameter |1 |RX AR FIFO output register-slice enable
 (see [.monospaced]#++RX_AW_FIFO_RS_EN++#).
 
-|RX_W_FIFO_RS_EN |parameter |1 |RX W FIFO output register-slice enable
-(see [.monospaced]#++RX_AW_FIFO_RS_EN++#).
-
-|RX_R_FIFO_RS_EN |parameter |1 |RX R FIFO output register-slice enable
-(see [.monospaced]#++RX_AW_FIFO_RS_EN++#).
-
 |RX_B_FIFO_RS_EN |parameter |1 |RX B FIFO output register-slice enable
-(see [.monospaced]#++RX_AW_FIFO_RS_EN++#).
+(see [.monospaced]#++RX_AW_FIFO_RS_EN++#). The W and R paths have no such parameter:
+the granule stores register their own input and output.
 
 |RP0_AXI_DATA_WD |parameter |512 |AXI data width for RP0 (bits).
 
@@ -356,6 +350,8 @@ and should be used at the instantiation site:
 
 |[.monospaced]#++FDI_CFG_SP_128B++# |1024 |1024 (internal decode) |Single PHY |none
 
+|[.monospaced]#++FDI_CFG_SP_256B++# |2048 |2048 (internal decode) |Single PHY |none
+
 |[.monospaced]#++FDI_CFG_TP_32B_64B++# |256 |512 |Two PHY |[.monospaced]#pass:c[+define+TWO_PHY]#
 
 |[.monospaced]#++FDI_CFG_TP_64B_128B++# |512 |1024 |Two PHY |[.monospaced]#pass:c[+define+TWO_PHY]#
@@ -376,6 +372,13 @@ consistency at elaboration time.
 * The [.monospaced]#++FDI_CFG_TP_32B_128B++# (256b + 1024b) combination is *not*
 supported by the design: [.monospaced]#++AOU_RX_CORE_IN_MUX++# requires
 [.monospaced]#++FDI_IF_WD0 == FDI_IF_WD1 / 2++# for two-PHY accumulation.
+* [.monospaced]#++FDI_CFG_SP_256B++# moves one whole 256 B flit per cycle in each
+direction. The RX side decodes the whole flit (48 granules) per cycle
+and the TX side packs a flit in one step. The D2D adapter's cancel
+contract is the one UCIe defines for a 2048-bit FDI: [.monospaced]#++pl_flit_cancel++#
+asserted in the cycle after a flit's single beat cancels that flit, and
+may coincide with the first beat of the replay. There is no 256 B
+two-PHY value.
 
 [[aou-ig-build-flags]]
 === Build flags
@@ -515,20 +518,23 @@ ________________________________________________________________________________
 *Note:* AXI USER signals and the AoU FLEX field. Every AXI-equivalent AoU
 message carries a 16-bit FLEX field, which in the Basic Profile is the
 USER signal of the matching AXI channel (AoU v0.8 Sections 5.2 and 11.1,
-Table 31). AOU_CORE_TOP implements the transmit direction only: the five
-USER inputs on the ports that feed the link ([.monospaced]#++I_AOU_TX_AXI_S_AWUSER++#,
+Table 31). In the transmit direction the five USER inputs on the ports
+that feed the link ([.monospaced]#++I_AOU_TX_AXI_S_AWUSER++#,
 [.monospaced]#++I_AOU_TX_AXI_S_ARUSER++#, [.monospaced]#++I_AOU_TX_AXI_S_WUSER++#,
 [.monospaced]#++I_AOU_TX_AXI_M_BUSER++#, [.monospaced]#++I_AOU_TX_AXI_M_RUSER++#; Sections 3.4, 3.6,
 3.7 and 3.9) are sent as the FLEX field of the WriteReq, ReadReq,
-WriteData, WriteResp and ReadData messages. The receive direction is not
-implemented: the FLEX field of received messages is ignored, and the AXI
-ports driven from received messages ([.monospaced]#++O_AOU_RX_AXI_M_*++# in Sections
-3.3, 3.5 and 3.6, [.monospaced]#++O_AOU_RX_AXI_S_*++# in Sections 3.8 and 3.9) have no
-USER outputs. Where the design merges several local transfers into one
-message, the FLEX value is defined in
+WriteData, WriteResp and ReadData messages. In the receive direction the
+FLEX field of every received message leaves on the USER output of the
+matching channel: [.monospaced]#++O_AOU_RX_AXI_M_AWUSER++#, [.monospaced]#++O_AOU_RX_AXI_M_ARUSER++#
+and [.monospaced]#++O_AOU_RX_AXI_M_WUSER++# (per W beat) on the manager ports (Sections
+3.3, 3.5 and 3.6), [.monospaced]#++O_AOU_RX_AXI_S_BUSER++# and [.monospaced]#++O_AOU_RX_AXI_S_RUSER++#
+(per R beat) on the subordinate ports (Sections 3.8 and 3.9). Where the
+design merges or splits transfers (the width converter, the splitter,
+the early write response, which carries BUSER 0), the FLEX value is
+defined in
 xref:../MAS/architecture.adoc#aou-354-user-signals-and-the-flex-field[MAS Section 3.5.4].
-An integrator without USER signals ties the five inputs to 0; the
-messages then carry FLEX = 0.
+An integrator without USER signals ties the five inputs to 0 and leaves
+the five outputs unconnected; the messages then carry FLEX = 0.
 ____________________________________________________________________________________________________________________________________________________________________________________________________________________________________
 
 [cols="<,<,<,<",options="header",]
@@ -554,6 +560,9 @@ length.
 |O_AOU_RX_AXI_M_ARPROT |output |[RP_COUNT-1:0][2:0] |Protection.
 
 |O_AOU_RX_AXI_M_ARQOS |output |[RP_COUNT-1:0][3:0] |QoS.
+
+|O_AOU_RX_AXI_M_ARUSER |output |[RP_COUNT-1:0][15:0] |Read address USER:
+the received ReadReq's FLEX field (Basic Profile: FLEX = USER[15:0]).
 
 |O_AOU_RX_AXI_M_ARVALID |output |[RP_COUNT-1:0] |AR valid.
 
@@ -615,6 +624,9 @@ length.
 
 |O_AOU_RX_AXI_M_AWQOS |output |[RP_COUNT-1:0][3:0] |QoS.
 
+|O_AOU_RX_AXI_M_AWUSER |output |[RP_COUNT-1:0][15:0] |Write address USER:
+the received WriteReq's FLEX field.
+
 |O_AOU_RX_AXI_M_AWVALID |output |[RP_COUNT-1:0] |AW valid.
 
 |I_AOU_RX_AXI_M_AWREADY |input |[RP_COUNT-1:0] |AW ready.
@@ -633,6 +645,10 @@ length.
 |Write strobe.
 
 |O_AOU_RX_AXI_M_WLAST |output |[RP_COUNT-1:0] |Write last.
+
+|O_AOU_RX_AXI_M_WUSER |output |[RP_COUNT-1:0][15:0] |Write data USER, per
+beat: the FLEX field of the WriteData message the beat comes from (the
+first message's when the width converter merges several into one beat).
 
 |O_AOU_RX_AXI_M_WVALID |output |[RP_COUNT-1:0] |W valid.
 
@@ -709,6 +725,9 @@ ID.
 
 |O_AOU_RX_AXI_S_RLAST |output |[RP_COUNT-1:0] |Read last.
 
+|O_AOU_RX_AXI_S_RUSER |output |[RP_COUNT-1:0][15:0] |Read data USER, per
+beat: the FLEX field of the ReadData message the beat comes from.
+
 |O_AOU_RX_AXI_S_RVALID |output |[RP_COUNT-1:0] |R valid.
 
 |I_AOU_RX_AXI_S_RREADY |input |[RP_COUNT-1:0] |R ready.
@@ -772,6 +791,10 @@ response ID.
 
 |O_AOU_RX_AXI_S_BRESP |output |[RP_COUNT-1:0][1:0] |Write response.
 
+|O_AOU_RX_AXI_S_BUSER |output |[RP_COUNT-1:0][15:0] |Write response USER:
+the received WriteResp's FLEX field; 0 for an early write response
+(MAS Section 3.7), which is sent before any WriteResp arrives.
+
 |O_AOU_RX_AXI_S_BVALID |output |[RP_COUNT-1:0] |B valid.
 
 |I_AOU_RX_AXI_S_BREADY |input |[RP_COUNT-1:0] |B ready.
@@ -794,6 +817,8 @@ xref:aou-ig-fdi_config-values[Section 2 - FDI_CONFIG values]).
 |[.monospaced]#++FDI_CFG_SP_64B++# |512 |512 (internal decode) |no
 
 |[.monospaced]#++FDI_CFG_SP_128B++# |1024 |1024 (internal decode) |no
+
+|[.monospaced]#++FDI_CFG_SP_256B++# |2048 |2048 (internal decode) |no
 
 |[.monospaced]#++FDI_CFG_TP_32B_64B++# |256 |512 |yes ([.monospaced]#pass:c[+define+TWO_PHY]#)
 
@@ -2088,9 +2113,10 @@ appropriate isolation and retention strategies.
 
 The [.monospaced]#++RTL/LIB/++# directory contains three behavioral reference models that
 are used by the design for reset infrastructure and clock-domain
-crossing. These models are functionally correct for simulation but *must
-be replaced* with process-appropriate implementations before synthesis
-or tapeout.
+crossing, and [.monospaced]#++RTL/AOU_TPSRAM.sv++# is the behavioral two-port SRAM the RX
+granule stores are built from. These models are functionally correct for
+simulation but *must be replaced* with process-appropriate
+implementations before synthesis or tapeout.
 
 [width="100%",cols="13%,8%,16%,9%,27%,27%",options="header",]
 |=======================================================================
@@ -2111,6 +2137,19 @@ as [.monospaced]#++u_sw_reset_mux++# (SW reset selection)
 [.monospaced]#++O_Y[DW-1:0]++# |Non-inverting buffer (identity: [.monospaced]#++O_Y = I_A++#)
 |[.monospaced]#++AOU_CORE_TOP++# as [.monospaced]#++dft_persistent_buf_scan_resetn_sw++# (DFT persistent
 buffer on scan reset)
+
+|[.monospaced]#++AOU_TPSRAM++# |[.monospaced]#++RTL/AOU_TPSRAM.sv++# |[.monospaced]#++RAM_DATA_WIDTH++#,
+[.monospaced]#++RAM_ADDR_WIDTH++# |Read port [.monospaced]#++CLKA++#, [.monospaced]#++CENA++# (active low), [.monospaced]#++AA++# ->
+[.monospaced]#++QA++# (one cycle later); write port [.monospaced]#++CLKB++#, [.monospaced]#++CENB++# (active low),
+[.monospaced]#++AB++#, [.monospaced]#++DB++# |Two-port (1R1W) synchronous SRAM, read data registered.
+The design does not depend on read-during-write ordering: a word read
+in the cycle it is rewritten holds the granules being read in both its
+old and its new contents (a rewrite only appends granules after them) |[.monospaced]#++AOU_RX_GRANULE_STORE++#, one
+instance per bank: per RP, two stores (W and R) of [.monospaced]#++NBANK++# banks of
+[.monospaced]#++ROWS++# words x 320 bits ([.monospaced]#++WG++# = 8 granules of 40 bits). With the
+default depths: 5 banks x 16 words at the 32/64/128 B FDI widths
+(600 granules), 7 banks x 18 words at 256 B (960 granules); both clocks
+are [.monospaced]#++clk_core++#.
 |=======================================================================
 
 *Replacement approaches:*
