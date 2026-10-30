@@ -121,7 +121,10 @@ import packet_def_pkg::*;
 
     output  [3:0]                                                   O_ACTIVATION_OP,
     output                                                          O_ACTIVATION_PROP_REQ,
-    output                                                          O_ACTIVATION_VALID
+    output                                                          O_ACTIVATION_VALID,
+    // ProfileID/Rev/Opt per RP from granules 0-3 of a received ActivateReq
+    // (AoU v0.8); valid with O_ACTIVATION_VALID when O_ACTIVATION_OP is ActivateReq
+    output  [3:0][PROFILE_WD-1:0]                                   O_ACTIVATION_PROFILE
 );
 //-----------------------------------------------------------------------------
     localparam  HF_WD       = 1024 * HF_CNT;
@@ -135,9 +138,17 @@ import packet_def_pkg::*;
     localparam  ND_MISC = 2'd2;
 
     // Message length in granules from the first granule of a message.
+    // Granule byte 0 is bits [7:0]: MSGTYPE g[7:4], MISCOP g[3:1], ACTIVATIONOP
+    // {g[0], g[15:13]} (spec bit order within each byte, bytes in stream order).
+    function automatic logic f_is_act_req(input logic [G_WD-1:0] g);
+        f_is_act_req = (g[7:4] == MSG_MISC) & (g[3:1] == MISC_OP_ACTIVATION)
+                     & ({g[0], g[15:13]} == ACTOP_ACTIVATE_REQ);
+    endfunction
+
     function automatic logic [LEN_WD-1:0] f_msg_len(input logic [G_WD-1:0] g);
         case (g[7:4])
-            MSG_MISC:     f_msg_len = (g[3:1] == MISC_OP_CRDTGRANT) ? LEN_WD'(2) : LEN_WD'(1);
+            MSG_MISC:     f_msg_len = (g[3:1] == MISC_OP_CRDTGRANT) ? LEN_WD'(CRDTGRANT_G) :
+                                      f_is_act_req(g)               ? LEN_WD'(ACT_REQ_G)   : LEN_WD'(ACT_OTHER_G);
             MSG_WR_REQ:   f_msg_len = LEN_WD'(AW_G);
             MSG_RD_REQ:   f_msg_len = LEN_WD'(AR_G);
             MSG_WR_DATA:  f_msg_len = (g[1:0] == 2'd2) ? LEN_WD'(W1024b_G) :
@@ -483,6 +494,8 @@ import packet_def_pkg::*;
     logic   [MISC_LANES-1:0][1:0][G_WD-1:0] w_misc_lane_g;
     st_misc_grantcredit_packet  [MISC_LANES-1:0]    w_misc_packet;
     st_misc_activation_packet                       w_misc_activation_packet;
+    logic   [ACT_REQ_G-1:0][G_WD-1:0]       w_act_req_g;        // granules 0-3 of the lane-1 Activation
+    logic   [ACT_REQ_G-1:0][G_WD-1:0]       w_act_req_spec;     // byte-reversed: spec bit order
 
     always_comb begin
         w_misc_pre[0] = '0;
@@ -506,7 +519,28 @@ import packet_def_pkg::*;
         for (int l = 0; l < MISC_LANES; l++)
             w_misc_packet[l] = w_misc_lane_g[l];
         w_misc_activation_packet = w_misc_lane_g[1][0];
+
+        // Granules 0-3 of the Activation message in lane 1 (the ActivateReq's
+        // profile fields, AoU v0.8). It starts at G0 of the flit (4.4), so the
+        // window never runs past the half flit; granules past it read 0.
+        w_act_req_g = '0;
+        for (int i = 0; i < G_CNT; i++)
+            if (b_start_misc[i] && (w_misc_pre[i] == 2'd0))
+                for (int k = 0; k < ACT_REQ_G; k++)
+                    if (i + k < G_CNT) w_act_req_g[k] = b_g[i + k];
     end
+
+    // The 26 profile bits of every ActivateReq granule are the low 26 bits in
+    // spec order ({ProfileID, ProfileRev, ProfileOpt} after RsvdZero3 or 14).
+    always_comb begin
+        for (int k = 0; k < ACT_REQ_G; k++)
+            w_act_req_spec[k] = {<<8{w_act_req_g[k]}};
+    end
+    generate
+        for (genvar pk = 0; pk < ACT_REQ_G; pk++) begin : gen_act_profile
+            assign O_ACTIVATION_PROFILE[pk] = w_act_req_spec[pk][PROFILE_WD-1:0];
+        end
+    endgenerate
 
 //-----------------------------------------------------------------------------
 // FIFO lane outputs

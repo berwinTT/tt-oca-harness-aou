@@ -46,6 +46,16 @@ parameter AR_G              = 3;
 parameter R256b_G           = 8;
 parameter R512b_G           = 14;
 parameter R1024b_G          = 27;
+// Misc messages. The ActivateReq is four granules in AoU v0.8 (Table
+// "Activation Req Message Format"): granule 0 carries MSGTYPE, MISCOP,
+// ACTIVATIONOP, RsvdZero3 and RP0's ProfileID5/ProfileRev5/ProfileOpt16;
+// granules 1-3 carry RsvdZero14 and the same three fields for RP1-RP3. Every
+// other Activation opcode and the CrdtGrant keep their lengths.
+parameter ACT_REQ_G         = 4;
+parameter ACT_OTHER_G       = 1;
+parameter CRDTGRANT_G       = 2;
+parameter PROFILE_WD        = 26;       // {ProfileID[4:0], ProfileRev[4:0], ProfileOpt[15:0]}
+parameter ACTOP_ACTIVATE_REQ = 4'b0000;
 
 // ----------------------------------------------------------------------------
 // FDI configuration selectors.
@@ -160,6 +170,13 @@ typedef struct packed {
     logic                           rsvd;
 } st_misc_packet;                   //misc packet including misc grantcredit_packet
 
+// First granule of an Activation message, in wire byte order (byte 0 in bits
+// [7:0]). property_req is the v0.7 PropertyReq position: in AoU v0.8 it is a
+// RsvdZero bit, and in an ActivateReq the 29 bits after ACTIVATIONOP are
+// RsvdZero3 followed by RP0's ProfileID/Rev/Opt (see ACT_REQ_G), which the
+// TX and RX cores handle in spec bit order ({<<8{granule}}) rather than through
+// this struct. The DUT still sets property_req on the DeactivateReq that
+// AOU_CON0.DEACTIVATE_FORCE sends (MAS 7.1).
 typedef struct packed {
     logic [23:0]                    rsvd;
     logic [2:0]                     activation_op_0;

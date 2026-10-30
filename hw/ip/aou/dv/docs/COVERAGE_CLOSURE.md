@@ -491,7 +491,7 @@ can't mean what it says. They are listed for owner review because the denominato
 | **l2.cg_link_state cp_tr** | `retrain_linkerror`, `active_linkreset`, `linkreset_reset`, `active_disabled`, `disabled_reset`, `reset_linkerror`; `cp_sts linkreset/disabled` | **a/b.** Adapter-driven transitions. `link_event +event=link_reset/inband_drop` used to XFAIL on the since-retired SW-reset sightings because of traffic and SW reset. A **quiet** link-event variant closes them now. `reset_linkerror` and `retrain_linkerror` come with WP5. |
 | **l3.cg_act_op** (after the fix) | `tx,illegal` × op0-3 and reserved (5) | **a:** sample the inject path. `aou_invalid_actmsg_test` covers every op×state, but those runs XFAIL on 019/013/023, so run the check-then-hard-reset variant (WP3). |
 | **l3.cg_credit** (after the fix) | `zero_stall,tx` for wreq/rreq/wresp; the new DUT-side bins | **a:** the model must exhaust the DUT's credit (`aou_zero_credit_test +credit=...` exists for model→DUT; the model-stalled direction needs bursts of remote-initiated requests beyond the DUT's advertised RX depth). |
-| **l3.cg_flit_layout** | `g[47],g2` and `g2,multi_flit` (CrdtGrant starting at G47 and spanning into G0; legal per AoU §4.4) | **a:** an L3 packer policy knob to place the initial CrdtGrant at G47. g4 cells are v0.8 (§3.3). |
+| **l3.cg_flit_layout** | `g[47],g2` and `g2,multi_flit` (CrdtGrant starting at G47 and spanning into G0; legal per AoU §4.4) | **a:** an L3 packer policy knob to place the initial CrdtGrant at G47. g4 (the ActivateReq) is sent by the DUT since the v0.8 activation change; `g[1..47],g4` are AOU-R6 illegal cells. |
 | **l3.cg_flit_occ** | `x_nmsgs_dir dense,rx` (16+ messages in a DUT→model flit); `cp_misc_half1 over` | dense: **a**, a WriteResp-heavy burst with M-port B released at once (`+pk=wresp48` on more configs). `over` (3+ Misc in one half-flit): v0.8 forbids it (half-flit Misc limit), and v0.7 doesn't say. **Ask:** make it an illegal_bin under v0.8 and a target under v0.7? |
 | **l3.cg_msg** (after the fix) | `w256/w1024/wf256/wf1024 rp2/3 rx`, `r1024 rp2/3 tx` (8) | **c.** No config gives RP2 or RP3 a 1024-bit local width, and w256 rp2 rx needs narrow writes on a 512-bit RP2 that the DUT sends as WriteData256. Options: (i) a new config such as `4xmix2-sp128` with RP2/RP3 at 1024, (ii) a per-RP waiver, (iii) per-RP width bins instead of rp × kind. Decision D6. **Done (WP10), option (i):** `4xmix4211-sp128` builds RP2 at 256 and `4xmix2144-sp64` builds RP2/RP3 at 1024. |
 
@@ -500,14 +500,17 @@ can't mean what it says. They are listed for owner review because the denominato
 | Bin | Why only v0.8 | How it could be hit |
 |---|---|---|
 | `cg_act_fsm activate_error/enabled_error/deactivate_error/error_disabled` (4) | ERROR state (v0.8 §8.3.3) | model under `spec_rev=V08` with an illegal op received |
-| `cg_flit_layout cp_size g4` and every `g*,g4` start cell, `x_size_span g4,*` (51) | 4-granule ActivateReq with ProfileID/Rev/Opt (v0.8 Table 27/§5.6) | a v0.8 DUT, or a model that sends it |
+| ~~`cg_flit_layout cp_size g4`, `g*,g4`, `x_size_span g4,*`~~ | 4-granule ActivateReq with ProfileID/Rev/Opt (v0.8 Table 27/§5.6) | **Closed:** the DUT sends and receives it (v0.8 activation change); the tag is gone, `g[1..47],g4` are AOU-R6 illegal cells |
 | `cg_flit_occ cp_misc_half1 over` (1) | half-flit Misc limit (v0.8 §4.4) | negative test |
 | `l3.cg_flex cp_flex {zero, nonzero, all_ones} × cp_kind {wreq, rreq, wdata, wdataf, rdata, wresp} × dir` (36) | FLEX = USER[15:0] (v0.8 §5.2 / §11.1); added with the DUT's USER input ports | tx: the AXI USER the local agents drive (`+user_mode`, default one random value per transaction; `aou_attr_test +attr_user=1` adds all ones and a walking bit per beat), checked against FLEX by `aou_t1_attr_chk`; rx: the model's random FLEX |
-| **to add:** `cg_act_req_profile {basic, other}`, `cg_rdata_variant {matches_arsize, wider}`, `cg_deact_credit {credit_after_deact_req, after_deact_ack}` | ActivateReq profile; ReadData-variant rule; DEACTIVATE credit rules | as above |
+| **to add:** ~~`cg_act_req_profile {basic, other}`~~ (done as `l3.cg_act_profile`, with the DUT: ID basic/low/high, Rev and Opt zero/non-zero, direction, RP present), `cg_rdata_variant {matches_arsize, wider}`, `cg_deact_credit {credit_after_deact_req, after_deact_ack}` | ActivateReq profile; ReadData-variant rule; DEACTIVATE credit rules | as above |
 
-**Problem.** No T1 test sets `spec_rev=V08`, and there is no plusarg for it. A v0.8 model can't
-interoperate with the v0.7 DUT, because ActivateReq sizes differ (4 granules against 1). So T1
-can reach these bins only through negative or one-sided cases. Three ways to close them
+**Problem** (historical; the DUT environment runs at `spec_rev=V08` since the v0.8 activation
+change, the DUT sending and receiving the 4-granule ActivateReq; what follows concerns the
+remaining v0.8 bins, the ERROR state above all). No T1 test set `spec_rev=V08`, and there was no
+plusarg for it. A v0.8 model could not interoperate with the v0.7 DUT, because ActivateReq sizes
+differed (4 granules against 1). So T1 could reach these bins only through negative or one-sided
+cases. Three ways to close them
 (decision D3):
 
 | Option | What it means |

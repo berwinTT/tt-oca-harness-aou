@@ -9,7 +9,7 @@ Don't override. Generated from: aou_core
 
 - Absolute Address: 0x0
 - Base Offset: 0x0
-- Size: 0x84
+- Size: 0xA4
 
 <p>Register map for AOU_CORE_SFR (APB slave). Addresses match RTL localparams. Fields with sw=r and no reset are driven by module inputs (I_*), connected in AOU_CORE.sv; stored fields (flops) have the stated reset.</p>
 
@@ -48,6 +48,14 @@ Don't override. Generated from: aou_core
 | 0x78 |     axi_error_info1_rp3    |       AXI Error Info1 RP3      |
 | 0x7C | axi_slv_id_mismatch_err_rp3| AXI Slave ID Mismatch Error RP3|
 | 0x80 |write_early_response_wdt_ctl|Write Early Response WDT Control|
+| 0x84 |       profile_cfg_rp0      |       Profile Config RP0       |
+| 0x88 |       profile_cfg_rp1      |       Profile Config RP1       |
+| 0x8C |       profile_cfg_rp2      |       Profile Config RP2       |
+| 0x90 |       profile_cfg_rp3      |       Profile Config RP3       |
+| 0x94 |       profile_rmt_rp0      |       Profile Remote RP0       |
+| 0x98 |       profile_rmt_rp1      |       Profile Remote RP1       |
+| 0x9C |       profile_rmt_rp2      |       Profile Remote RP2       |
+| 0xA0 |       profile_rmt_rp3      |       Profile Remote RP3       |
 
 ### ip_version register
 
@@ -1143,3 +1151,239 @@ Don't override. Generated from: aou_core
 #### wdt_threshold field
 
 <p>Watchdog threshold in I_CLK cycles. The watchdog counts cycles without an AW or B handshake while writes are outstanding (AW accepted, B from the remote die not yet received) and restarts on either handshake; reaching the threshold sets wdt_trans_timeout_err once per reset. Reset 0xC3500 = 800000 cycles (800 us at 1 GHz).</p>
+
+### profile_cfg_rp0 register
+
+- Absolute Address: 0x84
+- Base Offset: 0x84
+- Size: 0x4
+
+<p>Profile announced for RP0 in the ActivateReq this die sends (AoU v0.8 Ch. 11). Program before setting aou_init.activate_start; the value is sampled when the ActivateReq is launched, so a later write only takes effect at the next activation. For an RP the design does not implement the register is writable but the ActivateReq granule carries zeros. Reset 0/0/0 is the Basic Profile. Cleared by aou_con0.aou_sw_reset.</p>
+
+| Bits|  Identifier  |Access|Reset|Name|
+|-----|--------------|------|-----|----|
+| 4:0 |  profile_id  |  rw  | 0x0 |  — |
+| 9:5 |  profile_rev |  rw  | 0x0 |  — |
+|25:10|  profile_opt |  rw  | 0x0 |  — |
+|31:26|reserved_31_26|   r  | 0x0 |  — |
+
+#### profile_id field
+
+<p>ProfileID sent for RP0. 0 = Basic Profile (AoU v0.8 Ch. 11).</p>
+
+#### profile_rev field
+
+<p>ProfileRev sent for RP0: revision of the profile identified by profile_id.</p>
+
+#### profile_opt field
+
+<p>ProfileOpt sent for RP0: profile-specific option bits, meaning defined by the profile identified by profile_id.</p>
+
+### profile_cfg_rp1 register
+
+- Absolute Address: 0x88
+- Base Offset: 0x88
+- Size: 0x4
+
+<p>Profile announced for RP1 in the ActivateReq this die sends (AoU v0.8 Ch. 11). Program before setting aou_init.activate_start; the value is sampled when the ActivateReq is launched, so a later write only takes effect at the next activation. For an RP the design does not implement the register is writable but the ActivateReq granule carries zeros. Reset 0/0/0 is the Basic Profile. Cleared by aou_con0.aou_sw_reset.</p>
+
+| Bits|  Identifier  |Access|Reset|Name|
+|-----|--------------|------|-----|----|
+| 4:0 |  profile_id  |  rw  | 0x0 |  — |
+| 9:5 |  profile_rev |  rw  | 0x0 |  — |
+|25:10|  profile_opt |  rw  | 0x0 |  — |
+|31:26|reserved_31_26|   r  | 0x0 |  — |
+
+#### profile_id field
+
+<p>ProfileID sent for RP1. 0 = Basic Profile (AoU v0.8 Ch. 11).</p>
+
+#### profile_rev field
+
+<p>ProfileRev sent for RP1: revision of the profile identified by profile_id.</p>
+
+#### profile_opt field
+
+<p>ProfileOpt sent for RP1: profile-specific option bits, meaning defined by the profile identified by profile_id.</p>
+
+### profile_cfg_rp2 register
+
+- Absolute Address: 0x8C
+- Base Offset: 0x8C
+- Size: 0x4
+
+<p>Profile announced for RP2 in the ActivateReq this die sends (AoU v0.8 Ch. 11). Program before setting aou_init.activate_start; the value is sampled when the ActivateReq is launched, so a later write only takes effect at the next activation. For an RP the design does not implement the register is writable but the ActivateReq granule carries zeros. Reset 0/0/0 is the Basic Profile. Cleared by aou_con0.aou_sw_reset.</p>
+
+| Bits|  Identifier  |Access|Reset|Name|
+|-----|--------------|------|-----|----|
+| 4:0 |  profile_id  |  rw  | 0x0 |  — |
+| 9:5 |  profile_rev |  rw  | 0x0 |  — |
+|25:10|  profile_opt |  rw  | 0x0 |  — |
+|31:26|reserved_31_26|   r  | 0x0 |  — |
+
+#### profile_id field
+
+<p>ProfileID sent for RP2. 0 = Basic Profile (AoU v0.8 Ch. 11).</p>
+
+#### profile_rev field
+
+<p>ProfileRev sent for RP2: revision of the profile identified by profile_id.</p>
+
+#### profile_opt field
+
+<p>ProfileOpt sent for RP2: profile-specific option bits, meaning defined by the profile identified by profile_id.</p>
+
+### profile_cfg_rp3 register
+
+- Absolute Address: 0x90
+- Base Offset: 0x90
+- Size: 0x4
+
+<p>Profile announced for RP3 in the ActivateReq this die sends (AoU v0.8 Ch. 11). Program before setting aou_init.activate_start; the value is sampled when the ActivateReq is launched, so a later write only takes effect at the next activation. For an RP the design does not implement the register is writable but the ActivateReq granule carries zeros. Reset 0/0/0 is the Basic Profile. Cleared by aou_con0.aou_sw_reset.</p>
+
+| Bits|  Identifier  |Access|Reset|Name|
+|-----|--------------|------|-----|----|
+| 4:0 |  profile_id  |  rw  | 0x0 |  — |
+| 9:5 |  profile_rev |  rw  | 0x0 |  — |
+|25:10|  profile_opt |  rw  | 0x0 |  — |
+|31:26|reserved_31_26|   r  | 0x0 |  — |
+
+#### profile_id field
+
+<p>ProfileID sent for RP3. 0 = Basic Profile (AoU v0.8 Ch. 11).</p>
+
+#### profile_rev field
+
+<p>ProfileRev sent for RP3: revision of the profile identified by profile_id.</p>
+
+#### profile_opt field
+
+<p>ProfileOpt sent for RP3: profile-specific option bits, meaning defined by the profile identified by profile_id.</p>
+
+### profile_rmt_rp0 register
+
+- Absolute Address: 0x94
+- Base Offset: 0x94
+- Size: 0x4
+
+<p>Profile the peer announced for RP0 in the last ActivateReq this die accepted, i.e. one it answered with an ActivateAck (an ActivateReq rejected in ENABLED or during deactivation leaves the register unchanged). A peer sending the one-granule AoU v0.7 ActivateReq reads as 0/0/0 (Basic Profile). Software compares it with profile_cfg_rp0 and the local capabilities; hardware does not act on it. Holds its value until the next accepted ActivateReq or a reset (including aou_con0.aou_sw_reset).</p>
+
+| Bits|  Identifier  |Access|Reset|Name|
+|-----|--------------|------|-----|----|
+| 4:0 |  profile_id  |   r  | 0x0 |  — |
+| 9:5 |  profile_rev |   r  | 0x0 |  — |
+|25:10|  profile_opt |   r  | 0x0 |  — |
+|30:26|reserved_30_26|   r  | 0x0 |  — |
+|  31 |     rcvd     |   r  | 0x0 |  — |
+
+#### profile_id field
+
+<p>ProfileID received for RP0. 0 = Basic Profile.</p>
+
+#### profile_rev field
+
+<p>ProfileRev received for RP0.</p>
+
+#### profile_opt field
+
+<p>ProfileOpt received for RP0.</p>
+
+#### rcvd field
+
+<p>1 after at least one ActivateReq has been accepted since reset, i.e. the profile fields below are valid. Shared by profile_rmt_rp0..rp3.</p>
+
+### profile_rmt_rp1 register
+
+- Absolute Address: 0x98
+- Base Offset: 0x98
+- Size: 0x4
+
+<p>Profile the peer announced for RP1 in the last ActivateReq this die accepted, i.e. one it answered with an ActivateAck (an ActivateReq rejected in ENABLED or during deactivation leaves the register unchanged). A peer sending the one-granule AoU v0.7 ActivateReq reads as 0/0/0 (Basic Profile). Software compares it with profile_cfg_rp1 and the local capabilities; hardware does not act on it. Holds its value until the next accepted ActivateReq or a reset (including aou_con0.aou_sw_reset).</p>
+
+| Bits|  Identifier  |Access|Reset|Name|
+|-----|--------------|------|-----|----|
+| 4:0 |  profile_id  |   r  | 0x0 |  — |
+| 9:5 |  profile_rev |   r  | 0x0 |  — |
+|25:10|  profile_opt |   r  | 0x0 |  — |
+|30:26|reserved_30_26|   r  | 0x0 |  — |
+|  31 |     rcvd     |   r  | 0x0 |  — |
+
+#### profile_id field
+
+<p>ProfileID received for RP1. 0 = Basic Profile.</p>
+
+#### profile_rev field
+
+<p>ProfileRev received for RP1.</p>
+
+#### profile_opt field
+
+<p>ProfileOpt received for RP1.</p>
+
+#### rcvd field
+
+<p>1 after at least one ActivateReq has been accepted since reset, i.e. the profile fields below are valid. Shared by profile_rmt_rp0..rp3.</p>
+
+### profile_rmt_rp2 register
+
+- Absolute Address: 0x9C
+- Base Offset: 0x9C
+- Size: 0x4
+
+<p>Profile the peer announced for RP2 in the last ActivateReq this die accepted, i.e. one it answered with an ActivateAck (an ActivateReq rejected in ENABLED or during deactivation leaves the register unchanged). A peer sending the one-granule AoU v0.7 ActivateReq reads as 0/0/0 (Basic Profile). Software compares it with profile_cfg_rp2 and the local capabilities; hardware does not act on it. Holds its value until the next accepted ActivateReq or a reset (including aou_con0.aou_sw_reset).</p>
+
+| Bits|  Identifier  |Access|Reset|Name|
+|-----|--------------|------|-----|----|
+| 4:0 |  profile_id  |   r  | 0x0 |  — |
+| 9:5 |  profile_rev |   r  | 0x0 |  — |
+|25:10|  profile_opt |   r  | 0x0 |  — |
+|30:26|reserved_30_26|   r  | 0x0 |  — |
+|  31 |     rcvd     |   r  | 0x0 |  — |
+
+#### profile_id field
+
+<p>ProfileID received for RP2. 0 = Basic Profile.</p>
+
+#### profile_rev field
+
+<p>ProfileRev received for RP2.</p>
+
+#### profile_opt field
+
+<p>ProfileOpt received for RP2.</p>
+
+#### rcvd field
+
+<p>1 after at least one ActivateReq has been accepted since reset, i.e. the profile fields below are valid. Shared by profile_rmt_rp0..rp3.</p>
+
+### profile_rmt_rp3 register
+
+- Absolute Address: 0xA0
+- Base Offset: 0xA0
+- Size: 0x4
+
+<p>Profile the peer announced for RP3 in the last ActivateReq this die accepted, i.e. one it answered with an ActivateAck (an ActivateReq rejected in ENABLED or during deactivation leaves the register unchanged). A peer sending the one-granule AoU v0.7 ActivateReq reads as 0/0/0 (Basic Profile). Software compares it with profile_cfg_rp3 and the local capabilities; hardware does not act on it. Holds its value until the next accepted ActivateReq or a reset (including aou_con0.aou_sw_reset).</p>
+
+| Bits|  Identifier  |Access|Reset|Name|
+|-----|--------------|------|-----|----|
+| 4:0 |  profile_id  |   r  | 0x0 |  — |
+| 9:5 |  profile_rev |   r  | 0x0 |  — |
+|25:10|  profile_opt |   r  | 0x0 |  — |
+|30:26|reserved_30_26|   r  | 0x0 |  — |
+|  31 |     rcvd     |   r  | 0x0 |  — |
+
+#### profile_id field
+
+<p>ProfileID received for RP3. 0 = Basic Profile.</p>
+
+#### profile_rev field
+
+<p>ProfileRev received for RP3.</p>
+
+#### profile_opt field
+
+<p>ProfileOpt received for RP3.</p>
+
+#### rcvd field
+
+<p>1 after at least one ActivateReq has been accepted since reset, i.e. the profile fields below are valid. Shared by profile_rmt_rp0..rp3.</p>

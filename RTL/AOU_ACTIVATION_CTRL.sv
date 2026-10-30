@@ -37,6 +37,12 @@ module AOU_ACTIVATION_CTRL
     input   [3:0]   I_ACTMSG_ACTIVATION_OP          ,
     input           I_ACTMSG_PROPERTYREQ            ,
     input           I_ACTMSG_VALID                  ,
+    // ProfileID/Rev/Opt per RP of the received ActivateReq (AoU v0.8), and the
+    // strobe that stores them in the SFR (PROFILE_RMT_RPn): an ActivateReq this
+    // FSM accepts, i.e. the same one it answers with an ActivateAck.
+    input   [3:0][25:0] I_ACTMSG_PROFILE            ,
+    output  [3:0][25:0] O_PROFILE_RMT               ,
+    output          O_PROFILE_RMT_WE                ,
     
     //output Activation message
     output  [3:0]   O_ACTMSG_ACTIVATION_OP          ,
@@ -461,6 +467,12 @@ assign  w_deactivate_related0    = w_deactivate_start_rising_edge_detect | w_dea
 assign  w_activate_related1      = (I_ACTMSG_ACTIVATION_OP == ACTIVATE_REQ) & I_ACTMSG_VALID
                                  & ~w_act_req_invalid_st;
 assign  w_deactivate_related1    = (I_ACTMSG_ACTIVATION_OP == DEACTIVATE_REQ) & I_ACTMSG_VALID;
+
+// The peer's announced profile travels to the SFR with the accepted ActivateReq;
+// an ActivateReq rejected above (ENABLED, mid-DEACTIVATE) leaves the stored
+// values alone.
+assign  O_PROFILE_RMT            = I_ACTMSG_PROFILE;
+assign  O_PROFILE_RMT_WE         = w_activate_related1;
 
 //svalid 0 is for ACTIVATE_REQ & DEACTIVATE_REQ
 //svalid 1 is for ACTIVATE_ACK & DEACTIVATE_ACK

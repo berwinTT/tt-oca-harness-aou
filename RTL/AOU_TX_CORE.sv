@@ -196,6 +196,10 @@ import packet_def_pkg::*;
     input  logic                                                I_AOU_ACTIVATION_PROP_REQ,
     input  logic                                                I_AOU_ACTIVATION_VALID,
     output logic                                                O_AOU_ACTIVATION_READY,
+    // Configured profile per RP ({ProfileID, ProfileRev, ProfileOpt}, SFR
+    // PROFILE_CFG_RPn), sent in granules 0-3 of the ActivateReq (AoU v0.8
+    // Table "Activation Req Message Format"); RPs beyond RP_CNT send 0.
+    input  logic     [3:0][PROFILE_WD-1:0]                      I_AOU_PROFILE_CFG,
 
     // State for TX_CORE fifo
     output logic                                                O_AOU_TX_PENDING,
@@ -357,9 +361,11 @@ logic    [56-1:0]               w_misc_crdtgrant_payload;
 logic                           w_misc_crdtgrant_fifo_valid;
 logic                           w_misc_crdtgrant_fifo_ready;
 
-logic    [39:0]                 w_misc_activate_message;
+logic    [40*ACT_REQ_G-1:0]     w_misc_activate_message;
 logic    [3:0]                  w_misc_activation_op;
 logic                           w_misc_activation_prop_req;
+logic                           w_misc_activation_is_req;   // the 4-granule ActivateReq
+logic    [2:0]                  w_misc_act_add;             // granules an Activation message adds
 logic                           w_misc_activation_valid;
 logic                           w_misc_activation_ready;
 
@@ -458,8 +464,9 @@ logic     [40*R1024b_G-1:0]      w_aou_tx_m_axi_r_message;
 logic     [40*AR_G-1:0]          w_aou_tx_m_axi_ar_message;
 
 
-logic [40-1:0]      w_misc_activate_message_byteswap;
-logic [40*2-1:0]    w_misc_crdtgrant_message_byteswap;
+logic [40*ACT_REQ_G-1:0]    w_misc_activate_message_byteswap;
+logic [40*2-1:0]            w_misc_crdtgrant_message_byteswap;
+logic [3:0][PROFILE_WD-1:0] w_profile_cfg;              // I_AOU_PROFILE_CFG, 0 for absent RPs
 
 logic [RP_CNT-1:0][40*W1024b_G-1:0 ]  w_writedata_message_rp;
 logic [RP_CNT-1:0][40*WF1024b_G-1:0]  w_writedata_wo_strb_message_rp;
@@ -791,7 +798,25 @@ assign w_readdata512b_message   = w_aou_tx_m_axi_r_message[40*R512b_G-1:0];
 assign w_readdata1024b_message  = w_aou_tx_m_axi_r_message;
 
 
-assign w_misc_activate_message_byteswap      = {MSG_MISC, 3'b010, w_misc_activation_op, w_misc_activation_prop_req, 28'b0};
+// Activation message in spec bit order (fields MSB-first), byte-reversed below
+// into wire order. ActivateReq (AoU v0.8 Table "Activation Req Message
+// Format"): MSGTYPE, MISCOP, ACTIVATIONOP, RsvdZero3, RP0 {ID, Rev, Opt}, then
+// {RsvdZero14, RPn {ID, Rev, Opt}} for RP1-3, four granules. The other opcodes
+// are one granule, MSGTYPE, MISCOP, ACTIVATIONOP, RsvdZero29; the DUT marks
+// the DeactivateReq of AOU_CON0.DEACTIVATE_FORCE in the top RsvdZero bit
+// (v0.7's PropertyReq position, MAS 7.1).
+always_comb begin
+    for (int n = 0; n < 4; n++)
+        w_profile_cfg[n] = (n < RP_CNT) ? I_AOU_PROFILE_CFG[n] : '0;
+end
+
+assign w_misc_activation_is_req = (w_misc_activation_op == ACTOP_ACTIVATE_REQ);
+assign w_misc_act_add           = w_aou_fifo_misc_act_hs ? (w_misc_activation_is_req ? 3'(ACT_REQ_G) : 3'(ACT_OTHER_G)) : '0;
+
+assign w_misc_activate_message_byteswap      = w_misc_activation_is_req ?
+    {MSG_MISC, 3'b010, w_misc_activation_op, 3'b0, w_profile_cfg[0],
+     14'b0, w_profile_cfg[1], 14'b0, w_profile_cfg[2], 14'b0, w_profile_cfg[3]} :
+    {MSG_MISC, 3'b010, w_misc_activation_op, w_misc_activation_prop_req, 28'b0, {40*(ACT_REQ_G-1){1'b0}}};   // MSB side = granule 0 after the byte reversal
 assign w_misc_crdtgrant_message_byteswap     = {MSG_MISC, 3'b100, w_misc_crdtgrant_payload, 17'b0};
 
 assign w_misc_activate_message = {<<8{w_misc_activate_message_byteswap}};
@@ -824,10 +849,10 @@ always_comb begin
                          + w_b_add + w_ar_add + w_r_add;
     w_misc_crdt_start_idx   =  r_cur_granule_start + w_aw_add + w_w_add
                          + w_b_add + w_ar_add + w_r_add
-                         + w_aou_fifo_misc_act_hs;
+                         + w_misc_act_add;
     nxt_granule_start       =  r_cur_granule_start + w_aw_add + w_w_add
                          + w_b_add + w_ar_add + w_r_add
-                         + w_aou_fifo_misc_act_hs + w_misc_crdt_add;
+                         + w_misc_act_add + w_misc_crdt_add;
 end
 
 always_ff @ (posedge I_CLK or negedge I_RESETN) begin
@@ -918,9 +943,11 @@ always_comb begin
     end
 
     if (w_aou_fifo_misc_act_hs) begin
-        for (int unsigned n=0; n < 1; n++) begin
-            nxt_granule_buffer[add_idx(w_misc_activate_start_idx, n)] = w_misc_activate_message[n*40 +: 40];
-            nxt_msgstart_buffer[add_idx(w_misc_activate_start_idx, n)] = (n == 0);
+        for (int unsigned n=0; n < ACT_REQ_G; n++) begin
+            if ((n == 0) || w_misc_activation_is_req) begin
+                nxt_granule_buffer[add_idx(w_misc_activate_start_idx, n)] = w_misc_activate_message[n*40 +: 40];
+                nxt_msgstart_buffer[add_idx(w_misc_activate_start_idx, n)] = (n == 0);
+            end
         end
     end
 

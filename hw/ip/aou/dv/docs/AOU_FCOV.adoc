@@ -168,8 +168,9 @@ this table so `fc_report` can report coverage per plan item is an open item
   `AOU_SOC_BUF`) are excluded from code coverage with their reasons in
   `cov/config/vcs/cov_exclude.hier`; reset-only FSM transitions through
   `cov/config/vcs/cov_fsm_reset.filter`.
-* The `v0.8` bins (`cg_act_op` four-granule ActivateReq, the ERROR state,
-  `cg_flit_occ` half-flit Misc limit) need an AoU v0.8 DUT or partner.
+* The `v0.8` bins (the ERROR state, `cg_flit_occ` half-flit Misc limit) need an
+  AoU v0.8 DUT or partner; the four-granule ActivateReq bins lost the tag when
+  the DUT started sending it (profile exchange, `cg_act_profile`).
 * Verilator scores covergroups as zero; its code coverage (line, branch,
   expression, toggle) is reported by module (`summary.txt`, lcov
   `merged.info`), and the functional numbers come from the service on every

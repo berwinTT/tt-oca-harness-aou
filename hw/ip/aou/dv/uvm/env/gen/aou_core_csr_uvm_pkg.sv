@@ -900,6 +900,202 @@ package aou_core_csr_uvm_pkg;
         endfunction : build
     endclass : aou_core__write_early_response_wdt_ctl
 
+    // reg - aou_core::profile_cfg_rp0
+    class aou_core__profile_cfg_rp0 extends uvm_reg;
+        rand uvm_reg_field profile_id;
+        rand uvm_reg_field profile_rev;
+        rand uvm_reg_field profile_opt;
+        rand uvm_reg_field reserved_31_26;
+
+        function new(string name = "aou_core__profile_cfg_rp0");
+            super.new(name, 32, UVM_NO_COVERAGE);
+        endfunction : new
+
+        virtual function void build();
+            this.profile_id = new("profile_id");
+            this.profile_id.configure(this, 5, 0, "RW", 1, 'h0, 1, 1, 0);
+            this.profile_rev = new("profile_rev");
+            this.profile_rev.configure(this, 5, 5, "RW", 1, 'h0, 1, 1, 0);
+            this.profile_opt = new("profile_opt");
+            this.profile_opt.configure(this, 16, 10, "RW", 1, 'h0, 1, 1, 0);
+            this.reserved_31_26 = new("reserved_31_26");
+            this.reserved_31_26.configure(this, 6, 26, "RO", 1, 'h0, 1, 1, 0);
+        endfunction : build
+    endclass : aou_core__profile_cfg_rp0
+
+    // reg - aou_core::profile_cfg_rp1
+    class aou_core__profile_cfg_rp1 extends uvm_reg;
+        rand uvm_reg_field profile_id;
+        rand uvm_reg_field profile_rev;
+        rand uvm_reg_field profile_opt;
+        rand uvm_reg_field reserved_31_26;
+
+        function new(string name = "aou_core__profile_cfg_rp1");
+            super.new(name, 32, UVM_NO_COVERAGE);
+        endfunction : new
+
+        virtual function void build();
+            this.profile_id = new("profile_id");
+            this.profile_id.configure(this, 5, 0, "RW", 1, 'h0, 1, 1, 0);
+            this.profile_rev = new("profile_rev");
+            this.profile_rev.configure(this, 5, 5, "RW", 1, 'h0, 1, 1, 0);
+            this.profile_opt = new("profile_opt");
+            this.profile_opt.configure(this, 16, 10, "RW", 1, 'h0, 1, 1, 0);
+            this.reserved_31_26 = new("reserved_31_26");
+            this.reserved_31_26.configure(this, 6, 26, "RO", 1, 'h0, 1, 1, 0);
+        endfunction : build
+    endclass : aou_core__profile_cfg_rp1
+
+    // reg - aou_core::profile_cfg_rp2
+    class aou_core__profile_cfg_rp2 extends uvm_reg;
+        rand uvm_reg_field profile_id;
+        rand uvm_reg_field profile_rev;
+        rand uvm_reg_field profile_opt;
+        rand uvm_reg_field reserved_31_26;
+
+        function new(string name = "aou_core__profile_cfg_rp2");
+            super.new(name, 32, UVM_NO_COVERAGE);
+        endfunction : new
+
+        virtual function void build();
+            this.profile_id = new("profile_id");
+            this.profile_id.configure(this, 5, 0, "RW", 1, 'h0, 1, 1, 0);
+            this.profile_rev = new("profile_rev");
+            this.profile_rev.configure(this, 5, 5, "RW", 1, 'h0, 1, 1, 0);
+            this.profile_opt = new("profile_opt");
+            this.profile_opt.configure(this, 16, 10, "RW", 1, 'h0, 1, 1, 0);
+            this.reserved_31_26 = new("reserved_31_26");
+            this.reserved_31_26.configure(this, 6, 26, "RO", 1, 'h0, 1, 1, 0);
+        endfunction : build
+    endclass : aou_core__profile_cfg_rp2
+
+    // reg - aou_core::profile_cfg_rp3
+    class aou_core__profile_cfg_rp3 extends uvm_reg;
+        rand uvm_reg_field profile_id;
+        rand uvm_reg_field profile_rev;
+        rand uvm_reg_field profile_opt;
+        rand uvm_reg_field reserved_31_26;
+
+        function new(string name = "aou_core__profile_cfg_rp3");
+            super.new(name, 32, UVM_NO_COVERAGE);
+        endfunction : new
+
+        virtual function void build();
+            this.profile_id = new("profile_id");
+            this.profile_id.configure(this, 5, 0, "RW", 1, 'h0, 1, 1, 0);
+            this.profile_rev = new("profile_rev");
+            this.profile_rev.configure(this, 5, 5, "RW", 1, 'h0, 1, 1, 0);
+            this.profile_opt = new("profile_opt");
+            this.profile_opt.configure(this, 16, 10, "RW", 1, 'h0, 1, 1, 0);
+            this.reserved_31_26 = new("reserved_31_26");
+            this.reserved_31_26.configure(this, 6, 26, "RO", 1, 'h0, 1, 1, 0);
+        endfunction : build
+    endclass : aou_core__profile_cfg_rp3
+
+    // reg - aou_core::profile_rmt_rp0
+    class aou_core__profile_rmt_rp0 extends uvm_reg;
+        rand uvm_reg_field profile_id;
+        rand uvm_reg_field profile_rev;
+        rand uvm_reg_field profile_opt;
+        rand uvm_reg_field reserved_30_26;
+        rand uvm_reg_field rcvd;
+
+        function new(string name = "aou_core__profile_rmt_rp0");
+            super.new(name, 32, UVM_NO_COVERAGE);
+        endfunction : new
+
+        virtual function void build();
+            this.profile_id = new("profile_id");
+            this.profile_id.configure(this, 5, 0, "RO", 1, 'h0, 1, 1, 0);
+            this.profile_rev = new("profile_rev");
+            this.profile_rev.configure(this, 5, 5, "RO", 1, 'h0, 1, 1, 0);
+            this.profile_opt = new("profile_opt");
+            this.profile_opt.configure(this, 16, 10, "RO", 1, 'h0, 1, 1, 0);
+            this.reserved_30_26 = new("reserved_30_26");
+            this.reserved_30_26.configure(this, 5, 26, "RO", 1, 'h0, 1, 1, 0);
+            this.rcvd = new("rcvd");
+            this.rcvd.configure(this, 1, 31, "RO", 1, 'h0, 1, 1, 0);
+        endfunction : build
+    endclass : aou_core__profile_rmt_rp0
+
+    // reg - aou_core::profile_rmt_rp1
+    class aou_core__profile_rmt_rp1 extends uvm_reg;
+        rand uvm_reg_field profile_id;
+        rand uvm_reg_field profile_rev;
+        rand uvm_reg_field profile_opt;
+        rand uvm_reg_field reserved_30_26;
+        rand uvm_reg_field rcvd;
+
+        function new(string name = "aou_core__profile_rmt_rp1");
+            super.new(name, 32, UVM_NO_COVERAGE);
+        endfunction : new
+
+        virtual function void build();
+            this.profile_id = new("profile_id");
+            this.profile_id.configure(this, 5, 0, "RO", 1, 'h0, 1, 1, 0);
+            this.profile_rev = new("profile_rev");
+            this.profile_rev.configure(this, 5, 5, "RO", 1, 'h0, 1, 1, 0);
+            this.profile_opt = new("profile_opt");
+            this.profile_opt.configure(this, 16, 10, "RO", 1, 'h0, 1, 1, 0);
+            this.reserved_30_26 = new("reserved_30_26");
+            this.reserved_30_26.configure(this, 5, 26, "RO", 1, 'h0, 1, 1, 0);
+            this.rcvd = new("rcvd");
+            this.rcvd.configure(this, 1, 31, "RO", 1, 'h0, 1, 1, 0);
+        endfunction : build
+    endclass : aou_core__profile_rmt_rp1
+
+    // reg - aou_core::profile_rmt_rp2
+    class aou_core__profile_rmt_rp2 extends uvm_reg;
+        rand uvm_reg_field profile_id;
+        rand uvm_reg_field profile_rev;
+        rand uvm_reg_field profile_opt;
+        rand uvm_reg_field reserved_30_26;
+        rand uvm_reg_field rcvd;
+
+        function new(string name = "aou_core__profile_rmt_rp2");
+            super.new(name, 32, UVM_NO_COVERAGE);
+        endfunction : new
+
+        virtual function void build();
+            this.profile_id = new("profile_id");
+            this.profile_id.configure(this, 5, 0, "RO", 1, 'h0, 1, 1, 0);
+            this.profile_rev = new("profile_rev");
+            this.profile_rev.configure(this, 5, 5, "RO", 1, 'h0, 1, 1, 0);
+            this.profile_opt = new("profile_opt");
+            this.profile_opt.configure(this, 16, 10, "RO", 1, 'h0, 1, 1, 0);
+            this.reserved_30_26 = new("reserved_30_26");
+            this.reserved_30_26.configure(this, 5, 26, "RO", 1, 'h0, 1, 1, 0);
+            this.rcvd = new("rcvd");
+            this.rcvd.configure(this, 1, 31, "RO", 1, 'h0, 1, 1, 0);
+        endfunction : build
+    endclass : aou_core__profile_rmt_rp2
+
+    // reg - aou_core::profile_rmt_rp3
+    class aou_core__profile_rmt_rp3 extends uvm_reg;
+        rand uvm_reg_field profile_id;
+        rand uvm_reg_field profile_rev;
+        rand uvm_reg_field profile_opt;
+        rand uvm_reg_field reserved_30_26;
+        rand uvm_reg_field rcvd;
+
+        function new(string name = "aou_core__profile_rmt_rp3");
+            super.new(name, 32, UVM_NO_COVERAGE);
+        endfunction : new
+
+        virtual function void build();
+            this.profile_id = new("profile_id");
+            this.profile_id.configure(this, 5, 0, "RO", 1, 'h0, 1, 1, 0);
+            this.profile_rev = new("profile_rev");
+            this.profile_rev.configure(this, 5, 5, "RO", 1, 'h0, 1, 1, 0);
+            this.profile_opt = new("profile_opt");
+            this.profile_opt.configure(this, 16, 10, "RO", 1, 'h0, 1, 1, 0);
+            this.reserved_30_26 = new("reserved_30_26");
+            this.reserved_30_26.configure(this, 5, 26, "RO", 1, 'h0, 1, 1, 0);
+            this.rcvd = new("rcvd");
+            this.rcvd.configure(this, 1, 31, "RO", 1, 'h0, 1, 1, 0);
+        endfunction : build
+    endclass : aou_core__profile_rmt_rp3
+
     // addrmap - aou_core
     class aou_core extends uvm_reg_block;
         rand aou_core__ip_version ip_version;
@@ -935,6 +1131,14 @@ package aou_core_csr_uvm_pkg;
         rand aou_core__axi_error_info1_rp3 axi_error_info1_rp3;
         rand aou_core__axi_slv_id_mismatch_err_rp3 axi_slv_id_mismatch_err_rp3;
         rand aou_core__write_early_response_wdt_ctl write_early_response_wdt_ctl;
+        rand aou_core__profile_cfg_rp0 profile_cfg_rp0;
+        rand aou_core__profile_cfg_rp1 profile_cfg_rp1;
+        rand aou_core__profile_cfg_rp2 profile_cfg_rp2;
+        rand aou_core__profile_cfg_rp3 profile_cfg_rp3;
+        rand aou_core__profile_rmt_rp0 profile_rmt_rp0;
+        rand aou_core__profile_rmt_rp1 profile_rmt_rp1;
+        rand aou_core__profile_rmt_rp2 profile_rmt_rp2;
+        rand aou_core__profile_rmt_rp3 profile_rmt_rp3;
 
         function new(string name = "aou_core");
             super.new(name);
@@ -1107,6 +1311,46 @@ package aou_core_csr_uvm_pkg;
 
             this.write_early_response_wdt_ctl.build();
             this.default_map.add_reg(this.write_early_response_wdt_ctl, 'h80);
+            this.profile_cfg_rp0 = new("profile_cfg_rp0");
+            this.profile_cfg_rp0.configure(this);
+
+            this.profile_cfg_rp0.build();
+            this.default_map.add_reg(this.profile_cfg_rp0, 'h84);
+            this.profile_cfg_rp1 = new("profile_cfg_rp1");
+            this.profile_cfg_rp1.configure(this);
+
+            this.profile_cfg_rp1.build();
+            this.default_map.add_reg(this.profile_cfg_rp1, 'h88);
+            this.profile_cfg_rp2 = new("profile_cfg_rp2");
+            this.profile_cfg_rp2.configure(this);
+
+            this.profile_cfg_rp2.build();
+            this.default_map.add_reg(this.profile_cfg_rp2, 'h8c);
+            this.profile_cfg_rp3 = new("profile_cfg_rp3");
+            this.profile_cfg_rp3.configure(this);
+
+            this.profile_cfg_rp3.build();
+            this.default_map.add_reg(this.profile_cfg_rp3, 'h90);
+            this.profile_rmt_rp0 = new("profile_rmt_rp0");
+            this.profile_rmt_rp0.configure(this);
+
+            this.profile_rmt_rp0.build();
+            this.default_map.add_reg(this.profile_rmt_rp0, 'h94);
+            this.profile_rmt_rp1 = new("profile_rmt_rp1");
+            this.profile_rmt_rp1.configure(this);
+
+            this.profile_rmt_rp1.build();
+            this.default_map.add_reg(this.profile_rmt_rp1, 'h98);
+            this.profile_rmt_rp2 = new("profile_rmt_rp2");
+            this.profile_rmt_rp2.configure(this);
+
+            this.profile_rmt_rp2.build();
+            this.default_map.add_reg(this.profile_rmt_rp2, 'h9c);
+            this.profile_rmt_rp3 = new("profile_rmt_rp3");
+            this.profile_rmt_rp3.configure(this);
+
+            this.profile_rmt_rp3.build();
+            this.default_map.add_reg(this.profile_rmt_rp3, 'ha0);
         endfunction : build
     endclass : aou_core
 

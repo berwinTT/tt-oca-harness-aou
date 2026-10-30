@@ -29,6 +29,8 @@ class aou_l3_cov extends uvm_object;
   int unsigned s_prev, s_cur, s_op, s_dir, s_kind, s_rp, s_start, s_size, s_nmsgs;
   int unsigned s_misc0, s_misc1, s_carry, s_ev, s_cls, s_nwresp, s_wf_ahead, s_wf_others;
   int unsigned s_act_layout, s_flex;
+  int unsigned s_pid;
+  bit s_prev_nz, s_popt_nz, s_present;
   bit          s_legal, s_span, s_credit_only, s_wf_whole;
   // cg_wr_order, from the messages the model sends: per RP, the WriteData
   // messages sent and the ones the sent WriteReqs account for.
@@ -202,6 +204,32 @@ class aou_l3_cov extends uvm_object;
     x_flex_kind_dir: cross cp_flex, cp_kind, cp_dir;
   endgroup
 
+  // The profile each ActivateReq announces per RP (v0.8 Ch. 11): on rx what
+  // the DUT's PROFILE_CFG_RPn held, on tx the model's configuration; an RP the
+  // sender does not have carries 0.
+  covergroup cg_act_profile;
+    cp_rp: coverpoint s_rp {
+      `AOU_L3_FC_RP(AOU_FC_CG)
+    }
+    cp_id: coverpoint s_pid {
+      `AOU_L3_FC_PROFILE_ID(AOU_FC_CG)
+    }
+    cp_rev: coverpoint s_prev_nz {
+      `AOU_L3_FC_PROFILE_NZ(AOU_FC_CG)
+    }
+    cp_opt: coverpoint s_popt_nz {
+      `AOU_L3_FC_PROFILE_NZ(AOU_FC_CG)
+    }
+    cp_dir: coverpoint s_dir {
+      `AOU_FC_DIR_BINS(AOU_FC_CG)
+    }
+    cp_present: coverpoint s_present {
+      `AOU_L3_FC_PRESENT(AOU_FC_CG)
+    }
+    x_profile: cross cp_rp, cp_id, cp_rev, cp_opt, cp_present;
+    x_dir_present: cross cp_dir, cp_present;
+  endgroup
+
   // The service's copies of the covergroups above.
   aou_fc_group fc_act_fsm;
   aou_fc_group fc_act_op;
@@ -214,6 +242,7 @@ class aou_l3_cov extends uvm_object;
   aou_fc_group fc_credit;
   aou_fc_group fc_wr_order;
   aou_fc_group fc_flex;
+  aou_fc_group fc_act_profile;
 
   function new(string name = "aou_l3_cov");
     super.new(name);
@@ -228,6 +257,7 @@ class aou_l3_cov extends uvm_object;
     cg_credit = new();
     cg_wr_order = new();
     cg_flex = new();
+    cg_act_profile = new();
     fc_declare();
   endfunction
 
@@ -321,6 +351,18 @@ class aou_l3_cov extends uvm_object;
       p = fc_flex.add_cross("x_flex_kind_dir", "cp_flex cp_kind cp_dir");
       `AOU_L3_FC_X_FLEX(AOU_FC_REG)
     end
+    fc_act_profile = db.group("l3.cg_act_profile", fresh);
+    if (fresh) begin
+      p = fc_act_profile.cp("cp_rp"); `AOU_L3_FC_RP(AOU_FC_REG)
+      p = fc_act_profile.cp("cp_id"); `AOU_L3_FC_PROFILE_ID(AOU_FC_REG)
+      p = fc_act_profile.cp("cp_rev"); `AOU_L3_FC_PROFILE_NZ(AOU_FC_REG)
+      p = fc_act_profile.cp("cp_opt"); `AOU_L3_FC_PROFILE_NZ(AOU_FC_REG)
+      p = fc_act_profile.cp("cp_dir"); `AOU_FC_DIR_BINS(AOU_FC_REG)
+      p = fc_act_profile.cp("cp_present"); `AOU_L3_FC_PRESENT(AOU_FC_REG)
+      p = fc_act_profile.add_cross("x_profile", "cp_rp cp_id cp_rev cp_opt cp_present");
+      `AOU_L3_FC_X_PROFILE(AOU_FC_REG)
+      void'(fc_act_profile.add_cross("x_dir_present", "cp_dir cp_present"));
+    end
   endfunction
 
   static function int unsigned msg_kind(aou_msg m);
@@ -382,6 +424,23 @@ class aou_l3_cov extends uvm_object;
     s_legal = legal;
     cg_act_op.sample();
     fc_act_op.sample(int'(s_op), int'(s_dir), int'(s_legal));
+  endfunction
+
+  // A v0.8 ActivateReq: its profile fields for each RP. rp_count: the RPs the
+  // sender has (the others' fields are reserved).
+  function void sample_act_profile(aou_msg_act a, int unsigned rp_count);
+    if (!a.v08_req()) return;
+    s_dir = int'(a.dir);
+    for (int unsigned r = 0; r < AOU_RP_MAX; r++) begin
+      s_rp = r;
+      s_pid = int'(a.profile_id[r]);
+      s_prev_nz = a.profile_rev[r] != 0;
+      s_popt_nz = a.profile_opt[r] != 0;
+      s_present = r < rp_count;
+      cg_act_profile.sample();
+      fc_act_profile.sample(int'(s_rp), int'(s_pid), int'(s_prev_nz), int'(s_popt_nz),
+                            int'(s_dir), int'(s_present));
+    end
   endfunction
 
   function void sample_msg(aou_msg m);

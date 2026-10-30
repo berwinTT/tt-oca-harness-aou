@@ -98,9 +98,18 @@ class aou_unpacker extends uvm_object;
                                          cfg.eff_rp_count()));
     if ($cast(cg, m) && cg.unsupported_rp_nonzero(sender_rp_count()))
       viol("AOU-R11", f, spos, $sformatf("CrdtGrant grants an RP >= %0d", sender_rp_count()));
-    if ($cast(a, m) && cfg.spec_rev == AOU_SPEC_V08) ledger_chk("AOU-R12");
-    if ($cast(a, m) && a.profile_nonzero())
-      viol("AOU-R12", f, spos, "ActivateReq profile fields non-zero under the Basic Profile");
+    // v0.8 Ch. 11: the ActivateReq announces the sender's configured profile
+    // per RP it has (the DUT's PROFILE_CFG_RPn registers; our cfg.profile_*)
+    // and 0 for an RP it has not.
+    if ($cast(a, m) && a.v08_req()) begin
+      string pm = (dir == AOU_L3_RX) ?
+          a.profile_mismatch(cfg.dut_profile_id, cfg.dut_profile_rev, cfg.dut_profile_opt,
+                             sender_rp_count()) :
+          a.profile_mismatch(cfg.profile_id, cfg.profile_rev, cfg.profile_opt,
+                             sender_rp_count());
+      ledger_chk("AOU-R12");
+      if (pm != "") viol("AOU-R12", f, spos, {"ActivateReq profile ", pm});
+    end
     done.push_back(m);
   endfunction
 
@@ -227,9 +236,9 @@ class aou_unpacker extends uvm_object;
     // the next flit counts by its kind); at most 2 other Misc per half-flit.
     // Whether a credit may be sent yet is AOU-R29's question, not this one.
     // Always on our own flits; on the DUT's only with cfg.v0p9draft
-    // (+v0p9draft) or the v0.8 wire format, since the DUT implements v0.7.1's
-    // rule.
-    if (dir == AOU_L3_TX || cfg.spec_rev == AOU_SPEC_V08 || cfg.v0p9draft) begin
+    // (+v0p9draft), whatever the wire format: the DUT sends the v0.8
+    // ActivateReq but places Misc by v0.7.1's rule (GitHub #127).
+    if (dir == AOU_L3_TX || cfg.v0p9draft) begin
       ledger_chk("AOU-R7");
       if (acts.size() > 0 && f.num_starts() > acts.size()) begin
         string k = "", bad = "";

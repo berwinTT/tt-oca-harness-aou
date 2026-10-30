@@ -43,6 +43,8 @@ xref:figure-3[Figure 3] shows the simplified block diagram of single RP AOU_TX_C
 
 The flit packer reads the ring in steps sized to the FDI data width: a quarter flit (12 granules) per step at 32 B and 64 B, a half flit (24 granules) at 128 B, and the whole flit (48 granules) at 256 B ([.monospaced]#++FDI_CFG_SP_256B++#, see xref:{aou-integration-xref}#aou-ig-fdi_config-values[integration guide, FDI_CONFIG values]). The one-step 256 B packer keeps the same ring and arbitration as the narrower builds, so at most the messages that enter the ring in one cycle fill a flit; a flit therefore leaves every cycle but is not filled at the link rate. Filling 256 B flits at full rate is a follow-on (GitHub issue #131).
 
+The Activation messages come from AOU_ACTIVATION_CTRL and are packed at granule 0 of a flit of their own, with nothing after them but the CrdtGrant that may accompany an ActivateReq or ActivateAck. The ActivateReq is the four-granule message of AoU v0.8 chapter 11: its first granule carries the opcode and the ProfileID, ProfileRev and ProfileOpt of RP0, the next three those of RP1 to RP3, read from [.monospaced]#++PROFILE_CFG_RP0..3++# when the message is launched, with zeros for the RPs the build does not have. ActivateAck, DeactivateReq and DeactivateAck stay one granule; the DeactivateReq of a forced deactivation keeps the reserved bit the RTL marks it with (xref:{aou-software-xref}#aou-71-sfr-setting[Section 7.1]).
+
 [[aou-321-tx_core-qos-scheme]]
 ==== 3.2.1. TX_CORE QoS Scheme
 
@@ -115,6 +117,8 @@ xref:figure-9[Figure 9] shows the architecture of the Chunk Decoder which is cen
 The uniform quantum has a latency cost at the 64 B FDI width: a half flit is two 64 B chunks, so a message that ends in the first chunk waits one cycle for the second before it is decoded. Measured on the bench (FDI beat of the message's last granule to the AXI handshake, FIFOs empty, AXI ready) this is +1 cycle for the classes that end in the first chunk (ReadData 256, WriteResp, WriteReq and WriteDataFull 256) and +0 for the 15-granule ones; at 128 B every class is +1 (the tagging register) or +2 (last granule in the second half flit). Throughput is unchanged at every width.
 
 A message may therefore begin in any granule and span up to two flits (a WriteData1024 of 30 granules at most crosses one flit boundary); the store reassembles it from consecutive decode cycles without a separate reassembly window.
+
+The Activation messages are decoded in the same cycle. An ActivateReq is four granules long (AoU v0.8 chapter 11); the opcode goes to AOU_ACTIVATION_CTRL as before, and the 26 profile bits of each granule travel with it, so that an ActivateReq the FSM accepts (one it answers with an ActivateAck) stores the remote die's ProfileID, ProfileRev and ProfileOpt per RP in [.monospaced]#++PROFILE_RMT_RP0..3++# of the SFR block, which also sets their RCVD bit. A rejected ActivateReq (received while ENABLED or deactivating) leaves the registers alone. The other three Activation opcodes are one granule.
 
 [[aou-34-message-fifo]]
 === 3.4. Message FIFO

@@ -15,7 +15,16 @@ class aou_t1_env_cfg extends uvm_object;
   aou_t1_rwreq_e remote_wreq = AOU_RWREQ_AWSIZE;  // remote WriteReq sizing (remote_mgr_driver)
   int unsigned   remote_max_burst = 256;   // remote splitter's longest burst (2^n beats)
   bit            remote_max_burst_rand = 1'b0;  // re-pick it while the remote is idle
-  aou_spec_rev_e spec_rev = AOU_SPEC_V07;
+  // Activation message format the DUT and the remote die use. v0.8: the
+  // ActivateReq is 4 granules and carries the profile of each RP (Ch. 11,
+  // PROFILE_CFG_RPn / PROFILE_RMT_RPn); the other Activation messages are
+  // unchanged but for PropertyReq, which v0.8 reserves.
+  aou_spec_rev_e spec_rev = AOU_SPEC_V08;
+  // v0.8 8.3.3 ERROR state in the remote model on an out-of-sequence Req/Ack.
+  // Off: the DUT does not implement ERROR (it answers a late ActivateReq, MAS
+  // 7.2.3), so the model keeps the v0.7 reaction and the tests their
+  // expectations.
+  bit            error_state_en = 1'b0;
 
   // Agent configs
   aou_fdi_cfg    fdi_cfg[AOU_T1_N_PHY];
@@ -167,6 +176,7 @@ class aou_t1_env_cfg extends uvm_object;
     foreach (rp_remote_bytes[r])
       if (rp_remote_bytes[r] > AOU_T1_PEER_MAX_BYTES) rp_remote_bytes[r] = AOU_T1_PEER_MAX_BYTES;
     l3_cfg.spec_rev = spec_rev;
+    l3_cfg.error_state_en = error_state_en;
     l3_cfg.rp_count = (remote_rp_count != 0) ? remote_rp_count : n_rp;
     l3_cfg.peer_rp_count = n_rp;
     // The credit the DUT may advertise (MAS 3.9) on the RPs both dies have.

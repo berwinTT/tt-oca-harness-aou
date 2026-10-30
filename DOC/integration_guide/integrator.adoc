@@ -491,7 +491,7 @@ both resets have been released.
 ____________________________________________________________________________________________________________________________________________________________________________________________________________________________________
 *Note:* AOU_CORE_SFR decodes [.monospaced]#++PADDR[15:0]++# only; bits
 [.monospaced]#++[APB_ADDR_WD-1:16]++# are ignored, so the register map
-(offsets 0x0000 to 0x0080) repeats at every 64 KiB within the APB window.
+(offsets 0x0000 to 0x00A0) repeats at every 64 KiB within the APB window.
 Size the APB window for 64 KiB and let the interconnect decode the upper
 address bits. Within the window, an offset that is not a defined register
 (including a non-word-aligned address) reads as 0x00000000 and ignores
@@ -1344,6 +1344,15 @@ it is set before the assertion, the activation process will
 automatically proceed after I_INT_FSM_IN_ACTIVE becomes asserted.
 * AOU_INIT.ACTIVATE_START SFR is automatically cleared to 0 once the
 activation is completed and AOU_ACTIVATE_STATE transitions to ENABLED.
+* Profile exchange (AoU v0.8 chapter 11). Before ACTIVATE_START, program
+PROFILE_CFG_RP0..3 (0x0084 to 0x0090) with the ProfileID, ProfileRev and
+ProfileOpt this die announces per RP; reset 0 is the Basic Profile, the
+one AOU_CORE implements. The four-granule ActivateReq carries them. The
+remote die's values, from the last ActivateReq AOU_CORE accepted, are read
+from PROFILE_RMT_RP0..3 (0x0094 to 0x00A0; RCVD set once one has been
+accepted; a v0.7 remote die reads as 0). Hardware does not compare or
+negotiate: software reads both sets once ENABLED and decides. AOU_SW_RESET
+clears all eight registers.
 
 [[aou-ig-deactivation-start]]
 === 6.3 Deactivation Start

@@ -597,6 +597,12 @@ import packet_def_pkg::*;
     logic [3:0]                             w_rxcore_activation_op          ;
     logic                                   w_rxcore_activation_prop_req    ;
     logic                                   w_rxcore_activation_valid       ;
+    // AoU v0.8 profile exchange: configured profile (SFR) to the TX core,
+    // received profile (RX core) through the activation FSM to the SFR
+    logic [3:0][PROFILE_WD-1:0]             w_sfr_profile_cfg               ;
+    logic [3:0][PROFILE_WD-1:0]             w_rxcore_activation_profile     ;
+    logic [3:0][PROFILE_WD-1:0]             w_profile_rmt                   ;
+    logic                                   w_profile_rmt_we                ;
 
     logic [RP_COUNT-1:0][AXI_ID_WD-1:0]     w_aou_tx_axi_mm_rid             ;
     logic [RP_COUNT-1:0][1:0]               w_aou_tx_axi_mm_rdlen           ;
@@ -818,6 +824,9 @@ import packet_def_pkg::*;
         .INT_ACTIVATE_START                                             ( O_INT_ACTIVATE_START                  ),
         .INT_DEACTIVATE_START                                           ( O_INT_DEACTIVATE_START                ),
         .INT_FDI_LINK_DOWN                                              ( w_int_fdi_link_down                   ),
+        .O_PROFILE_CFG                                                  ( w_sfr_profile_cfg                     ),
+        .I_PROFILE_RMT                                                  ( w_profile_rmt                         ),
+        .I_PROFILE_RMT_WE                                               ( w_profile_rmt_we                      ),
 
         .O_AXI_SPLIT_TR_RP1_MAX_AWBURSTLEN                              ( w_axi_split_tr_max_awburstlen[1]      ),
         .O_AXI_SPLIT_TR_RP1_MAX_ARBURSTLEN                              ( w_axi_split_tr_max_arburstlen[1]      ),
@@ -1102,6 +1111,9 @@ import packet_def_pkg::*;
 
         .I_ACTMSG_ACTIVATION_OP            ( w_rxcore_activation_op         ),
         .I_ACTMSG_PROPERTYREQ              ( w_rxcore_activation_prop_req   ),
+        .I_ACTMSG_PROFILE                  ( w_rxcore_activation_profile    ),
+        .O_PROFILE_RMT                     ( w_profile_rmt                  ),
+        .O_PROFILE_RMT_WE                  ( w_profile_rmt_we               ),
         .I_ACTMSG_VALID                    ( w_rxcore_activation_valid      ),
 
         .O_ACTMSG_ACTIVATION_OP            ( w_txcore_activation_op         ),
@@ -1298,6 +1310,7 @@ import packet_def_pkg::*;
 
         .I_AOU_ACTIVATION_OP            ( w_txcore_activation_op        ),
         .I_AOU_ACTIVATION_PROP_REQ      ( w_txcore_activation_prop_req  ),
+        .I_AOU_PROFILE_CFG              ( w_sfr_profile_cfg             ),
         .I_AOU_ACTIVATION_VALID         ( w_txcore_activation_valid     ),
         .O_AOU_ACTIVATION_READY         ( w_txcore_activation_ready     ),
         .O_AOU_TX_PENDING               ( w_tx_pending                  ),
@@ -1498,6 +1511,7 @@ import packet_def_pkg::*;
 
         .O_ACTIVATION_OP                    ( w_rxcore_activation_op            ),
         .O_ACTIVATION_PROP_REQ              ( w_rxcore_activation_prop_req      ),
+        .O_ACTIVATION_PROFILE               ( w_rxcore_activation_profile       ),
         .O_ACTIVATION_VALID                 ( w_rxcore_activation_valid         )
     );
 

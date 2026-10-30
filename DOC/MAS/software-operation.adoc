@@ -237,6 +237,50 @@ The SFR block decodes [.monospaced]#++PADDR[15:0]++# only: the offsets in xref:t
 | | |AXI_SLV_RID_MISMATCH_ERR |[0] |W1C |0x0
 |WRITE_EARLY_RESPONSE_WDT_CTL |0x0080 | | | |0x000C3500
 | | |WDT_THRESHOLD |[31:0] |RW |0x000C3500
+|PROFILE_CFG_RP0 |0x0084 | | | |0x00000000
+| | |Rsvd |[31:26] |RO |0x0
+| | |PROFILE_OPT |[25:10] |RW |0x0000
+| | |PROFILE_REV |[9:5] |RW |0x00
+| | |PROFILE_ID |[4:0] |RW |0x00
+|PROFILE_CFG_RP1 |0x0088 | | | |0x00000000
+| | |Rsvd |[31:26] |RO |0x0
+| | |PROFILE_OPT |[25:10] |RW |0x0000
+| | |PROFILE_REV |[9:5] |RW |0x00
+| | |PROFILE_ID |[4:0] |RW |0x00
+|PROFILE_CFG_RP2 |0x008C | | | |0x00000000
+| | |Rsvd |[31:26] |RO |0x0
+| | |PROFILE_OPT |[25:10] |RW |0x0000
+| | |PROFILE_REV |[9:5] |RW |0x00
+| | |PROFILE_ID |[4:0] |RW |0x00
+|PROFILE_CFG_RP3 |0x0090 | | | |0x00000000
+| | |Rsvd |[31:26] |RO |0x0
+| | |PROFILE_OPT |[25:10] |RW |0x0000
+| | |PROFILE_REV |[9:5] |RW |0x00
+| | |PROFILE_ID |[4:0] |RW |0x00
+|PROFILE_RMT_RP0 |0x0094 | | | |0x00000000
+| | |RCVD |[31] |RO |0x0
+| | |Rsvd |[30:26] |RO |0x0
+| | |PROFILE_OPT |[25:10] |RO |0x0000
+| | |PROFILE_REV |[9:5] |RO |0x00
+| | |PROFILE_ID |[4:0] |RO |0x00
+|PROFILE_RMT_RP1 |0x0098 | | | |0x00000000
+| | |RCVD |[31] |RO |0x0
+| | |Rsvd |[30:26] |RO |0x0
+| | |PROFILE_OPT |[25:10] |RO |0x0000
+| | |PROFILE_REV |[9:5] |RO |0x00
+| | |PROFILE_ID |[4:0] |RO |0x00
+|PROFILE_RMT_RP2 |0x009C | | | |0x00000000
+| | |RCVD |[31] |RO |0x0
+| | |Rsvd |[30:26] |RO |0x0
+| | |PROFILE_OPT |[25:10] |RO |0x0000
+| | |PROFILE_REV |[9:5] |RO |0x00
+| | |PROFILE_ID |[4:0] |RO |0x00
+|PROFILE_RMT_RP3 |0x00A0 | | | |0x00000000
+| | |RCVD |[31] |RO |0x0
+| | |Rsvd |[30:26] |RO |0x0
+| | |PROFILE_OPT |[25:10] |RO |0x0000
+| | |PROFILE_REV |[9:5] |RO |0x00
+| | |PROFILE_ID |[4:0] |RO |0x00
 |==========================================================================
 
 _Table 7. Register Map_
@@ -304,6 +348,12 @@ The DISABLED signal is asserted to indicate that deactivation has been completed
 * WDT_TRANS_TIMEOUT_ERR: set when the watchdog of this RP expires; source of the INT_EARLY_WDT_ERR interrupt. Writing 1 clears it.
 * WRITE_RESP_DONE: It indicates that there are no pending write requests and all write responses have been received from the remote die.
 * WRITE_RESP_ERR: It indicated that although the early response feature was enabled and an early response has already been delivered to the local die, an error occurred later in the write response received from the remote die. The BRESP value of the error is stored in WRITE_RESP_ERR_TYPE_INFO, and the BID of the transaction that caused the error is stored in WRITE_RESP_ERR_ID_INFO SFR. When an error occurs, an interrupt is generated. Afterward, writing 1 to the WRITE_RESP_ERR SFR clears ERR_TYPE_INFO, ERR_ID_INFO, and RESP_ERR.
+
+*PROFILE_CFG_RPn / PROFILE_RMT_RPn (AoU v0.8 profile exchange)*
+
+* AoU v0.8 chapter 11 makes the ActivateReq four granules long: after ACTIVATIONOP it carries, for each of RP0 to RP3, a ProfileID (5 bits), ProfileRev (5 bits) and ProfileOpt (16 bits). The fields are informational. Hardware does not act on them and no negotiation takes place; firmware on each die reads what it configured and what it received and decides what to do (see xref:aou-732-activation-start[Section 7.3.2]). ProfileID 0 with ProfileRev 0 and ProfileOpt 0 is the Basic Profile, the only profile AOU_CORE implements.
+* PROFILE_CFG_RPn is what AOU_CORE announces for RPn in the ActivateReq it sends. Program it before AOU_INIT.ACTIVATE_START (or before the remote die's ActivateReq is expected): the TX core reads the registers when it launches the ActivateReq, so a later write takes effect at the next activation only. Reset 0 announces the Basic Profile. The registers of an RP the build does not have (index RP_COUNT or above) are writable, but the ActivateReq carries zeros for that RP, as the specification reserves its fields.
+* PROFILE_RMT_RPn holds the fields the remote die announced for its RPn in the last ActivateReq AOU_CORE accepted, i.e. one it answered with an ActivateAck. An ActivateReq rejected as an invalid activation message (received while ENABLED or during a deactivation, xref:aou-723-linkreset-error-reporting[Section 7.2.3]) leaves the registers unchanged. RCVD, shared by the four registers, reads 1 once at least one ActivateReq has been accepted since reset; before that every field reads 0. The values are kept through a deactivation and a link down until the next accepted ActivateReq or a reset, including AOU_SW_RESET, which clears all eight registers. A remote die at AoU v0.7 sends a one-granule ActivateReq; its PROFILE_RMT_RPn then read 0, the Basic Profile.
 
 *Low Power mode*
 
@@ -491,6 +541,7 @@ Activation START(via SFR AOU_INIT.ACTIVATE_START SFR)
 * Activation can be triggered by setting ACTIVATE_START.
 * Activation does not proceed until I_INT_FSM_IN_ACTIVE is asserted (link established), since no flits can be transmitted beforehand. Therefore, it is allowed to set the ACTIVATE_START SFR before I_INT_FSM_IN_ACTIVE is asserted. If it is set before the assertion, the activation process will automatically proceed after I_INT_FSM_IN_ACTIVE becomes asserted. I_INT_FSM_IN_ACTIVE stays asserted through Retrain and L1, so an ACTIVATE_START written then starts the handshake at once; the ActivateReq waits in the TX path until the D2D adapter accepts flits again, and the Ack timer (2^(18 + ACK_TIME_OUT_VALUE) cycles, xref:aou-723-linkreset-error-reporting[Section 7.2.3]) runs from the write, not from the adapter's acceptance, so an L1 that outlasts it ends in ACT_ACK_ERR. That is intended: the time-out is an error host SW understands and handles like any other ACT_ACK_ERR (xref:aou-723-linkreset-error-reporting[Section 7.2.3]); no link-state qualifier delays the timer. The write does not wake a link in L1: the bringup controller wakes it on the D2D adapter's pl_clk_req, on I_SW_ACTIVATE_START, or on INT_ACTIVATE_START (a pending local AXI transaction or a received ActivateReq while ACTIVATE_START is 0), so SW that activates from L1 exits L1 on the UCIe controller as in xref:aou-736-pm-entry--linkreset--linkdisabled-sequence[Section 7.3.6].
 * AOU_INIT.ACTIVATE_START SFR is automatically cleared to 0 once the activation is completed and AOU_ACTIVATE_STATE transitions to ENABLED.
+* Profile exchange (AoU v0.8 chapter 11). Before ACTIVATE_START, and before the remote die can be expected to send its ActivateReq, SW programs PROFILE_CFG_RP0 to RP3 with the ProfileID, ProfileRev and ProfileOpt this die announces per RP (reset 0 is the Basic Profile, which is what AOU_CORE implements). The ActivateReq AOU_CORE sends carries those values; the ActivateReq it accepts from the remote die leaves the remote die's values in PROFILE_RMT_RP0 to RP3 with RCVD set. Once ENABLED (or when an activation fails), SW reads PROFILE_RMT_RPn and compares them with PROFILE_CFG_RPn and with what this die supports; the hardware neither compares nor negotiates, so a mismatch is for SW to handle (for example by deactivating). See xref:aou-71-sfr-setting[Section 7.1].
 * After the local die requests LinkReset (xref:aou-723-linkreset-error-reporting[Section 7.2.3]), activation does not start again, and INT_ACTIVATE_START is not raised, until software resets AOU_CORE with AOU_CON0.AOU_SW_RESET: an ACTIVATE_START that is still set, or is written again, sends no ActivateReq, and a received ActivateReq does not move the FSM out of DISABLED. The reset is part of the recovery in xref:aou-736-pm-entry--linkreset--linkdisabled-sequence[Section 7.3.6].
 
 [[aou-733-deactivation-start]]

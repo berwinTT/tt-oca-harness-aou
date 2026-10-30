@@ -605,3 +605,20 @@ tests = [
   "aou_act_flit_test.mode-deact_rsp.v0p9draft",
   "aou_rx_credit_test.loops-3.4xmix-sp256-rxf",
 ]
+
+[[tests]]
+name = "aou_act_profile_test"
+module = { uvm = "aou_act_profile_test" }
+seed = 1
+reseed = 3
+tags = ["link"]
+run_modes = ["link"]
+
+[[tests]]
+name = "aou_act_profile_test.loops-3.skip_reset-1"
+module = { uvm = "aou_act_profile_test" }
+seed = 1
+reseed = 2
+tags = ["link"]
+run_modes = ["link"]
+args = ["+loops=3", "+skip_reset=1"]
