@@ -41,6 +41,8 @@ image::image3.png[Figure 3. Block Diagram of Single RP AOU_TX_CORE]
 
 xref:figure-3[Figure 3] shows the simplified block diagram of single RP AOU_TX_CORE. The module receives AXI messages for Remote Die. AOU_TX_AXI_BUFFER captures AXI messages from the system bus. When AOU_TX_CORE obtains sufficient credit from AOU_CRD_CTRL, it packs the AXI message into an AOU message and stores it in the ring buffer. Once there is enough space to hold all messages, messages are stored to the ring buffer in parallel. The ring buffer subsequently performs handshake operations with the FDI interface.
 
+The flit packer reads the ring in steps sized to the FDI data width: a quarter flit (12 granules) per step at 32 B and 64 B, a half flit (24 granules) at 128 B, and the whole flit (48 granules) at 256 B ([.monospaced]#++FDI_CFG_SP_256B++#, see xref:{aou-integration-xref}#aou-ig-fdi_config-values[integration guide, FDI_CONFIG values]). The one-step 256 B packer keeps the same ring and arbitration as the narrower builds, so at most the messages that enter the ring in one cycle fill a flit; a flit therefore leaves every cycle but is not filled at the link rate. Filling 256 B flits at full rate is a follow-on (GitHub issue #131).
+
 [[aou-321-tx_core-qos-scheme]]
 ==== 3.2.1. TX_CORE QoS Scheme
 
@@ -192,7 +194,7 @@ In addition to [.monospaced]#++AOU_AXI_WLAST_GEN++#, the upsizer and downsizer m
 
 Every AXI-equivalent AoU message (WriteReq, ReadReq, WriteData and WriteDataFull, ReadData, WriteResp) carries a 16-bit FLEX field. In the Basic Profile, FLEX is the USER signal of the matching AXI channel, passed unmodified, and the USER widths are fixed at 16 bits (AoU v0.8 Sections 5.2 and 11.1, Table 31). AXI itself leaves the meaning of the USER signals to the system: it defines them as optional per channel, does not define their function, and recommends that an interconnect pass them from manager to subordinate (AMBA AXI, IHI 0022, "User-defined signaling").
 
-AOU_CORE implements the transmit direction. The five USER inputs on its AXI ports (xref:{aou-integration-xref}#aou-ig-interface-signals[integration guide, Section 3]) are sent as the FLEX field of the messages it transmits:
+AOU_CORE carries FLEX in both directions. In the transmit direction the five USER inputs on its AXI ports (xref:{aou-integration-xref}#aou-ig-interface-signals[integration guide, Section 3]) are sent as the FLEX field of the messages it transmits:
 
 [width="100%",cols="<20%,<25%,<20%,<35%",options="header",]
 |=======================================================================
@@ -210,7 +212,19 @@ On the subordinate port nothing is converted before the link, so every AW, AR an
 * *One local beat becomes several messages:* nothing is merged, and each message carries that beat's USER value. The upsizer ([.monospaced]#++AOU_AXI_UP++#) and the read aggregator ([.monospaced]#++AOU_AGGREGATOR++#) present one wide R beat as several ReadData messages, each with that beat's RUSER, as they already do with RRESP.
 * *Responses AOU_CORE generates itself* (the [.monospaced]#++AOU_ERROR_INFO++# module answering a remote access to the R/B response error debug address, xref:software-operation.adoc#aou-724-rb-response-error-debug-fifo[Section 7.2.4]) carry FLEX = 0.
 
-The receive direction is not implemented: the FLEX field of a received message is decoded and discarded, and the AXI ports driven from received messages ([.monospaced]#++O_AOU_RX_AXI_M_*++#, [.monospaced]#++O_AOU_RX_AXI_S_*++#) have no USER outputs. Carrying received FLEX onto those ports is future work. An integrator without USER signals ties the five inputs to 0; the transmitted messages then carry FLEX = 0.
+In the receive direction the FLEX field of every received message travels with the message through the RX FIFOs (xref:aou-34-message-fifo[Section 3.4]: a 16-bit field of the AW/AR/B FIFO entries, a field extracted at the pop of the W and R granule stores) and leaves the core on the USER output of the matching channel:
+
+[width="100%",cols="<25%,<20%,<25%,<30%",options="header",]
+|=======================================================================
+|Message |AXI channel |USER output |USER value
+|WriteReq |AW (manager port) |[.monospaced]#++O_AOU_RX_AXI_M_AWUSER++# |FLEX of the request; every sub-burst of a request the splitter divides carries it
+|ReadReq |AR (manager port) |[.monospaced]#++O_AOU_RX_AXI_M_ARUSER++# |FLEX of the request; every sub-burst of a request the splitter divides carries it
+|WriteData / WriteDataFull |W (manager port) |[.monospaced]#++O_AOU_RX_AXI_M_WUSER++# |FLEX of the message the beat comes from. The downsizer presents one message as several narrower beats, each with the message's FLEX; the upsizer places each message in its lane of one wider beat, so no W beats are merged
+|WriteResp |B (subordinate port) |[.monospaced]#++O_AOU_RX_AXI_S_BUSER++# |FLEX of the response; 0 for an early write response (xref:aou-37-write-early-response-controller[Section 3.7]), which AOU_CORE generates before any WriteResp arrives
+|ReadData |R (subordinate port) |[.monospaced]#++O_AOU_RX_AXI_S_RUSER++# |FLEX of the message the beat comes from; nothing is converted on the subordinate port, so each ReadData is one R beat
+|=======================================================================
+
+The same rule as above applies wherever the manager-port width converter changes the number of beats: a message that becomes several local beats repeats its FLEX on each of them, as it repeats the strobes; nothing on the receive side merges several messages into one beat. An integrator without USER signals ties the five inputs to 0 and leaves the five outputs unconnected; the transmitted messages then carry FLEX = 0.
 
 [[aou-36-axi-transaction-splitter]]
 === 3.6. AXI Transaction Splitter
@@ -635,6 +649,8 @@ The [.monospaced]#++AOU_RX_FDI_IF++# module uses the FDI [.monospaced]#++pl_vali
 |1 |1 |*Retransmit / Partial Valid*: Phase counter decrements by 1. The staging buffer is re-aligned with [.monospaced]#++{zero_data, pl_data}++# and a valid pattern of [.monospaced]#++{1'b0, 1'b1}++#, replacing the previously stored partial chunk with the corrected data.
 |0 |1 |*Full Flit Cancel*: Phase counter decrements by 2. Staging buffer entries are cleared. This is the strongest rollback, discarding the entire in-progress half-flit.
 |=============================================================================================================================================================================================================================================
+
+At the 256 B FDI width ([.monospaced]#++FDI_CFG_SP_256B++#, 2048-bit data) a flit is a single beat and the unit of cancellation is the whole flit: [.monospaced]#++pl_flit_cancel++# asserted in the cycle after a flit's beat drops that flit, which [.monospaced]#++AOU_RX_FDI_IF++# holds for exactly that cycle, and a beat coincident with the cancel is the replayed flit. This is the contract UCIe defines for a 2048-bit FDI (xref:{aou-integration-xref}#aou-ig-fdi_config-values[integration guide, FDI_CONFIG values]).
 
 [[aou-3112-rx_fdi_if-buffering]]
 ==== 3.11.2. RX_FDI_IF Buffering

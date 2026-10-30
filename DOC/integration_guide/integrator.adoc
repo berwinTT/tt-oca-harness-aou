@@ -647,8 +647,9 @@ the received WriteReq's FLEX field.
 |O_AOU_RX_AXI_M_WLAST |output |[RP_COUNT-1:0] |Write last.
 
 |O_AOU_RX_AXI_M_WUSER |output |[RP_COUNT-1:0][15:0] |Write data USER, per
-beat: the FLEX field of the WriteData message the beat comes from (the
-first message's when the width converter merges several into one beat).
+beat: the FLEX field of the WriteData message the beat comes from
+(repeated on every beat when the width converter splits one message
+into several narrower beats).
 
 |O_AOU_RX_AXI_M_WVALID |output |[RP_COUNT-1:0] |W valid.
 
